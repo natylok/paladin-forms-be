@@ -4,6 +4,12 @@ import {
   IsString,
 } from 'class-validator';
 
+export class GoogleAuthDto {
+  @IsEmail()
+  @IsNotEmpty()
+  email: string
+}
+
 export class AuthDto {
   @IsEmail()
   @IsNotEmpty()

@@ -1,0 +1,1 @@
+export const COOKIE_GOOGLE_MAX_TIME = 2592000000;

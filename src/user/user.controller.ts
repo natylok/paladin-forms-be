@@ -1,30 +1,20 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Patch,
-  UseGuards,
-} from '@nestjs/common';
-import { User } from '@prisma/client';
-import { GetUser } from '../auth/decorator';
-import { JwtGuard } from '../auth/guard';
-import { EditUserDto } from './dto';
-import { UserService } from './user.service';
+// users.controller.ts
+import { Controller, Post, Body, UseGuards, Request, Get } from '@nestjs/common';
+import { JwtGuard } from '../auth/guards/jwt-auth.guard';
+import { UsersService } from './user.service';
 
-@UseGuards(JwtGuard)
 @Controller('users')
-export class UserController {
-  constructor(private userService: UserService) {}
-  @Get('me')
-  getMe(@GetUser() user: User) {
-    return user;
+export class UsersController {
+  constructor(private readonly usersService: UsersService) { }
+
+  @Post('register')
+  async register(@Body() createUserDto: { email: string; password: string }) {
+    return this.usersService.createUser(createUserDto);
   }
 
-  @Patch()
-  editUser(
-    @GetUser('id') userId: number,
-    @Body() dto: EditUserDto,
-  ) {
-    return this.userService.editUser(userId, dto);
+  @UseGuards(JwtGuard)
+  @Get('profile')
+  getProfile(@Request() req) {
+    return req.user;
   }
 }
