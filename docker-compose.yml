@@ -1,5 +1,7 @@
 version: '3.8'
+
 services:
+  # PostgreSQL Development Database
   dev-db:
     image: postgres:13
     ports:
@@ -9,16 +11,24 @@ services:
       POSTGRES_PASSWORD: 123
       POSTGRES_DB: nest
     networks:
-      - freecodecamp
-  test-db:
-    image: postgres:13
+      - nati-network
+
+  # MongoDB for NestJS
+  mongo-db:
+    image: mongo:5.0
+    restart: always
     ports:
-      - 5435:5432
+      - 27017:27017
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123
-      POSTGRES_DB: nest
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - mongo-data:/data/db
     networks:
-      - freecodecamp
+      - nati-network
+
 networks:
-  freecodecamp:
+  nati-network:
+
+volumes:
+  mongo-data:
