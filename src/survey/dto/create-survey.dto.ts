@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsMongoId, IsArray, ValidateNested, IsObject, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsString, IsArray, ValidateNested, IsObject, IsEnum, IsOptional, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class ComponentDto {
@@ -26,4 +26,9 @@ export class CreateSurveyDto {
   style: {
     backgroundColor: string;
   };
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean
+  
 }

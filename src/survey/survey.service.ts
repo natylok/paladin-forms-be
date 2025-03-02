@@ -15,11 +15,11 @@ export class SurveyService {
     }
 
     async getSurveys(): Promise<Survey[]> {
-        return this.surveyModel.find().populate('creator').exec();
+        return this.surveyModel.find().exec();
     }
 
     async getSurveyById(id: string): Promise<Survey> {
-        const survey = await this.surveyModel.findById(id).populate('creator').exec();
+        const survey = await this.surveyModel.findById(id).exec();
         if (!survey) {
             throw new NotFoundException(`Survey with ID ${id} not found`);
         }

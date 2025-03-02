@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
+import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -10,6 +11,15 @@ async function bootstrap() {
       whitelist: true,
     }),
   );
+
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.RMQ,
+    options: {
+      urls: ['amqp://localhost:5672'],
+      queue: 'feedback_queue'
+    },
+  });
+  await app.startAllMicroservices();
   app.use(cookieParser());
   await app.listen(3333);
 }

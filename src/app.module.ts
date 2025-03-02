@@ -6,6 +6,8 @@ import { UsersModule } from './user/user.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SurveyModule } from './survey/survey.module';
 import { MongooseModule } from '@nestjs/mongoose';
+import { FeedbackModule } from './feedback/feedback.module';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 
 @Module({
   imports: [
@@ -17,6 +19,7 @@ import { MongooseModule } from '@nestjs/mongoose';
     PrismaModule,
     MongooseModule.forRoot(process.env.MONGO_URI),
     SurveyModule,
+    FeedbackModule,
   ],
 })
 export class AppModule { }
