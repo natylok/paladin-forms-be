@@ -15,20 +15,20 @@ export class FeedbackService {
         @InjectModel(Feedback.name) private readonly feedbackModel: Model<Feedback>,
     ) {}
 
-    async submitFeedback(surveyId: string, responses: Partial<Record<SurveyComponentType, string>>) {
+    async submitFeedback(surveyId: string, response: Partial<Record<SurveyComponentType, string>>) {
         const survey = await this.surveyModel.findOne({ surveyId });
         if (!survey) {
             throw new BadRequestException('Survey not found');
         }
-
-        const validResponses: Partial<Record<SurveyComponentType, string>> = {};
-        for (const component of survey.components) {
-            if (component.title in responses) {
-                validResponses[component.title] = responses[component.title];
+        const results = Object.entries(response).reduce((prev, curr) => {
+            if(Object.values(SurveyComponentType).includes(curr[0] as SurveyComponentType)) {
+                prev[curr[0]] = curr[1];
+                return prev;
             }
-        }
+            return prev
+        }, {})
 
-        const message = { surveyId, responses: validResponses };
+        const message = { surveyId, results };
         this.logger.log(`🔵 Sending feedback to RabbitMQ: ${JSON.stringify(message)}`);
 
         try {
@@ -37,5 +37,9 @@ export class FeedbackService {
         } catch (error) {
             this.logger.error(`🔴 Failed to send feedback to RabbitMQ:`, error);
         }
+    }
+
+    async saveFeedback(payload: Feedback){
+        await new this.feedbackModel(payload).save();
     }
 }
