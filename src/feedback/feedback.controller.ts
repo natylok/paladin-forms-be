@@ -6,18 +6,16 @@ import { SurveyComponentType } from 'src/survey/survey.schema';
 
 @Controller('feedback')
 export class FeedbackController {
-  constructor(private readonly feedbackService: FeedbackService) {}
+  constructor(private readonly feedbackService: FeedbackService) { }
 
   @Post(':surveyId')
   async submitFeedback(@Param('surveyId') surveyId: string, @Body() responses: Partial<Record<SurveyComponentType, string>>) {
-    console.log(`Received feedback for survey ${surveyId}:`, responses);
     await this.feedbackService.submitFeedback(surveyId, responses);
     return { message: 'Feedback submitted successfully!' };
   }
 
   @EventPattern('feedback_created')
-  handleFeedbackCreated(@Payload() payload: Feedback){
-    console.log(payload, "done")
+  handleFeedbackCreated(@Payload() payload: Feedback) {
     this.feedbackService.saveFeedback(payload);
   }
 }

@@ -1,7 +1,6 @@
 {
   "name": "paladin-forms-be",
   "version": "0.0.1",
-  "description": "",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
@@ -30,6 +29,7 @@
     "test:e2e": "dotenv -e .env.test -- jest --watch --no-cache --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@huggingface/inference": "^3.4.1",
     "@nestjs/cli": "^11.0.5",
     "@nestjs/common": "11.0.10",
     "@nestjs/config": "^4.0.0",
@@ -49,6 +49,7 @@
     "cookie-parser": "^1.4.7",
     "kafkajs": "^2.2.4",
     "mongoose-sequence": "^6.0.1",
+    "openai": "^4.86.1",
     "passport": "^0.5.3",
     "passport-google-oauth2": "^0.2.0",
     "passport-google-oauth20": "^2.0.0",
@@ -102,5 +103,11 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
-  }
+  },
+  "main": ".eslintrc.js",
+  "directories": {
+    "test": "test"
+  },
+  "keywords": [],
+  "description": ""
 }

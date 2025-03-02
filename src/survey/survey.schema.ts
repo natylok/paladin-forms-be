@@ -9,7 +9,7 @@ export enum SurveyComponentType {
   SCALE_1_TO_10 = '1to10',
   INPUT = 'input',
   FACE_1_TO_5 = '1to5faces',
-  RADIO_BUTTONS = 'radio buttons',
+  RADIO_BUTTONS = 'radioButtons',
 }
 
 @Schema()
@@ -48,6 +48,7 @@ export class Survey extends Document {
 
   @Prop({ default: true })
   isActive: boolean
+  
 }
 
 export const SurveySchema = SchemaFactory.createForClass(Survey);
