@@ -37,7 +37,7 @@ Goal: Display surveys at the right time to maximize completion rates, prevent fa
 `
 
 export const formSchemaFile = `
-    import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+  import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { Types } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
@@ -45,6 +45,12 @@ import { v4 as uuidv4 } from 'uuid';
 export interface DependsOn {
   componentId: string;
   condition: string;
+}
+
+export interface TriggerVariable {
+  key: string;
+  type: TriggerVariableType;
+  value: string;
 }
 
 export interface ISurvey {
@@ -56,7 +62,7 @@ export interface ISurvey {
     type: SurveyComponentType;
     id: string;
     dependsOn?: DependsOn;
-    required?: boolean;
+    required: boolean;
   }[];
   style: {
     backgroundColor: string;
@@ -67,24 +73,18 @@ export interface ISurvey {
   settings: {
     showOnPercent: number;
     showOnAbandonment: boolean;
-    showUrl: {
-      url: string;
-      includes: boolean;
-    };
     cooldownDays: number;
     usersWhoDeclined: number;
     usersWhoSubmitted: number;
     usersOnSessionInSeconds: number;
     targetUserSegment: UserSegmentType;
     triggerType: TriggerType;
+    allowSkip: boolean;
     minTimeOnSiteSeconds: number;
     excludeUrls: string[];
+    includeUrls: string[];
     maxAttemptsPerUser: number;
-    triggerByVariable?: {
-      key: string;
-      type: TriggerVariableType;
-      value: string;
-    };
+    triggerByVariable?: TriggerVariable;
   };
   surveyType: SurveyType;
 }
@@ -123,12 +123,6 @@ export enum TriggerVariableType {
   COOKIE = 'COOKIE',
   VAR = 'VAR',
   URL = 'URL'
-}
-
-export interface TriggerVariable {
-  key: string;
-  type: TriggerVariableType;
-  value: string;
 }
 
 @Schema()
@@ -197,6 +191,9 @@ export const SurveySettingsSchema = SchemaFactory.createForClass(SurveySettings)
 
 @Schema()
 export class Component {
+  @Prop({ default: []})
+  options: string[];
+
   @Prop({ type: String })
   title: string;
 

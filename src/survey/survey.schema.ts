@@ -152,6 +152,9 @@ export const SurveySettingsSchema = SchemaFactory.createForClass(SurveySettings)
 
 @Schema()
 export class Component {
+  @Prop({ default: []})
+  options: string[];
+
   @Prop({ type: String })
   title: string;
 
