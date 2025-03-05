@@ -1,4 +1,43 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import fs from 'fs';
+import path from 'path';
+import { OpenAI } from 'openai';
+
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
+
+const surveyBestConditions = `
+System Prompt: Best Conditions for Displaying Surveys
+
+"Ensure surveys are shown at the most effective moments based on timing, frequency, user segmentation, and trigger conditions. Use the following guidelines to determine when a survey should be displayed:"
+
+Timing
+Show surveys immediately after key interactions (e.g., post-purchase, post-support chat, after using a new feature).
+Display surveys during natural breaks (e.g., after onboarding, at the end of a workflow, on a thank-you page).
+Avoid showing surveys mid-task or during critical actions (e.g., in the middle of checkout).
+Frequency
+Limit surveys per user to prevent fatigue (e.g., no more than once every 20-30 days unless transactional).
+Transaction-based surveys (e.g., post-purchase) can be frequent if they are brief (1-3 questions).
+Monitor response rates: if engagement drops, adjust the frequency accordingly.
+User Segmentation
+First-time users: Ask about onboarding experience.
+Returning users: Gather deeper feedback on long-term experience.
+VIP customers: Offer occasional in-depth surveys to gain valuable insights.
+At-risk users (e.g., inactive or unsubscribing): Show exit surveys to identify pain points.
+Trigger Conditions
+Post-action: After purchase, after using a key feature, after a support interaction.
+Exit-intent: When a user is about to leave (cart abandonment, cancellation).
+Milestones: After X days of usage, contract renewal, loyalty anniversaries.
+Inactivity: If a user hasn't engaged in a while, trigger a survey to understand why.
+Opt-In vs. Forced Surveys
+Surveys should be optional to avoid user frustration. Provide an easy "No thanks" option.
+Mandatory responses can lower data quality; allow users to skip if needed.
+If a survey is ignored, wait before showing it again (e.g., delay next prompt by X days).
+Goal: Display surveys at the right time to maximize completion rates, prevent fatigue, and gather high-quality, actionable feedback for businesses.
+`
+
+export const formSchemaFile = `
+    import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { Types } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
@@ -6,12 +45,6 @@ import { v4 as uuidv4 } from 'uuid';
 export interface DependsOn {
   componentId: string;
   condition: string;
-}
-
-export interface TriggerVariable {
-  key: string;
-  type: TriggerVariableType;
-  value: string;
 }
 
 export interface ISurvey {
@@ -23,7 +56,7 @@ export interface ISurvey {
     type: SurveyComponentType;
     id: string;
     dependsOn?: DependsOn;
-    required: boolean;
+    required?: boolean;
   }[];
   style: {
     backgroundColor: string;
@@ -34,18 +67,24 @@ export interface ISurvey {
   settings: {
     showOnPercent: number;
     showOnAbandonment: boolean;
+    showUrl: {
+      url: string;
+      includes: boolean;
+    };
     cooldownDays: number;
     usersWhoDeclined: number;
     usersWhoSubmitted: number;
     usersOnSessionInSeconds: number;
     targetUserSegment: UserSegmentType;
     triggerType: TriggerType;
-    allowSkip: boolean;
     minTimeOnSiteSeconds: number;
     excludeUrls: string[];
-    includeUrls: string[];
     maxAttemptsPerUser: number;
-    triggerByVariable?: TriggerVariable;
+    triggerByVariable?: {
+      key: string;
+      type: TriggerVariableType;
+      value: string;
+    };
   };
   surveyType: SurveyType;
 }
@@ -84,6 +123,12 @@ export enum TriggerVariableType {
   COOKIE = 'COOKIE',
   VAR = 'VAR',
   URL = 'URL'
+}
+
+export interface TriggerVariable {
+  key: string;
+  type: TriggerVariableType;
+  value: string;
 }
 
 @Schema()
@@ -213,3 +258,25 @@ export class Survey extends Document {
 }
 
 export const SurveySchema = SchemaFactory.createForClass(Survey);
+`
+const aiSystemPrompt = (surveyType: string, userEmail: string) => `
+  You need to use the following schema please use the exact same schema:
+  ${formSchemaFile}
+  fill out the components with questions
+  You are a survey creator.
+  You are given a prompt and you need to create a survey based on the prompt please dont be bias and dont add any extra fields.
+  survey type is ${surveyType} so please set the survey type based on the type.
+  also please set form settings based on the following rules
+  user email is ${userEmail} so please set the user email based on the email.
+   prepare the survey to fit the schema have in form schema, remove all /n or any other thing so i can clearly do JSON.parse on the response.
+just return it as string {} like that so i could json.parse it and use it in the code.
+`;
+
+export const generateSurvey = async (prompt: string, surveyType: string, userEmail: string) => {
+    const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'system', content: aiSystemPrompt(surveyType, userEmail) }, { role: 'user', content: prompt }],
+    });
+    return response.choices[0].message.content?.replace(/\n/g, '');
+};
+

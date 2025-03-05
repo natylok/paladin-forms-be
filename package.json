@@ -29,6 +29,7 @@
     "test:e2e": "dotenv -e .env.test -- jest --watch --no-cache --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.15.2",
     "@huggingface/inference": "^3.4.1",
     "@nestjs/cli": "^11.0.5",
     "@nestjs/common": "11.0.10",
