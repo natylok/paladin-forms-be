@@ -53,6 +53,10 @@ export class SurveyService {
         return { message: 'Survey deleted successfully' };
     }
 
+    async getSurveysByUser(user: User) {
+        return await this.surveyModel.find({ creatorEmail: user.email }).lean().exec();
+    }
+
     async generateJavascriptCode(user: User) {
         try {
             const surveys = await this.surveyModel.find({ creatorEmail: user.email }).exec();
@@ -69,7 +73,8 @@ export class SurveyService {
                 const surveys = ${JSON.stringify(surveys)};
                 const element = document.createElement('script');
                 element.src = "https://storage.cloud.google.com/paladin-surveys/engine/latest/bundle.js"
-                setTimeout(() => { document.body.appendChild(element) }, 4000)
+                setTimeout(() => { document.body.appendChild(element) }, 4000);
+                window.PALADIN_SURVEY_URL = https://storage.cloud.google.com/paladin-surveys/surveys/latest/index.js
                 
             `
             stream.end(javascriptCode);

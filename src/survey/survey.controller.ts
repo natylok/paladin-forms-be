@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { generateSurvey } from './ai.service';
+import { LimitSurveysGuard } from './limitSurveyGuard';
 
 @Controller('surveys')
 export class SurveyController {
@@ -16,6 +17,7 @@ export class SurveyController {
         this.openai = new OpenAI({ apiKey: configService.get('OPEN_AI_KEY') });
     }
 
+    @UseGuards(LimitSurveysGuard)
     @UseGuards(JwtGuard)
     @Post()
     async createSurvey(@Body() createSurveyDto: CreateSurveyDto, @Req() req: Request) {
@@ -46,12 +48,12 @@ export class SurveyController {
         return this.surveyService.deleteSurvey(id, req.user as User);
     }
 
-    @UseGuards(JwtGuard)
     @Post('generate')
+    @UseGuards(JwtGuard, LimitSurveysGuard)
     async func(@Body() data: { prompt: string, surveyType?: string }, @Req() req: Request) {
         const survey = await generateSurvey(data.prompt, data.surveyType, (req.user as User).email);
         await this.createSurvey(JSON.parse(survey), req);
-        return { survey: JSON.parse(survey) } ;
+        return { survey: JSON.parse(survey) };
     }
 
     @EventPattern('survey_changed')

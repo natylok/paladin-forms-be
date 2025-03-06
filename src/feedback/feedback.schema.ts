@@ -1,6 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { SurveyComponentType } from '../survey/survey.schema';
+
+export interface FeedbackResponse {
+  componentType: string;
+  value: string;
+}
 
 @Schema({ timestamps: true })
 export class Feedback extends Document {
@@ -9,10 +13,15 @@ export class Feedback extends Document {
 
   @Prop({
     type: Map,
-    of: String,
+    of: {
+      type: {
+        componentType: { type: String },
+        value: { type: String }
+      }
+    },
     required: false,
   })
-  responses?: Partial<Record<SurveyComponentType, string>>; // ✅ Ensures optional fields match survey schema
+  responses?: Record<string, FeedbackResponse>;
 }
 
 export const FeedbackSchema = SchemaFactory.createForClass(Feedback);

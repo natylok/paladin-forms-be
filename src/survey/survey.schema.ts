@@ -16,9 +16,11 @@ export interface TriggerVariable {
 
 export interface ISurvey {
   surveyId: string;
+  surveyName: string;
   title: string;
   creatorEmail: string;
   components: {
+    options: string[];
     title: string;
     type: SurveyComponentType;
     id: string;
@@ -29,18 +31,14 @@ export interface ISurvey {
     backgroundColor: string;
     width: string;
     height: string;
+    logoUrl: string;
   };
   isActive: boolean;
   settings: {
     showOnPercent: number;
-    showOnAbandonment: boolean;
-    cooldownDays: number;
     usersWhoDeclined: number;
     usersWhoSubmitted: number;
     usersOnSessionInSeconds: number;
-    targetUserSegment: UserSegmentType;
-    triggerType: TriggerType;
-    allowSkip: boolean;
     minTimeOnSiteSeconds: number;
     excludeUrls: string[];
     includeUrls: string[];
@@ -62,22 +60,7 @@ export enum SurveyComponentType {
   INPUT = 'input',
   FACE_1_TO_5 = '1to5faces',
   RADIO_BUTTONS = 'radioButtons',
-}
-
-export enum UserSegmentType {
-  ALL_USERS = 'all_users',
-  FIRST_TIME = 'first_time',
-  RETURNING = 'returning',
-  VIP = 'vip',
-  AT_RISK = 'at_risk'
-}
-
-export enum TriggerType {
-  POST_ACTION = 'post_action',
-  EXIT_INTENT = 'exit_intent',
-  MILESTONE = 'milestone',
-  INACTIVITY = 'inactivity',
-  NATURAL_BREAK = 'natural_break'
+  DROPDOWN = 'dropdown',
 }
 
 export enum TriggerVariableType {
@@ -91,23 +74,6 @@ export class SurveySettings {
   @Prop({ type: Number, default: 100 })
   showOnPercent: number;
 
-  @Prop({ type: Boolean, default: false })
-  showOnAbandonment: boolean;
-
-  @Prop({ 
-    type: {
-      url: { type: String },
-      includes: { type: Boolean }
-    }
-  })
-  showUrl: {
-    url: string;
-    includes: boolean;
-  };
-
-  @Prop({ type: Number, default: 30 })
-  cooldownDays: number;
-
   @Prop({ type: Number, default: 30 })
   usersWhoDeclined: number;
 
@@ -116,15 +82,6 @@ export class SurveySettings {
 
   @Prop({ type: Number, default: 30 })
   usersOnSessionInSeconds: number;
-
-  @Prop({ type: String, enum: Object.values(UserSegmentType), default: UserSegmentType.ALL_USERS })
-  targetUserSegment: UserSegmentType;
-
-  @Prop({ type: String, enum: Object.values(TriggerType), default: TriggerType.NATURAL_BREAK })
-  triggerType: TriggerType;
-
-  @Prop({ type: Boolean, default: true })
-  allowSkip: boolean;
 
   @Prop({ type: Number, default: 0 })
   minTimeOnSiteSeconds: number;
@@ -152,7 +109,7 @@ export const SurveySettingsSchema = SchemaFactory.createForClass(SurveySettings)
 
 @Schema()
 export class Component {
-  @Prop({ default: []})
+  @Prop({ default: [] })
   options: string[];
 
   @Prop({ type: String })
@@ -180,6 +137,9 @@ export const ComponentSchema = SchemaFactory.createForClass(Component);
 
 @Schema({ timestamps: true })
 export class Survey extends Document {
+  @Prop({ type: String, required: true })
+  surveyName: string;
+
   @Prop({ type: String, default: uuidv4 })
   surveyId: string;
 
@@ -196,13 +156,15 @@ export class Survey extends Document {
     type: {
       backgroundColor: { type: String },
       height: { type: String },
-      width: { type: String }
+      width: { type: String },
+      logoUrl: { type: String }
     }
   })
   style: {
     backgroundColor: string;
     width: string;
     height: string;
+    logoUrl: string
   };
 
   @Prop({ type: Boolean, default: true })
