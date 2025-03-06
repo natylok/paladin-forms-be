@@ -17,5 +17,5 @@ model User {
   googleId  String? @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  surveysLimit  Int @default(10)
+  surveysLimit  Int @default(3)
 }

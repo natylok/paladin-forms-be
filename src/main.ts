@@ -26,6 +26,7 @@ async function bootstrap() {
       queue: 'survey_queue'
     },
   });
+  app.enableCors({origin: true, methods: 'G'})
   await app.startAllMicroservices();
   app.use(cookieParser());
   await app.listen(3333);

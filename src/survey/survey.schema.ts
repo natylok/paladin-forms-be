@@ -14,6 +14,11 @@ export interface TriggerVariable {
   value: string;
 }
 
+export interface TriggerByAction {
+  action: 'CLICK';
+  elementSelector: string;
+}
+
 export interface ISurvey {
   surveyId: string;
   surveyName: string;
@@ -43,6 +48,7 @@ export interface ISurvey {
     excludeUrls: string[];
     includeUrls: string[];
     maxAttemptsPerUser: number;
+    triggerByAction?: TriggerByAction;
     triggerByVariable?: TriggerVariable;
   };
   surveyType: SurveyType;
@@ -103,6 +109,14 @@ export class SurveySettings {
     }
   })
   triggerByVariable?: TriggerVariable;
+
+  @Prop({
+    type: {
+      elementSelector: { type: String },
+      action: { type: String },
+    }
+  })
+  triggerByAction?: TriggerByAction;
 }
 
 export const SurveySettingsSchema = SchemaFactory.createForClass(SurveySettings);

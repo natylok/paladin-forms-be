@@ -22,6 +22,9 @@ export class Feedback extends Document {
     required: false,
   })
   responses?: Record<string, FeedbackResponse>;
+
+  @Prop({type: Boolean, default: false})
+  isRead: boolean;
 }
 
 export const FeedbackSchema = SchemaFactory.createForClass(Feedback);

@@ -30,7 +30,6 @@ export class SurveyController {
         return this.surveyService.getSurveys();
     }
 
-    @UseGuards(JwtGuard)
     @Get(':id')
     async getSurveyById(@Param('id') id: string) {
         return this.surveyService.getSurveyById(id);

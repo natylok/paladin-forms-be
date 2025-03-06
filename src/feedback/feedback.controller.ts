@@ -11,7 +11,7 @@ import { JwtGuard } from 'src/auth/guards';
 export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) { }
 
-  @Post(':surveyId')
+  @Post(':surveyId/submit')
   async submitFeedback(@Param('surveyId') surveyId: string, @Body() responses: Record<string, { componentType: string, value: string }>) {
     await this.feedbackService.submitFeedback(surveyId, responses);
     return { message: 'Feedback submitted successfully!' };
@@ -27,6 +27,12 @@ export class FeedbackController {
   @Get('summerize')
   async summerizeFeedbacks(@Req() req: Request) {
     return this.feedbackService.summerizeAllFeedbacks(req.user as User);
+  }
+
+  @UseGuards(JwtGuard)
+  @Get('overview')
+  async overviewFeedbacks(@Req() req: Request) {
+    return this.feedbackService.overviewFeedbacks(req.user as User);
   }
 
   @EventPattern('feedback_created')
