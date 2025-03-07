@@ -13,9 +13,16 @@ datasource db {
 model User {
   id        Int     @id @default(autoincrement())
   email     String  @unique
-  password  String?
+  hash      String? // Optional hash field first
   googleId  String? @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   surveysLimit  Int @default(3)
+  userType UserType @default(FREEMIUM)
+}
+
+enum UserType {
+  FREEMIUM
+  PRO
+  ENTERPRISE
 }

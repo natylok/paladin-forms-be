@@ -1,30 +1,29 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document } from 'mongoose';
 
 export interface FeedbackResponse {
   componentType: string;
   value: string;
+  title: string;
 }
 
 @Schema({ timestamps: true })
 export class Feedback extends Document {
-  @Prop({ type: Types.ObjectId, required: true, ref: 'Survey' })
-  surveyId: Types.ObjectId;
+  @Prop({ type: String, required: true })
+  surveyId: string;
 
   @Prop({
-    type: Map,
-    of: {
-      type: {
-        componentType: { type: String },
-        value: { type: String }
-      }
-    },
-    required: false,
+    type: Object,
+    required: true,
+    default: {}
   })
-  responses?: Record<string, FeedbackResponse>;
+  responses: Record<string, FeedbackResponse>;
 
-  @Prop({type: Boolean, default: false})
+  @Prop({ type: Boolean, default: false })
   isRead: boolean;
+
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export const FeedbackSchema = SchemaFactory.createForClass(Feedback);

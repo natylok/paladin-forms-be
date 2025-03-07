@@ -8,6 +8,8 @@ import { SurveyModule } from './survey/survey.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { FeedbackModule } from './feedback/feedback.module';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { LoggerModule } from './logger/logger.module';
+import { ReportModule } from './report/report.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
     MongooseModule.forRoot(process.env.MONGO_URI),
     SurveyModule,
     FeedbackModule,
+    LoggerModule,
+    ReportModule
   ],
 })
 export class AppModule { }

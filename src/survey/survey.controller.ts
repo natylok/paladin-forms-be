@@ -17,8 +17,7 @@ export class SurveyController {
         this.openai = new OpenAI({ apiKey: configService.get('OPEN_AI_KEY') });
     }
 
-    @UseGuards(LimitSurveysGuard)
-    @UseGuards(JwtGuard)
+    @UseGuards(JwtGuard, LimitSurveysGuard)
     @Post()
     async createSurvey(@Body() createSurveyDto: CreateSurveyDto, @Req() req: Request) {
         return this.surveyService.createSurvey(createSurveyDto, req.user as User);
@@ -26,8 +25,8 @@ export class SurveyController {
 
     @UseGuards(JwtGuard)
     @Get()
-    async getSurveys() {
-        return this.surveyService.getSurveys();
+    async getSurveys(@Req() req: Request) {
+        return this.surveyService.getSurveys(req.user as User);
     }
 
     @Get(':id')
@@ -57,7 +56,6 @@ export class SurveyController {
 
     @EventPattern('survey_changed')
     handleSurveyCreated(@Payload() user: User) {
-        this.surveyService.generateJavascriptCode(user)
+        this.surveyService.generateJavascriptCode(user);
     }
-
 }

@@ -184,7 +184,8 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   survey type is ${surveyType} so please set the survey type based on the type.
   also please set form settings based on the following rules
   user email is ${userEmail} so please set the user email based on the email.
-  dont add component id to the components array no need let the uuid to be default
+  dont add component id to the components array no need let the uuid to be default and dont add the key surveyId to the survey object.
+  set style height to be 500px always and width to be 500px always.
    prepare the survey to fit the schema have in form schema, remove all /n or any other thing so i can clearly do JSON.parse on the response.
    Just fill out the components with questions that it dont do anything else in the settings leave them to be as thier default
    dont return json word just return a json object which i can parse later on please!   .
