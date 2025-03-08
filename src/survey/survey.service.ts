@@ -70,7 +70,7 @@ export class SurveyService {
 
     private validateTriggerByVariable(triggerByVariable: any, user: User) {
         const validTypes = Object.values(TriggerVariableType);
-        if (!validTypes.includes(triggerByVariable.type)) {
+        if (!validTypes.includes(triggerByVariable?.type)) {
             const error = `Invalid triggerByVariable.type. Must be one of: ${validTypes.join(', ')}`;
             this.logger.error(`${error} for user ${user.email}`);
             throw new Error(error);
@@ -94,8 +94,10 @@ export class SurveyService {
         if (!settings) return { updateQuery, unsetQuery };
 
         const { triggerByVariable, triggerByAction, ...restSettings } = settings;
-        this.validateTriggerByVariable(triggerByVariable, user);
-
+        if(triggerByVariable){
+            this.validateTriggerByVariable(triggerByVariable, user);
+        }
+       
         // Handle triggerByVariable
         if (triggerByVariable) {
             updateQuery['settings.triggerByVariable'] = {

@@ -41,8 +41,22 @@ services:
     networks:
       - nati-network
 
+  # Redis
+  redis:
+    image: redis:alpine
+    container_name: redis
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - nati-network
+    command: redis-server --appendonly yes
+
 networks:
   nati-network:
 
 volumes:
   mongo-data:
+  redis_data:

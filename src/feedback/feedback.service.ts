@@ -1,15 +1,15 @@
 import { Injectable, Inject, BadRequestException, Logger } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { Feedback, FeedbackResponse } from './feedback.schema';
-import { Survey, SurveyComponentType } from '../survey/survey.schema';
+import { Survey } from '../survey/survey.schema';
 import { User } from '@prisma/client';
 import { LoggerService } from '../logger/logger.service';
 import OpenAI from 'openai';
 import * as csv from 'csv-writer';
 import { createObjectCsvWriter } from 'csv-writer';
-import { Parser } from 'json2csv';
+import { RedisClientType } from 'redis';
 
 const openai = new OpenAI({apiKey: process.env.OPENAI_API_KEY});
 
@@ -130,6 +130,7 @@ This system will produce identical results for identical input data, following t
 @Injectable()
 export class FeedbackService {
     private readonly logger = new Logger(FeedbackService.name);
+    private readonly CACHE_TTL = 1800; // 30 minutes in seconds
 
     private readonly filterPrompts = {
         positive: 'Find feedbacks with positive sentiment and high satisfaction ratings (4-5 stars)',
@@ -148,8 +149,75 @@ export class FeedbackService {
         @Inject('FEEDBACK_SERVICE') private readonly client: ClientProxy,
         @InjectModel(Survey.name) private readonly surveyModel: Model<Survey>,
         @InjectModel(Feedback.name) private readonly feedbackModel: Model<Feedback>,
-        private readonly loggerService: LoggerService
+        private readonly loggerService: LoggerService,
+        @Inject('REDIS_CLIENT') private readonly redis: RedisClientType
     ) {}
+
+    private generateCacheKey(user: User): string {
+        return `paladin:feedback:summary:${user.email}`;
+    }
+
+    private async getCachedSummary(cacheKey: string): Promise<any | null> {
+        try {
+            const cachedData = await this.redis.get(cacheKey);
+            
+            this.logger.debug('Cache get attempt', {
+                cacheKey,
+                hasData: !!cachedData,
+                dataType: typeof cachedData
+            });
+
+            if (!cachedData) {
+                return null;
+            }
+
+            try {
+                return JSON.parse(cachedData);
+            } catch (e) {
+                return null;
+            }
+        } catch (error) {
+            this.logger.error('Cache get error', { 
+                error: error instanceof Error ? error.message : 'Unknown error',
+                cacheKey 
+            });
+            return null;
+        }
+    }
+
+    private async setCachedSummary(cacheKey: string, data: any): Promise<boolean> {
+        try {
+            const serializedData = JSON.stringify(data);
+            
+            this.logger.debug('Cache set attempt', {
+                cacheKey,
+                dataSize: serializedData.length,
+                ttl: this.CACHE_TTL
+            });
+
+            // Set data with TTL in seconds
+            await this.redis.setEx(cacheKey, this.CACHE_TTL, serializedData);
+            
+            // Verify it was set
+            const exists = await this.redis.exists(cacheKey);
+            
+            const success = exists === 1;
+            this.logger.debug('Cache set result', {
+                cacheKey,
+                success,
+                exists
+            });
+
+            return success;
+        } catch (error) {
+            this.logger.error('Cache set error', { 
+                error: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined,
+                cacheKey
+            });
+            return false;
+        }
+    }
 
     async submitFeedback(surveyId: string, responses: Record<string, FeedbackResponse>): Promise<void> {
         try {
@@ -255,7 +323,24 @@ export class FeedbackService {
 
     async summerizeAllFeedbacks(user: User): Promise<any> {
         try {
-            this.logger.debug('Summarizing all feedbacks', { user: user.email });
+            this.logger.debug('Attempting to get feedback summary', { user: user.email });
+            
+            const cacheKey = this.generateCacheKey(user);
+            this.logger.debug('Checking cache with key', { cacheKey });
+            
+            // Try to get from cache
+            const cachedSummary = await this.getCachedSummary(cacheKey);
+            if (cachedSummary) {
+                this.logger.debug('Returning cached feedback summary', { 
+                    user: user.email,
+                    cacheKey,
+                    summaryType: typeof cachedSummary
+                });
+                return cachedSummary;
+            }
+
+            // Generate new summary if not in cache
+            this.logger.debug('Cache miss - generating new feedback summary', { user: user.email });
             const feedbacks = await this.getFeedbacks(user);
             if (!feedbacks.feedbacks.length) {
                 this.logger.warn('No feedbacks found to summarize', { user: user.email });
@@ -277,35 +362,49 @@ export class FeedbackService {
                 temperature: 0.2,
                 max_tokens: 1000
             });
-
+            
             const summary = response.choices[0]?.message?.content;
+
             if (!summary) {
                 throw new Error('Failed to generate summary from OpenAI');
             }
 
-            // Clean the response to ensure it's valid JSON
-            const cleanedSummary = summary.trim().replace(/^```json\s*|\s*```$/g, '');
+            // Parse the summary
+            const parsedSummary = JSON.parse(summary);
             
-            try {
-                const parsedSummary = JSON.parse(cleanedSummary);
-                this.logger.debug('Feedbacks summarized successfully', { user: user.email });
-                return parsedSummary;
-            } catch (parseError) {
-                this.logger.error(
-                    'Failed to parse OpenAI response as JSON',
-                    parseError instanceof Error ? parseError.stack : undefined,
-                    { user: user.email, rawResponse: cleanedSummary }
-                );
-                throw new Error('Failed to parse feedback summary');
+            // Attempt to cache the parsed summary
+            const cached = await this.setCachedSummary(cacheKey, parsedSummary);
+            if (cached) {
+                this.logger.debug('Feedback summary cached successfully', { 
+                    user: user.email,
+                    cacheKey
+                });
+            } else {
+                this.logger.warn('Failed to cache feedback summary', { 
+                    user: user.email,
+                    cacheKey
+                });
             }
+            
+            return parsedSummary;
         } catch (error) {
             this.logger.error(
                 'Failed to summarize feedbacks',
                 error instanceof Error ? error.stack : undefined,
                 { user: user.email }
             );
-            throw error;
+            return {
+                error: 'Failed to generate summary',
+                message: error instanceof Error ? error.message : 'Unknown error'
+            };
         }
+    }
+
+    // Method to manually invalidate cache if needed
+    async invalidateFeedbackSummaryCache(user: User): Promise<void> {
+        const cacheKey = this.generateCacheKey(user);
+        await this.redis.del(cacheKey);
+        this.logger.debug('Feedback summary cache invalidated', { user: user.email });
     }
 
     async overviewFeedbacks(user: User): Promise<any> {
@@ -410,7 +509,7 @@ export class FeedbackService {
             });
 
             // Prepare CSV fields
-            const fields = [
+            const baseFields = [
                 { label: 'Feedback ID', value: '_id' },
                 { label: 'Created At', value: 'createdAt' },
                 { label: 'Updated At', value: 'updatedAt' },
@@ -420,70 +519,67 @@ export class FeedbackService {
             // Add question fields
             Array.from(questionIds).forEach(questionId => {
                 if (questionId) {
-                    fields.push({
+                    baseFields.push({
                         label: `Question ${questionId} - Title`,
                         value: `responses.${questionId}.title`
                     });
-                    fields.push({
+                    baseFields.push({
                         label: `Question ${questionId} - Component Type`,
                         value: `responses.${questionId}.componentType`
-                    });
-                    fields.push({
-                        label: `Question ${questionId} - Answer`,
-                        value: `responses.${questionId}.value`
                     });
                 }
             });
 
-            // Prepare CSV records
-            const records = feedbacks.map(feedback => {
-                const record: any = {
-                    _id: feedback._id,
+            // Convert fields to CSV writer format
+            const fields = baseFields.map(field => ({
+                id: field.value,
+                title: field.label
+            }));
+
+            // Create a unique filename
+            const filename = `feedbacks_${surveyId}_${new Date().toISOString().replace(/[-:]/g, '').replace('T', '_').replace('Z', '')}.csv`;
+            const filepath = `./${filename}`;
+
+            // Create CSV writer
+            const csvWriter = createObjectCsvWriter({
+                path: filepath,
+                header: fields
+            });
+
+            // Write feedbacks to CSV
+            await csvWriter.writeRecords(feedbacks.map(feedback => {
+                const csvRow: Record<string, any> = {
+                    _id: feedback._id.toString(),
                     createdAt: feedback.createdAt.toISOString(),
                     updatedAt: feedback.updatedAt.toISOString(),
                     isRead: feedback.isRead
                 };
 
-                // Add responses
                 if (feedback.responses) {
                     const responses = feedback.responses;
                     if (responses instanceof Map) {
                         Array.from(responses.entries()).forEach(([questionId, response]) => {
                             if (response && response.componentType && response.value) {
-                                record[`responses.${questionId}.title`] = response.title || '';
-                                record[`responses.${questionId}.componentType`] = response.componentType;
-                                record[`responses.${questionId}.value`] = response.value;
+                                csvRow[`responses.${questionId}.title`] = response.title || '';
+                                csvRow[`responses.${questionId}.componentType`] = response.componentType;
                             }
                         });
                     } else {
                         Object.entries(responses).forEach(([questionId, response]) => {
                             const typedResponse = response as FeedbackResponse;
                             if (typedResponse && typedResponse.componentType && typedResponse.value) {
-                                record[`responses.${questionId}.title`] = typedResponse.title || '';
-                                record[`responses.${questionId}.componentType`] = typedResponse.componentType;
-                                record[`responses.${questionId}.value`] = typedResponse.value;
+                                csvRow[`responses.${questionId}.title`] = typedResponse.title || '';
+                                csvRow[`responses.${questionId}.componentType`] = typedResponse.componentType;
                             }
                         });
                     }
                 }
 
-                return record;
-            });
+                return csvRow;
+            }));
 
-            // Sort records by creation date
-            records.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-            // Generate CSV string
-            const parser = new Parser({ fields });
-            const csvString = parser.parse(records);
-
-            this.logger.debug('Feedbacks exported to CSV successfully', { 
-                user: user.email,
-                surveyId,
-                feedbackCount: records.length
-            });
-
-            return csvString;
+            this.logger.debug('Feedbacks exported to CSV', { user: user.email, surveyId, filepath });
+            return `Feedbacks exported to CSV successfully. File saved as: ${filename}`;
         } catch (error) {
             this.logger.error(
                 'Failed to export feedbacks to CSV',
@@ -494,117 +590,31 @@ export class FeedbackService {
         }
     }
 
-    async getFilteredFeedbacks(user: User, filterType: string, surveyId?: string): Promise<{ feedbacks: Feedback[], total: number }> {
-        try {
-            this.logger.debug('Getting filtered feedbacks', { user: user.email, filterType, surveyId });
-
-            // Base query
-            const query: any = {};
-            if (surveyId) {
-                query.surveyId = surveyId;
-            }
-
-            // Get all feedbacks for the query
-            const feedbacks = await this.feedbackModel.find(query).exec();
-            if (!feedbacks.length) {
-                return { feedbacks: [], total: 0 };
-            }
-
-            // Get the filter prompt
-            const prompt = this.filterPrompts[filterType];
-            if (!prompt) {
-                throw new BadRequestException('Invalid filter type');
-            }
-
-            // Analyze feedbacks with AI
-            const response = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: [
-                    {
-                        role: 'system',
-                        content: `You are a feedback analysis system. Your task is to analyze feedback data and return a JSON array of feedback IDs that match the following criteria: ${prompt}
-
-IMPORTANT: Return ONLY a JSON array of feedback IDs as strings, like this: ["id1", "id2", "id3"]
-Do not include any other text, explanation, or formatting.
-Do not use backticks or markdown.
-Do not include the word "json" in your response.
-Ensure all IDs are strings.`
-                    },
-                    {
-                        role: 'user',
-                        content: JSON.stringify(feedbacks)
-                    }
-                ],
-                temperature: 0.2,
-                max_tokens: 1000
-            });
-
-            // Get the response content and clean it
-            let content = response.choices[0]?.message?.content || '[]';
-            
-            // Remove any potential markdown or backticks
-            content = content.replace(/```json\s*|\s*```/g, '').trim();
-            
-            // Remove any potential "json" text
-            content = content.replace(/^json\s*/i, '').trim();
-            
-            // Ensure the content starts and ends with square brackets
-            if (!content.startsWith('[')) content = '[' + content;
-            if (!content.endsWith(']')) content = content + ']';
-
-            try {
-                // Parse the cleaned content
-                const matchingIds = JSON.parse(content);
-                
-                // Ensure we have an array of strings
-                if (!Array.isArray(matchingIds)) {
-                    this.logger.error('AI response is not an array', { content });
-                    return { feedbacks: [], total: 0 };
-                }
-
-                // Filter feedbacks based on AI analysis
-                const filteredFeedbacks = feedbacks.filter(feedback => 
-                    matchingIds.includes(feedback._id.toString())
-                );
-
-                this.logger.debug('Feedbacks filtered successfully', {
-                    user: user.email,
-                    filterType,
-                    totalFeedbacks: feedbacks.length,
-                    filteredCount: filteredFeedbacks.length
-                });
-
-                return {
-                    feedbacks: filteredFeedbacks,
-                    total: filteredFeedbacks.length
-                };
-            } catch (parseError) {
-                this.logger.error('Failed to parse AI response', {
-                    error: parseError,
-                    content,
-                    filterType
-                });
-                return { feedbacks: [], total: 0 };
-            }
-        } catch (error) {
-            this.logger.error(
-                'Failed to get filtered feedbacks',
-                error instanceof Error ? error.stack : undefined,
-                { user: user.email, filterType, surveyId }
-            );
-            throw error;
-        }
-    }
-
     async getAvailableFilters(): Promise<string[]> {
         return Object.keys(this.filterPrompts);
     }
 
     async getFilterDescription(filterType: string): Promise<string> {
-        const description = this.filterPrompts[filterType];
-        if (!description) {
-            throw new BadRequestException('Invalid filter type');
+        return this.filterPrompts[filterType] || 'Filter description not found';
+    }
+
+    async getFilteredFeedbacks(user: User, filterType: string, surveyId?: string): Promise<{ feedbacks: Feedback[], total: number }> {
+        const query = surveyId ? { surveyId } : {};
+        const feedbacks = await this.feedbackModel.find(query).exec();
+        const filtered = feedbacks.filter(feedback => this.matchesFilter(feedback, filterType));
+        return { feedbacks: filtered, total: filtered.length };
+    }
+
+    private matchesFilter(feedback: Feedback, filterType: string): boolean {
+        switch(filterType) {
+            case 'lastDay':
+                return Date.now() - feedback.createdAt.getTime() <= 24 * 60 * 60 * 1000;
+            case 'lastWeek':
+                return Date.now() - feedback.createdAt.getTime() <= 7 * 24 * 60 * 60 * 1000;
+            case 'lastMonth':
+                return Date.now() - feedback.createdAt.getTime() <= 30 * 24 * 60 * 60 * 1000;
+            default:
+                return true;
         }
-        return description;
     }
 }

@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './user/user.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -10,12 +9,12 @@ import { FeedbackModule } from './feedback/feedback.module';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { LoggerModule } from './logger/logger.module';
 import { ReportModule } from './report/report.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
+    ConfigModule.forRoot(),
+    RedisModule,
     AuthModule,
     UsersModule,
     PrismaModule,
@@ -24,6 +23,6 @@ import { ReportModule } from './report/report.module';
     FeedbackModule,
     LoggerModule,
     ReportModule
-  ],
+  ]
 })
 export class AppModule { }
