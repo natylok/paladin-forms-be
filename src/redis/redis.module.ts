@@ -1,4 +1,4 @@
-import { Module, Global } from '@nestjs/common';
+import { Module, Global, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { RedisService } from './redis.service';
 
 @Global()
@@ -13,4 +13,15 @@ import { RedisService } from './redis.service';
     ],
     exports: ['REDIS_CLIENT', RedisService]
 })
-export class RedisModule {} 
+export class RedisModule implements NestModule {
+    constructor(private readonly redisService: RedisService) {}
+
+    configure(consumer: MiddlewareConsumer) {
+        consumer
+            .apply((req, res, next) => {
+                req.app.set('RedisService', this.redisService);
+                next();
+            })
+            .forRoutes('*');
+    }
+} 

@@ -9,7 +9,7 @@ import OpenAI from 'openai';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { generateSurvey } from './ai.service';
 import { LimitSurveysGuard } from './limitSurveyGuard';
-
+import { RateLimit } from 'src/decorators/rate-limit.decorator';
 @Controller('surveys')
 export class SurveyController {
     openai: OpenAI;
@@ -45,10 +45,11 @@ export class SurveyController {
     async deleteSurvey(@Param('id') id: string, @Req() req: Request) {
         return this.surveyService.deleteSurvey(id, req.user as User);
     }
-
+  
     @Post('generate')
     @UseGuards(JwtGuard, LimitSurveysGuard)
-    async func(@Body() data: { prompt: string, surveyType?: string }, @Req() req: Request) {
+    @RateLimit(10)
+    async generateSurvey(@Body() data: { prompt: string, surveyType?: string }, @Req() req: Request) {
         const survey = await generateSurvey(data.prompt, data.surveyType, (req.user as User).email);
         await this.createSurvey(JSON.parse(survey), req);
         return { survey: JSON.parse(survey) };
