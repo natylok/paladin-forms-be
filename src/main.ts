@@ -2,7 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
-import { Transport, MicroserviceOptions } from '@nestjs/microservices';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -21,20 +21,22 @@ async function bootstrap() {
     }),
   );
 
+  // Configure RabbitMQ connection
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
     options: {
-      urls: ['amqp://localhost:5672'],
-      queue: 'feedback_queue'
+      urls: [`amqp://${process.env.RABBITMQ_DEFAULT_USER}:${process.env.RABBITMQ_DEFAULT_PASS}@localhost:5672`],
+      queue: 'main_queue',
+      queueOptions: {
+        durable: true
+      },
+      prefetchCount: 1,
+      socketOptions: {
+        heartbeat: 60
+      }
     },
   });
-  app.connectMicroservice<MicroserviceOptions>({
-    transport: Transport.RMQ,
-    options: {
-      urls: ['amqp://localhost:5672'],
-      queue: 'survey_queue'
-    },
-  });
+
   await app.startAllMicroservices();
   app.use(cookieParser());
   await app.listen(3333);
