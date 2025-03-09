@@ -36,11 +36,25 @@ export class AuthService {
     };
   }
 
-  async googleLogin(user: Omit<User, 'hash'>) {
+  async googleLogin(req: any) {
+    if (!req.user) {
+      throw new Error('No user from Google');
+    }
+
+    // Find or create user in your database
+    const user = await this.prisma.user.upsert({
+      where: { email: req.user.email },
+      update: {},  // Only update email
+      create: {
+        email: req.user.email
+      }
+    });
+
+    // Generate JWT token
     const payload = { email: user.email, sub: user.id };
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+    const accessToken = await this.jwtService.signAsync(payload);
+
+    return { accessToken };
   }
 
   async signup(dto: AuthDto) {

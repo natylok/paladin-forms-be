@@ -6,6 +6,15 @@ import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
+  // Enable CORS with credentials
+  app.enableCors({
+    origin: 'http://localhost:3000',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -26,7 +35,6 @@ async function bootstrap() {
       queue: 'survey_queue'
     },
   });
-  app.enableCors({origin: true, methods: 'G'})
   await app.startAllMicroservices();
   app.use(cookieParser());
   await app.listen(3333);

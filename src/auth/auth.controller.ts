@@ -1,14 +1,18 @@
 // auth.controller.ts
-import { Controller, Post, UseGuards, Request, Get, Res } from '@nestjs/common';
+import { Controller, Post, UseGuards, Request, Get, Res, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtGuard } from './guards/jwt-auth.guard';
-import { GoogleOauthGuard } from './guards/google-oauth.guard';
-import { Response } from 'express';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { Response, Request as ExpressRequest } from 'express';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService
+  ) {}
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
@@ -16,27 +20,43 @@ export class AuthController {
     return this.authService.login(req.user);
   }
 
-  @UseGuards(GoogleOauthGuard)
+  @UseGuards(GoogleAuthGuard)
   @Get('google')
   async googleAuth() {
-    // Initiates Google OAuth2 login flow
+    // Guard will handle the authentication
   }
 
-  @UseGuards(GoogleOauthGuard)
   @Get('google/callback')
-  async googleAuthCallback(@Request() req, @Res() res: Response) {
-    const token = await this.authService.googleLogin(req.user);
-    res.cookie('access_token', token.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-    });
+  @UseGuards(GoogleAuthGuard)
+  async googleAuthRedirect(@Req() req: ExpressRequest, @Res() res: Response) {
+    try {
+      const { accessToken } = await this.authService.googleLogin(req);
+      
+      // Set the JWT token in an HTTP-only cookie
+      res.cookie('access_token', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+      });
 
-    return res.redirect(`/auth/profile?token=${token.access_token}`);; // Redirect to your desired route after successful login
+      // Redirect to the dashboard
+      return res.redirect('http://localhost:3000/dashboard');
+    } catch (error) {
+      // Redirect to login page with error
+      return res.redirect('http://localhost:3000/login?error=Authentication failed');
+    }
   }
 
   @UseGuards(JwtGuard)
   @Get('profile')
   getProfile(@Request() req) {
     return req.user;
+  }
+
+  @Get('logout')
+  async logout(@Res() res: Response) {
+    res.clearCookie('access_token');
+    return res.redirect('http://localhost:3000/login');
   }
 }

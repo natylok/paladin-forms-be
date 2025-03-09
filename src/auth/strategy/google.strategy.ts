@@ -1,37 +1,33 @@
-import { PassportStrategy } from '@nestjs/passport';
-import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { Injectable } from '@nestjs/common';
-import { UsersService } from 'src/user/user.service';
+import { PassportStrategy } from '@nestjs/passport';
+import { Strategy } from 'passport-google-oauth20';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
-    constructor(
-        private configService: ConfigService,
-        private usersService: UsersService,
-    ) {
+    constructor(private configService: ConfigService) {
         super({
             clientID: configService.get('GOOGLE_CLIENT_ID'),
-            clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET'),
-            callbackURL: configService.get<string>('GOOGLE_CALLBACK'),
+            clientSecret: configService.get('GOOGLE_CLIENT_SECRET'),
+            callbackURL: 'http://localhost:3333/auth/google/callback',
             scope: ['email', 'profile'],
+            proxy: true,
+            timeout: 20000,
+            authorizationURL: 'https://accounts.google.com/o/oauth2/v2/auth',
+            tokenURL: 'https://oauth2.googleapis.com/token'
         });
     }
 
-    async validate(
-        accessToken: string,
-        refreshToken: string,
-        profile: any,
-        done: VerifyCallback,
-    ): Promise<any> {
-        const { id, emails } = profile;
-        let user = await this.usersService.findOneByGoogleId(id);
-        if (!user) {
-            user = await this.usersService.createUser({
-                googleId: id,
-                email: emails[0].value,
-            });
-        }
-        done(null, user);
+    async validate(accessToken: string, refreshToken: string, profile: any) {
+        const user = {
+            email: profile.emails[0].value,
+            firstName: profile.name.givenName,
+            lastName: profile.name.familyName,
+            picture: profile.photos[0].value,
+            accessToken,
+            googleId: profile.id
+        };
+
+        return user;
     }
 }
