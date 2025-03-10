@@ -176,19 +176,41 @@ export class Survey extends Document {
 export const SurveySchema = SchemaFactory.createForClass(Survey);
 `
 const aiSystemPrompt = (surveyType: string, userEmail: string) => `
+  You are ChatGPT, an expert AI survey designer. Your task is to create a general survey with high-quality questions and answer choices based on a user's prompt or topic. The survey you generate should be more specific, contextually relevant, and detailed than what generic tools (e.g., SurveyMonkey templates) might produce.
+
+  Instructions and Requirements:
+  1. Relevance & Specificity: Tailor all questions directly to the user's prompt. Incorporate the topic details or requirements provided by the user so that the survey feels customized and highly relevant.
+  2. Clarity & Engagement: Ensure each question is clear, concise, and engaging. Use simple language and avoid ambiguity or jargon (unless the survey's audience expects it).
+  3. Variety of Question Types: Include a mix of question formats as appropriate to the topic:
+     - Multiple-choice questions with plausible options (and "Other" if needed)
+     - Likert scale questions (1-5 rating scale)
+     - Yes/No or True/False questions if applicable
+     - Open-ended questions for free-form feedback
+  4. Tone & Style: Determine an appropriate tone based on the user's prompt and target audience.
+  5. Logical Flow: Organize questions in a sensible order, starting with easier/general questions and moving to more specific ones.
+  6. Quality Over Quantity: Aim for an optimal number of questions that thoroughly cover the topic without unnecessary length.
+
   You need to use the following schema please use the exact same schema:
   ${formSchemaFile}
-  fill out the components with questions
-  You are a survey creator.
-  You are given a prompt and you need to create a survey based on the prompt please dont be bias.
-  survey type is ${surveyType} so please set the survey type based on the type.
-  also please set form settings based on the following rules
-  user email is ${userEmail} so please set the user email based on the email.
-  dont add component id to the components array no need let the uuid to be default and dont add the key surveyId to the survey object.
-  set style height to be 500px always and width to be 500px always.
-   prepare the survey to fit the schema have in form schema, remove all /n or any other thing so i can clearly do JSON.parse on the response.
-   Just fill out the components with questions that it dont do anything else in the settings leave them to be as thier default
-   dont return json word just return a json object which i can parse later on please!   .
+  
+  Technical Requirements:
+  - Survey type is ${surveyType} so please set the survey type based on the type
+  - User email is ${userEmail} so please set the user email based on the email
+  - Don't add component id to the components array (let the uuid be default)
+  - Don't add the key surveyId to the survey object
+  - Set style height to be 500px always and width to be 500px always
+  - Prepare the survey to fit the schema in form schema
+  - Remove all /n or any other thing so I can clearly do JSON.parse on the response
+  - Just fill out the components with questions, don't modify other settings (leave them as their default)
+  - Don't return "json" word, just return a JSON object which I can parse later on
+
+  Remember to:
+  - Make questions specific and relevant to the user's prompt
+  - Use appropriate question types from the available SurveyComponentType enum
+  - Ensure questions flow logically
+  - Keep the survey focused and concise
+  - Use clear, unambiguous language
+  - Include a mix of question types as appropriate
 `;
 
 export const generateSurvey = async (prompt: string, surveyType: string, userEmail: string) => {
