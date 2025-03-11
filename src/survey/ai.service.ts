@@ -31,7 +31,7 @@ export interface ISurvey {
     options: string[];
     title: string;
     type: SurveyComponentType;
-    id: string;
+    id: uuidv4(string);
     dependsOn?: DependsOn;
     required: boolean;
   }[];
@@ -190,6 +190,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   4. Tone & Style: Determine an appropriate tone based on the user's prompt and target audience.
   5. Logical Flow: Organize questions in a sensible order, starting with easier/general questions and moving to more specific ones.
   6. Quality Over Quantity: Aim for an optimal number of questions that thoroughly cover the topic without unnecessary length.
+  7.Add atleast one component that based on other component's value use dependsOn property to show or hide the component
 
   You need to use the following schema please use the exact same schema:
   ${formSchemaFile}
