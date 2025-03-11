@@ -254,7 +254,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   4. Tone & Style: Determine an appropriate tone based on the user's prompt and target audience.
   5. Logical Flow: Organize questions in a sensible order, starting with easier/general questions and moving to more specific ones.
   6. Quality Over Quantity: Aim for an optimal number of questions that thoroughly cover the topic without unnecessary length.
-  7.All components should be under the same page
+  7.Should be only one page, no more, no less
 
   You need to use the following schema please use the exact same schema:
   ${formSchemaFile}
