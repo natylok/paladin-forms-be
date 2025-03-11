@@ -3,7 +3,7 @@ import path from 'path';
 import { OpenAI } from 'openai';
 import { SurveyComponentType } from './survey.schema';
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export const formSchemaFile = `import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
@@ -79,19 +79,7 @@ export enum SurveyType {
 }
 
 export enum SurveyComponentType {
-  STAR_1_TO_5 = '1to5stars',
-  TEXTBOX = 'textbox',
-  SCALE_1_TO_10 = '1to10',
-  INPUT = 'input',
-  FACE_1_TO_5 = '1to5faces',
-  RADIO_BUTTONS = 'radioButtons',
-  DROPDOWN = 'dropdown',
-  SCALE_1_TO_5 = '1to5scale',
-  CHECKBOX = 'checkbox',
-  SLIDER = 'slider',
-  DATE_PICKER = 'datePicker',
-  MULTIPLE_CHOICE = 'multipleChoice',
-  DIVIDER = 'divider',
+${Object.values(SurveyComponentType).join(',')}
 }
 
 export enum TriggerVariableType {
@@ -285,34 +273,34 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
 `;
 
 export const generateSurvey = async (prompt: string, surveyType: string, userEmail: string) => {
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-            { 
-                role: 'system', 
-                content: [
-                    {
-                        type: 'text',
-                        text: aiSystemPrompt(surveyType, userEmail)
-                    }
-                ]
-            },
-            { 
-                role: 'user', 
-                content: [
-                    {
-                        type: 'text',
-                        text: prompt
-                    }
-                ]
-            }
-        ],
-    });
-    return response.choices[0].message.content?.replace(/\n/g, '');
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content: [
+          {
+            type: 'text',
+            text: aiSystemPrompt(surveyType, userEmail)
+          }
+        ]
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: prompt
+          }
+        ]
+      }
+    ],
+  });
+  return response.choices[0].message.content?.replace(/\n/g, '');
 };
 
 const summerizeFeedbackSystemPrompt = () =>
-    `You are need to summerize all the feedbacks you got please explain weeknes point or strong point focus on what happens the most and tell me please summerize it to few lines and return it as a json so i could JSON.parse it
+  `You are need to summerize all the feedbacks you got please explain weeknes point or strong point focus on what happens the most and tell me please summerize it to few lines and return it as a json so i could JSON.parse it
     dont add the word json to it just pass a pure json please return it fast return it in the following structure:
 
     {
@@ -323,28 +311,28 @@ const summerizeFeedbackSystemPrompt = () =>
 `;
 
 export const summerizeFeedbacks = async (feedbacks: any[]) => {
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-            { 
-                role: 'system', 
-                content: [
-                    {
-                        type: 'text',
-                        text: summerizeFeedbackSystemPrompt()
-                    }
-                ]
-            },
-            { 
-                role: 'user', 
-                content: [
-                    {
-                        type: 'text',
-                        text: JSON.stringify(feedbacks)
-                    }
-                ]
-            }
-        ],
-    });
-    return response.choices[0].message.content?.replace(/\n/g, '');
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content: [
+          {
+            type: 'text',
+            text: summerizeFeedbackSystemPrompt()
+          }
+        ]
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(feedbacks)
+          }
+        ]
+      }
+    ],
+  });
+  return response.choices[0].message.content?.replace(/\n/g, '');
 }
