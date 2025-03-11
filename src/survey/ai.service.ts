@@ -171,8 +171,8 @@ export class Survey extends Document {
   @Prop({ type: SurveySettingsSchema })
   settings: SurveySettings;
 
-  @Prop({ type: String, enum: Object.values(SurveyType), default: SurveyType.Button })
-  surveyType: SurveyType;
+  @Prop({ type: String, enum: Object.values(SurveyType), default: SurveyType.Modal })
+  surveyType: modal;
 }
 
 export const SurveySchema = SchemaFactory.createForClass(Survey);

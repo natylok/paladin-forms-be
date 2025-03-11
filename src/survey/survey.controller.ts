@@ -10,10 +10,11 @@ import { EventPattern, Payload } from '@nestjs/microservices';
 import { generateSurvey } from './ai.service';
 import { LimitSurveysGuard } from './limitSurveyGuard';
 import { RateLimit } from 'src/decorators/rate-limit.decorator';
+import { LoggerService } from 'src/logger/logger.service';
 @Controller('surveys')
 export class SurveyController {
     openai: OpenAI;
-    constructor(private readonly surveyService: SurveyService, private configService: ConfigService) {
+    constructor(private readonly surveyService: SurveyService, private configService: ConfigService, private logger: LoggerService) {
         this.openai = new OpenAI({ apiKey: configService.get('OPEN_AI_KEY') });
     }
 
@@ -50,6 +51,7 @@ export class SurveyController {
     @UseGuards(JwtGuard, LimitSurveysGuard)
     @RateLimit(10)
     async generateSurvey(@Body() data: { prompt: string, surveyType?: string }, @Req() req: Request) {
+        this.logger.log('Generating survey', { prompt: data.prompt, surveyType: data.surveyType, user: (req.user as User).email });
         const survey = await generateSurvey(data.prompt, data.surveyType, (req.user as User).email);
         return JSON.parse(survey);
     }

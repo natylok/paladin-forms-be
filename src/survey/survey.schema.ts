@@ -192,7 +192,7 @@ export class Survey extends Document {
   @Prop({ type: SurveySettingsSchema })
   settings: SurveySettings;
 
-  @Prop({ type: String, enum: Object.values(SurveyType), default: SurveyType.Button })
+  @Prop({ type: String, enum: Object.values(SurveyType), default: SurveyType.Modal })
   surveyType: SurveyType;
 }
 
