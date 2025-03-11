@@ -51,7 +51,7 @@ export class SurveyController {
     @RateLimit(10)
     async generateSurvey(@Body() data: { prompt: string, surveyType?: string }, @Req() req: Request) {
         const survey = await generateSurvey(data.prompt, data.surveyType, (req.user as User).email);
-        return { survey: JSON.parse(survey) };
+        return JSON.parse(survey);
     }
 
     @EventPattern('survey_changed')

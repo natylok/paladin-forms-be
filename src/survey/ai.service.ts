@@ -23,7 +23,7 @@ export interface TriggerVariable {
 }
 
 export interface ISurvey {
-  surveyId: string;
+  surveyId: uuidv4(string);
   title: string;
   creatorEmail: string;
   components: {
