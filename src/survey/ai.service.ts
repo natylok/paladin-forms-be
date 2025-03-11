@@ -162,7 +162,7 @@ export class Component {
   @Prop({ type: String })
   title: string;
 
-  @Prop({ type: String, enum: Object.values(SurveyComponentType) })
+  @Prop({ type: String, enum: ${Object.values(SurveyComponentType).join(',')} })
   type: SurveyComponentType;
 
   @Prop({ type: String, default: uuidv4 })
