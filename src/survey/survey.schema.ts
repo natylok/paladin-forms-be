@@ -67,6 +67,10 @@ export enum SurveyComponentType {
   FACE_1_TO_5 = '1to5faces',
   RADIO_BUTTONS = 'radioButtons',
   DROPDOWN = 'dropdown',
+  SCALE_1_TO_5 = '1to5scale',
+  CHECKBOX = 'checkbox',
+  SLIDER = 'slider',
+  DATE_PICKER = 'datePicker',
 }
 
 export enum TriggerVariableType {
