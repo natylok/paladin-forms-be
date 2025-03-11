@@ -71,6 +71,7 @@ export enum SurveyComponentType {
   CHECKBOX = 'checkbox',
   SLIDER = 'slider',
   DATE_PICKER = 'datePicker',
+  MULTIPLE_CHOICE = 'multipleChoice',
 }
 
 export enum TriggerVariableType {
