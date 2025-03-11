@@ -120,6 +120,18 @@ class SurveySettingsDto {
   triggerByVariable?: TriggerVariableDto;
 }
 
+class PageDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ComponentDto)
+  components: ComponentDto[];
+}
+
+class SkipLogicDto {
+  @IsString()
+  @IsNotEmpty()
+  componentId: string;
+}
 export class CreateSurveyDto {
   @IsNotEmpty()
   @IsString()
@@ -151,4 +163,16 @@ export class CreateSurveyDto {
   @IsEnum(SurveyType)
   @IsOptional()
   surveyType?: SurveyType;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PageDto)
+  pages?: PageDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SkipLogicDto)
+  skipLogic?: SkipLogicDto[];
 }

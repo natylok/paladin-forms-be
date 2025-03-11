@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import { OpenAI } from 'openai';
 import { SurveyComponentType } from './survey.schema';
-
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
@@ -23,16 +22,21 @@ export interface TriggerVariable {
   value: string;
 }
 
+export interface TriggerByAction {
+  action: 'CLICK';
+  elementSelector: string;
+}
+
 export interface ISurvey {
-  surveyId: uuidv4(string);
-  title: string;
+  surveyId: string;
   surveyName: string;
+  title: string;
   creatorEmail: string;
   components: {
     options: string[];
     title: string;
     type: SurveyComponentType;
-    id: uuidv4(string);
+    id: string;
     dependsOn?: DependsOn;
     required: boolean;
   }[];
@@ -52,9 +56,21 @@ export interface ISurvey {
     excludeUrls: string[];
     includeUrls: string[];
     maxAttemptsPerUser: number;
+    triggerByAction?: TriggerByAction;
     triggerByVariable?: TriggerVariable;
   };
   surveyType: SurveyType;
+}
+
+export interface SkipLogic {
+  componentId: string;
+  value: string;
+  pageId: string;
+}
+
+export interface IPage {
+  id: string;
+  components: Component[];
 }
 
 export enum SurveyType {
@@ -70,6 +86,12 @@ export enum SurveyComponentType {
   FACE_1_TO_5 = '1to5faces',
   RADIO_BUTTONS = 'radioButtons',
   DROPDOWN = 'dropdown',
+  SCALE_1_TO_5 = '1to5scale',
+  CHECKBOX = 'checkbox',
+  SLIDER = 'slider',
+  DATE_PICKER = 'datePicker',
+  MULTIPLE_CHOICE = 'multipleChoice',
+  DIVIDER = 'divider',
 }
 
 export enum TriggerVariableType {
@@ -112,9 +134,37 @@ export class SurveySettings {
     }
   })
   triggerByVariable?: TriggerVariable;
+
+  @Prop({
+    type: {
+      elementSelector: { type: String },
+      action: { type: String },
+    }
+  })
+  triggerByAction?: TriggerByAction;
 }
 
 export const SurveySettingsSchema = SchemaFactory.createForClass(SurveySettings);
+
+@Schema()
+export class SkipLogic {
+  @Prop({ type: String })
+  componentId: string;
+
+  @Prop({ type: String })
+  value: string;
+
+  @Prop({ type: String })
+  pageId: string;
+}
+
+export const SkipLogicSchema = SchemaFactory.createForClass(SkipLogic);
+
+@Schema()
+export class Page {
+  @Prop({ default: [] })
+  components: Component[];
+}
 
 @Schema()
 export class Component {
@@ -124,12 +174,25 @@ export class Component {
   @Prop({ type: String })
   title: string;
 
-  @Prop({ type: String, enum: Object.values(${SurveyComponentType}) })
-  type: ${SurveyComponentType};
+  @Prop({ type: String, enum: Object.values(SurveyComponentType) })
+  type: SurveyComponentType;
+
+  @Prop({ type: String, default: uuidv4 })
+  id: string;
+
+  @Prop({
+    type: {
+      componentId: { type: String },
+      condition: { type: String }
+    }
+  })
+  dependsOn?: DependsOn;
 
   @Prop({ type: Boolean, default: false })
   required: boolean;
 }
+
+export const PageSchema = SchemaFactory.createForClass(Page);
 
 export const ComponentSchema = SchemaFactory.createForClass(Component);
 
@@ -171,8 +234,14 @@ export class Survey extends Document {
   @Prop({ type: SurveySettingsSchema })
   settings: SurveySettings;
 
+  @Prop({ type: [PageSchema], default: [] })
+  pages?: IPage[];
+
   @Prop({ type: String, enum: Object.values(SurveyType), default: SurveyType.Modal })
-  surveyType: modal;
+  surveyType: SurveyType;
+
+  @Prop({type: [SkipLogicSchema], default: []})
+  skipLogic?: SkipLogic[];
 }
 
 export const SurveySchema = SchemaFactory.createForClass(Survey);
