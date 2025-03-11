@@ -121,6 +121,10 @@ class SurveySettingsDto {
 }
 
 class PageDto {
+  @IsString()
+  @IsOptional()
+  id?: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ComponentDto)
@@ -132,6 +136,7 @@ class SkipLogicDto {
   @IsNotEmpty()
   componentId: string;
 }
+
 export class CreateSurveyDto {
   @IsNotEmpty()
   @IsString()
@@ -140,11 +145,6 @@ export class CreateSurveyDto {
   @IsNotEmpty()
   @IsString()
   title: string;
-
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ComponentDto)
-  components: ComponentDto[];
 
   @IsNotEmpty()
   @ValidateNested()
@@ -164,11 +164,11 @@ export class CreateSurveyDto {
   @IsOptional()
   surveyType?: SurveyType;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => PageDto)
-  pages?: PageDto[];
+  pages: PageDto[];
 
   @IsOptional()
   @IsArray()

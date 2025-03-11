@@ -32,14 +32,6 @@ export interface ISurvey {
   surveyName: string;
   title: string;
   creatorEmail: string;
-  components: {
-    options: string[];
-    title: string;
-    type: SurveyComponentType;
-    id: string;
-    dependsOn?: DependsOn;
-    required: boolean;
-  }[];
   style: {
     backgroundColor: string;
     width: string;
@@ -60,6 +52,7 @@ export interface ISurvey {
     triggerByVariable?: TriggerVariable;
   };
   surveyType: SurveyType;
+  pages: IPage[];
 }
 
 export interface SkipLogic {
@@ -79,7 +72,20 @@ export enum SurveyType {
 }
 
 export enum SurveyComponentType {
-${Object.values(SurveyComponentType).join(',')}
+  STAR_1_TO_5 = '1to5stars',
+  TEXTBOX = 'textbox',
+  SCALE_1_TO_10 = '1to10',
+  INPUT = 'input',
+  FACE_1_TO_5 = '1to5faces',
+  RADIO_BUTTONS = 'radioButtons',
+  DROPDOWN = 'dropdown',
+  SCALE_1_TO_5 = '1to5scale',
+  CHECKBOX = 'checkbox',
+  SLIDER = 'slider',
+  DATE_PICKER = 'datePicker',
+  DIVIDER = 'divider',
+  MULTIPLE_CHOICE = 'multi',
+  TEXT = 'text'
 }
 
 export enum TriggerVariableType {
@@ -149,12 +155,6 @@ export class SkipLogic {
 export const SkipLogicSchema = SchemaFactory.createForClass(SkipLogic);
 
 @Schema()
-export class Page {
-  @Prop({ default: [] })
-  components: Component[];
-}
-
-@Schema()
 export class Component {
   @Prop({ default: [] })
   options: string[];
@@ -180,9 +180,18 @@ export class Component {
   required: boolean;
 }
 
-export const PageSchema = SchemaFactory.createForClass(Page);
-
 export const ComponentSchema = SchemaFactory.createForClass(Component);
+
+@Schema()
+export class Page {
+  @Prop({ type: String, default: uuidv4 })
+  id: string;
+
+  @Prop({ type: [ComponentSchema], default: [] })
+  components: Component[];
+}
+
+export const PageSchema = SchemaFactory.createForClass(Page);
 
 @Schema({ timestamps: true })
 export class Survey extends Document {
@@ -197,9 +206,6 @@ export class Survey extends Document {
 
   @Prop({ type: String })
   creatorEmail: string;
-
-  @Prop({ type: [ComponentSchema], default: [] })
-  components: Component[];
 
   @Prop({
     type: {
@@ -223,7 +229,7 @@ export class Survey extends Document {
   settings: SurveySettings;
 
   @Prop({ type: [PageSchema], default: [] })
-  pages?: IPage[];
+  pages: Page[];
 
   @Prop({ type: String, enum: Object.values(SurveyType), default: SurveyType.Modal })
   surveyType: SurveyType;
@@ -248,6 +254,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   4. Tone & Style: Determine an appropriate tone based on the user's prompt and target audience.
   5. Logical Flow: Organize questions in a sensible order, starting with easier/general questions and moving to more specific ones.
   6. Quality Over Quantity: Aim for an optimal number of questions that thoroughly cover the topic without unnecessary length.
+  7.All components should be under the same page
 
   You need to use the following schema please use the exact same schema:
   ${formSchemaFile}
