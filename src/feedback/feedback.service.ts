@@ -443,6 +443,11 @@ export class FeedbackService implements OnModuleInit {
                     totalFeedbacks: feedbacks.length,
                     textResponseCount: 0,
                     averageSentiment: 0
+                },
+                sentimentDistribution: {
+                    positive: 0,
+                    negative: 0,
+                    neutral: 0
                 }
             };
 
@@ -450,6 +455,7 @@ export class FeedbackService implements OnModuleInit {
             const textResponses: { text: string, type: string }[] = [];
             let totalSentimentScore = 0;
             let sentimentCount = 0;
+            let sentimentCounts = { positive: 0, negative: 0, neutral: 0 };
 
             // First pass: collect all text responses
             for (const feedback of feedbacks) {
@@ -487,6 +493,9 @@ export class FeedbackService implements OnModuleInit {
                     totalSentimentScore += sentiment.score;
                     sentimentCount++;
 
+                    // Track sentiment counts
+                    sentimentCounts[sentiment.label as keyof typeof sentimentCounts]++;
+
                     this.logger.debug('Sentiment analysis result', {
                         text: response.text.substring(0, 50),
                         sentiment,
@@ -515,6 +524,15 @@ export class FeedbackService implements OnModuleInit {
                         text: response.text.substring(0, 50)
                     });
                 }
+            }
+
+            // Calculate sentiment distribution percentages
+            if (sentimentCount > 0) {
+                summary.sentimentDistribution = {
+                    positive: Number(((sentimentCounts.positive / sentimentCount) * 100).toFixed(2)),
+                    negative: Number(((sentimentCounts.negative / sentimentCount) * 100).toFixed(2)),
+                    neutral: Number(((sentimentCounts.neutral / sentimentCount) * 100).toFixed(2))
+                };
             }
 
             // Calculate average sentiment
