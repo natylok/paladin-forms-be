@@ -632,60 +632,11 @@ export class FeedbackService {
             const filterPrompt = this.filterPrompts[filterType] || `Find feedbacks that match the ${filterType} criteria`;
 
             const response = await openai.chat.completions.create({
-                model: 'gpt-4-turbo',
+                model: 'gpt-4',
                 messages: [
                     {
                         role: 'system',
-                        content: `You are a precise feedback filtering system. Your task is to analyze feedback responses and return indices of ONLY those that EXACTLY match the filtering criteria.
-
-FEEDBACK STRUCTURE:
-Each feedback contains responses to survey questions:
-{
-  "responses": {
-    [componentId: string]: {
-      "title": string,    // The question being asked
-      "value": string | string[],    // The response given
-      "componentType": string  // Type of input (rating, text, etc.)
-    }
-  }
-}
-
-FILTERING RULES:
-For "${filterType}" filter, apply these specific criteria:
-
-1. Rating-based filters (check value field):
-   - positive: ONLY include if rating is "4", "5", "Very satisfied", or "Extremely satisfied"
-   - negative: ONLY include if rating is "1", "2", "Very dissatisfied", or "Dissatisfied"
-   - neutral: ONLY include if rating is "3" or "Neutral"
-
-2. Content-based filters (check value field):
-   - suggestions: ONLY include if response contains phrases like "would be nice", "should add", "could improve", "would be better", "suggest", "would love to see", "it would be great if"
-   - bugs: ONLY include if response contains words like "error", "issue", "doesn't work", "broken", "bug", "problem", "not working", "fails", "crashed"
-   - praise: ONLY include if response contains words like "great", "excellent", "awesome", "love", "perfect", "amazing", "wonderful"
-   - urgent: ONLY include if response contains words like "urgent", "critical", "immediate", "asap", "emergency"
-
-3. Time-based filters (check createdAt timestamp):
-   - lastDay: ONLY include if within last 24 hours
-   - lastWeek: ONLY include if within last 7 days
-   - lastMonth: ONLY include if within last 30 days
-
-VALIDATION REQUIREMENTS:
-1. For each feedback, check ALL response values
-2. For text-based filters, check if ANY response contains the required phrases
-3. For rating-based filters, check if ANY rating matches the criteria
-4. For time-based filters, check the createdAt timestamp
-5. ONLY include index if feedback DEFINITELY matches criteria
-6. When in doubt, EXCLUDE rather than include
-
-RESPONSE FORMAT:
-Return ONLY a JSON array of indices where you are 100% confident they match the criteria.
-Example: [0,1,2] or [] if none match
-
-DO NOT INCLUDE:
-- Feedbacks without matching responses
-- Feedbacks where you're unsure about the match
-- Empty feedbacks
-- Feedbacks without relevant response types`
+                        content: `From all feedbacks you will get give me the ${filterPrompt} ones structure of json`
                     },
                     {
                         role: 'user',
