@@ -36,6 +36,13 @@ export interface FeedbackSummary {
                 [key: string]: number;
             };
         };
+        "1to10scale": {
+            total: number;
+            average: number;
+            distribution: {
+                [key: string]: number;
+            };
+        };
     };
     sentimentDistribution: {
         positive: number;

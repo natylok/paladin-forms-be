@@ -3,6 +3,7 @@ import { FeedbackSummary, TextResponse } from '../types/feedback.types';
 import { Feedback } from '../feedback.schema';
 import { SentimentService } from './sentiment.service';
 import { FILTER_PHRASES } from '../constants/feedback.constants';
+import { SurveyComponentType } from '../../survey/survey.schema';
 import {
     containsPhrases,
     convertRatingToNumber,
@@ -35,6 +36,13 @@ export class FeedbackAnalysisService {
                 totalFeedbacks,
                 textResponseCount: 0,
                 averageSentiment: 0,
+                "1to10scale": {
+                    total: 0,
+                    average: 0,
+                    distribution: {
+                        '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '9': 0, '10': 0
+                    }
+                },
                 ratingStats: {
                     total: 0,
                     average: 0,
@@ -81,7 +89,12 @@ export class FeedbackAnalysisService {
                 if (!response.value) continue;
 
                 const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
-                
+            
+                if(response.componentType === SurveyComponentType.SCALE_1_TO_10) {
+                    stats["1to10scale"].total++;
+                    stats["1to10scale"].distribution[value]++;
+                }
+
                 if (this.isRatingResponse(response)) {
                     this.processRatingResponse(value, summary, stats);
                 }
@@ -111,7 +124,7 @@ export class FeedbackAnalysisService {
     }
 
     private isRatingResponse(response: { componentType: string }): boolean {
-        return ['rating', '1to5scale', '1to10scale', '1to5faces'].includes(response.componentType);
+        return ['rating', '1to5scale', '1to5faces'].includes(response.componentType);
     }
 
     private shouldSkipTextAnalysis(value: string): boolean {
@@ -216,10 +229,10 @@ export class FeedbackAnalysisService {
         stats.totalSentimentScore += sentiment.score;
         stats.sentimentCount++;
 
-        // Update sentiment counts based on score thresholds
-        if(sentiment.label === 'positive' && sentiment.score > 0.7) {
+        // Categorize based on sentiment label and appropriate score thresholds
+        if (sentiment.label === 'positive' && sentiment.score > 0.7) {
             stats.sentimentCounts.positive++;
-        } else if (sentiment.label === 'negative' && sentiment.score > 0.7) {
+        } else if (sentiment.label === 'negative' && sentiment.score < -0.3) {
             stats.sentimentCounts.negative++;
         } else {
             stats.sentimentCounts.neutral++;
