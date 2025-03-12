@@ -176,29 +176,7 @@ export class FeedbackController {
       );
     }
   }
-
-  @UseGuards(JwtGuard, PremiumGuard)
-  @Get('filters/:filterType')
-  async getFilterDescription(@Req() req: Request, @Param('filterType') filterType: string) {
-    try {
-      const user = req.user as User;
-      this.logger.log('Getting filter description', { user: user.email, filterType });
-      const description = await this.feedbackService.getFilterDescription(filterType);
-      this.logger.log('Filter description retrieved successfully', { user: user.email, filterType });
-      return { description };
-    } catch (error) {
-      this.logger.error(
-        'Error getting filter description',
-        error instanceof Error ? error.stack : undefined,
-        { user: (req.user as User)?.email, filterType }
-      );
-      throw new HttpException(
-        'Failed to get filter description',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
-    }
-  }
-
+  
   @UseGuards(JwtGuard, PremiumGuard)
   @Get('filter/:filterType')
   async getFilteredFeedbacks(

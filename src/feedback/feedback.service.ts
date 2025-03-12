@@ -5,6 +5,7 @@ import { Model } from 'mongoose';
 import { Feedback, FeedbackResponse } from './feedback.schema';
 import { Survey } from '../survey/survey.schema';
 import { User } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '../logger/logger.service';
 import OpenAI from 'openai';
 import * as csv from 'csv-writer';
@@ -130,7 +131,7 @@ This system will produce identical results for identical input data, following t
 @Injectable()
 export class FeedbackService {
     private readonly logger = new Logger(FeedbackService.name);
-    private readonly CACHE_TTL = 1800; // 30 minutes in seconds
+    private readonly CACHE_TTL = 200; // 200 seconds
 
     private readonly filterPrompts = {
         positive: 'Find feedbacks with positive sentiment and high satisfaction ratings (4-5 stars)',
@@ -599,22 +600,59 @@ export class FeedbackService {
     }
 
     async getFilteredFeedbacks(user: User, filterType: string, surveyId?: string): Promise<{ feedbacks: Feedback[], total: number }> {
-        const query = surveyId ? { surveyId } : {};
-        const feedbacks = await this.feedbackModel.find(query).exec();
-        const filtered = feedbacks.filter(feedback => this.matchesFilter(feedback, filterType));
-        return { feedbacks: filtered, total: filtered.length };
-    }
+        try {
+            this.logger.debug('Getting filtered feedbacks', { user: user.email, filterType, surveyId });
+            
+            // Get all feedbacks first
+            const query = surveyId ? { surveyId } : {};
+            const feedbacks = await this.feedbackModel.find(query).exec();
+            
+            if (!feedbacks.length) {
+                this.logger.warn('No feedbacks found to filter', { user: user.email, filterType, surveyId });
+                return { feedbacks: [], total: 0 };
+            }
 
-    private matchesFilter(feedback: Feedback, filterType: string): boolean {
-        switch(filterType) {
-            case 'lastDay':
-                return Date.now() - feedback.createdAt.getTime() <= 24 * 60 * 60 * 1000;
-            case 'lastWeek':
-                return Date.now() - feedback.createdAt.getTime() <= 7 * 24 * 60 * 60 * 1000;
-            case 'lastMonth':
-                return Date.now() - feedback.createdAt.getTime() <= 30 * 24 * 60 * 60 * 1000;
-            default:
-                return true;
+            // Get the filter prompt
+            const filterPrompt = this.filterPrompts[filterType] || `Find feedbacks that match the ${filterType} criteria`;
+
+            // Use GPT-4-mini to filter the feedbacks
+            const response = await openai.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: [
+                    {
+                        role: 'system',
+                        content: `You are a feedback filtering system. Your task is to analyze the given feedbacks and return the indices of feedbacks that match the following criteria: ${filterPrompt}. Return ONLY a JSON array of indices (0-based) of matching feedbacks. Example: [0, 2, 5]. Do not include any explanation or other text.`
+                    },
+                    {
+                        role: 'user',
+                        content: JSON.stringify(feedbacks)
+                    }
+                ],
+                temperature: 0.1 // Low temperature for more consistent results
+            });
+
+            const matchingIndices = JSON.parse(response.choices[0]?.message?.content || '[]');
+            const filteredFeedbacks = matchingIndices.map((index: number) => feedbacks[index]).filter(Boolean);
+
+            this.logger.debug('Filtered feedbacks using AI', { 
+                user: user.email, 
+                filterType,
+                totalFeedbacks: feedbacks.length,
+                matchingFeedbacks: filteredFeedbacks.length 
+            });
+
+            return { 
+                feedbacks: filteredFeedbacks, 
+                total: filteredFeedbacks.length 
+            };
+        } catch (error) {
+            this.logger.error(
+                'Failed to filter feedbacks using AI',
+                error instanceof Error ? error.stack : undefined,
+                { user: user.email, filterType, surveyId }
+            );
+            throw error;
         }
     }
+
 }
