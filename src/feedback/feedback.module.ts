@@ -24,10 +24,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         name: 'FEEDBACK_SERVICE',
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
-          transport: Transport.REDIS,
+          transport: Transport.RMQ,
           options: {
-            host: configService.get('REDIS_HOST'),
-            port: configService.get('REDIS_PORT'),
+            urls: [configService.get<string>('RABBITMQ_URL') || 'amqp://localhost:5672'],
+            queue: 'feedback_queue',
+            queueOptions: {
+              durable: true
+            },
           },
         }),
         inject: [ConfigService],
