@@ -58,11 +58,13 @@ export class FeedbackAnalysisService {
 
     private async processFeedbacks(feedbacks: Feedback[], summary: FeedbackSummary): Promise<void> {
         const textResponses: TextResponse[] = [];
-        let totalSentimentScore = 0;
-        let sentimentCount = 0;
-        let sentimentCounts = { positive: 0, negative: 0, neutral: 0 };
-        let totalRatingScore = 0;
-        let ratingCount = 0;
+        const stats = {
+            totalSentimentScore: 0,
+            sentimentCount: 0,
+            sentimentCounts: { positive: 0, negative: 0, neutral: 0 },
+            totalRatingScore: 0,
+            ratingCount: 0
+        };
 
         const dailyFeedbacks = new Map<string, { positive: number, negative: number }>();
         const weeklyFeedbacks = new Map<string, { positive: number, negative: number }>();
@@ -81,7 +83,7 @@ export class FeedbackAnalysisService {
                 const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
                 
                 if (this.isRatingResponse(response)) {
-                    this.processRatingResponse(value, summary, totalRatingScore, ratingCount);
+                    this.processRatingResponse(value, summary, stats);
                 }
 
                 if (!this.shouldSkipTextAnalysis(value)) {
@@ -93,9 +95,7 @@ export class FeedbackAnalysisService {
         await this.processTextResponses(
             textResponses,
             summary,
-            sentimentCounts,
-            totalSentimentScore,
-            sentimentCount,
+            stats,
             dailyFeedbacks,
             weeklyFeedbacks,
             monthlyFeedbacks
@@ -103,9 +103,7 @@ export class FeedbackAnalysisService {
 
         this.finalizeSummary(
             summary,
-            sentimentCount,
-            sentimentCounts,
-            totalSentimentScore,
+            stats,
             dailyFeedbacks,
             weeklyFeedbacks,
             monthlyFeedbacks
@@ -123,13 +121,12 @@ export class FeedbackAnalysisService {
     private processRatingResponse(
         value: string,
         summary: FeedbackSummary,
-        totalRatingScore: number,
-        ratingCount: number
+        stats: { totalRatingScore: number; ratingCount: number }
     ): void {
         const rating = convertRatingToNumber(value);
         if (rating !== -1) {
-            totalRatingScore += rating;
-            ratingCount++;
+            stats.totalRatingScore += rating;
+            stats.ratingCount++;
             summary.statistics.ratingStats.distribution[rating.toString()]++;
         }
     }
@@ -173,9 +170,11 @@ export class FeedbackAnalysisService {
     private async processTextResponses(
         textResponses: TextResponse[],
         summary: FeedbackSummary,
-        sentimentCounts: { positive: number; negative: number; neutral: number },
-        totalSentimentScore: number,
-        sentimentCount: number,
+        stats: {
+            totalSentimentScore: number;
+            sentimentCount: number;
+            sentimentCounts: { positive: number; negative: number; neutral: number };
+        },
         dailyFeedbacks: Map<string, { positive: number; negative: number }>,
         weeklyFeedbacks: Map<string, { positive: number; negative: number }>,
         monthlyFeedbacks: Map<string, { positive: number; negative: number }>
@@ -187,9 +186,7 @@ export class FeedbackAnalysisService {
                     sentiment,
                     response,
                     summary,
-                    sentimentCounts,
-                    totalSentimentScore,
-                    sentimentCount,
+                    stats,
                     dailyFeedbacks,
                     weeklyFeedbacks,
                     monthlyFeedbacks
@@ -207,23 +204,25 @@ export class FeedbackAnalysisService {
         sentiment: { label: string; score: number },
         response: TextResponse,
         summary: FeedbackSummary,
-        sentimentCounts: { positive: number; negative: number; neutral: number },
-        totalSentimentScore: number,
-        sentimentCount: number,
+        stats: {
+            totalSentimentScore: number;
+            sentimentCount: number;
+            sentimentCounts: { positive: number; negative: number; neutral: number };
+        },
         dailyFeedbacks: Map<string, { positive: number; negative: number }>,
         weeklyFeedbacks: Map<string, { positive: number; negative: number }>,
         monthlyFeedbacks: Map<string, { positive: number; negative: number }>
     ): void {
-        totalSentimentScore += sentiment.score;
-        sentimentCount++;
+        stats.totalSentimentScore += sentiment.score;
+        stats.sentimentCount++;
 
-        // Increment the appropriate sentiment counter
-        if (sentiment.label === 'positive' && sentiment.score > 0.7) {
-            sentimentCounts.positive++;
-        } else if (sentiment.label === 'negative' && sentiment.score > 0.7) {
-            sentimentCounts.negative++;
+        // Update sentiment counts based on score thresholds
+        if (sentiment.score >= 0.6) {
+            stats.sentimentCounts.positive++;
+        } else if (sentiment.score <= -0.6) {
+            stats.sentimentCounts.negative++;
         } else {
-            sentimentCounts.neutral++;
+            stats.sentimentCounts.neutral++;
         }
 
         const dayKey = response.date.toISOString().split('T')[0];
@@ -277,16 +276,18 @@ export class FeedbackAnalysisService {
 
     private finalizeSummary(
         summary: FeedbackSummary,
-        sentimentCount: number,
-        sentimentCounts: { positive: number; negative: number; neutral: number },
-        totalSentimentScore: number,
+        stats: {
+            totalSentimentScore: number;
+            sentimentCount: number;
+            sentimentCounts: { positive: number; negative: number; neutral: number };
+        },
         dailyFeedbacks: Map<string, { positive: number; negative: number }>,
         weeklyFeedbacks: Map<string, { positive: number; negative: number }>,
         monthlyFeedbacks: Map<string, { positive: number; negative: number }>
     ): void {
-        if (sentimentCount > 0) {
-            this.calculateSentimentDistribution(summary, sentimentCount, sentimentCounts);
-            summary.statistics.averageSentiment = Number((totalSentimentScore / sentimentCount).toFixed(2));
+        if (stats.sentimentCount > 0) {
+            this.calculateSentimentDistribution(summary, stats.sentimentCount, stats.sentimentCounts);
+            summary.statistics.averageSentiment = Number((stats.totalSentimentScore / stats.sentimentCount).toFixed(2));
         }
 
         this.updateTimelineTrends(summary, dailyFeedbacks, weeklyFeedbacks, monthlyFeedbacks);
