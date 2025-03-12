@@ -442,31 +442,92 @@ export class FeedbackService implements OnModuleInit {
                 statistics: {
                     totalFeedbacks: feedbacks.length,
                     textResponseCount: 0,
-                    averageSentiment: 0
+                    averageSentiment: 0,
+                    ratingStats: {
+                        total: 0,
+                        average: 0,
+                        distribution: {
+                            '1': 0,
+                            '2': 0,
+                            '3': 0,
+                            '4': 0,
+                            '5': 0
+                        }
+                    }
                 },
                 sentimentDistribution: {
                     positive: 0,
                     negative: 0,
                     neutral: 0
+                },
+                feedbackTrends: {
+                    byDay: {
+                        labels: [] as string[],
+                        positive: [] as number[],
+                        negative: [] as number[]
+                    },
+                    byWeek: {
+                        labels: [] as string[],
+                        positive: [] as number[],
+                        negative: [] as number[]
+                    },
+                    byMonth: {
+                        labels: [] as string[],
+                        positive: [] as number[],
+                        negative: [] as number[]
+                    }
                 }
             };
 
-            // Collect all text responses for analysis
-            const textResponses: { text: string, type: string }[] = [];
+            // Collect all text responses and organize feedbacks by date
+            const textResponses: { text: string, type: string, date: Date }[] = [];
             let totalSentimentScore = 0;
             let sentimentCount = 0;
             let sentimentCounts = { positive: 0, negative: 0, neutral: 0 };
+            let totalRatingScore = 0;
+            let ratingCount = 0;
 
-            // First pass: collect all text responses
+            // Create maps to store feedback counts by date
+            const dailyFeedbacks = new Map<string, { positive: number, negative: number }>();
+            const weeklyFeedbacks = new Map<string, { positive: number, negative: number }>();
+            const monthlyFeedbacks = new Map<string, { positive: number, negative: number }>();
+
+            // First pass: collect all responses and organize by date
             for (const feedback of feedbacks) {
                 if (!feedback.responses) continue;
+
+                const feedbackDate = new Date(feedback.createdAt);
+                const dayKey = feedbackDate.toISOString().split('T')[0];
+                const weekKey = this.getWeekKey(feedbackDate);
+                const monthKey = this.getMonthKey(feedbackDate);
+
+                // Initialize period counters if they don't exist
+                if (!dailyFeedbacks.has(dayKey)) {
+                    dailyFeedbacks.set(dayKey, { positive: 0, negative: 0 });
+                }
+                if (!weeklyFeedbacks.has(weekKey)) {
+                    weeklyFeedbacks.set(weekKey, { positive: 0, negative: 0 });
+                }
+                if (!monthlyFeedbacks.has(monthKey)) {
+                    monthlyFeedbacks.set(monthKey, { positive: 0, negative: 0 });
+                }
 
                 for (const [componentId, response] of Object.entries(feedback.responses)) {
                     if (!response.value) continue;
 
                     const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
                     
-                    // Skip demographic or very short responses
+                    // Handle ratings
+                    if (response.componentType === 'rating' || response.componentType === '1to5scale') {
+                        const rating = this.convertRatingToNumber(value);
+                        if (rating !== -1) {
+                            totalRatingScore += rating;
+                            ratingCount++;
+                            summary.statistics.ratingStats.distribution[rating.toString()]++;
+                        }
+                    }
+
+                    // Skip demographic or very short responses for text analysis
                     if (value.length < 10 || this.isDemographicResponse(value)) {
                         continue;
                     }
@@ -474,11 +535,18 @@ export class FeedbackService implements OnModuleInit {
                     if (response.componentType === 'textbox' || response.componentType === 'text') {
                         textResponses.push({
                             text: value,
-                            type: response.title || 'general'
+                            type: response.title || 'general',
+                            date: feedbackDate
                         });
                         summary.statistics.textResponseCount++;
                     }
                 }
+            }
+
+            // Update rating statistics
+            if (ratingCount > 0) {
+                summary.statistics.ratingStats.total = ratingCount;
+                summary.statistics.ratingStats.average = Number((totalRatingScore / ratingCount).toFixed(2));
             }
 
             this.logger.debug('Collected text responses', {
@@ -496,17 +564,45 @@ export class FeedbackService implements OnModuleInit {
                     // Track sentiment counts
                     sentimentCounts[sentiment.label as keyof typeof sentimentCounts]++;
 
+                    // Update period-based sentiment counts
+                    const dayKey = response.date.toISOString().split('T')[0];
+                    const weekKey = this.getWeekKey(response.date);
+                    const monthKey = this.getMonthKey(response.date);
+
+                    if (sentiment.label === 'positive' && sentiment.score > 0.7) {
+                        dailyFeedbacks.get(dayKey)!.positive++;
+                        weeklyFeedbacks.get(weekKey)!.positive++;
+                        monthlyFeedbacks.get(monthKey)!.positive++;
+                    } else if (sentiment.label === 'negative' && sentiment.score > 0.7) {
+                        dailyFeedbacks.get(dayKey)!.negative++;
+                        weeklyFeedbacks.get(weekKey)!.negative++;
+                        monthlyFeedbacks.get(monthKey)!.negative++;
+                    }
+
                     this.logger.debug('Sentiment analysis result', {
                         text: response.text.substring(0, 50),
                         sentiment,
                         type: response.type
                     });
 
-                    // Categorize based on sentiment and content
-                    if (sentiment.label === 'positive' && sentiment.score > 0.7) {
+                    // More robust categorization using both sentiment and content analysis
+                    const hasPraiseWords = this.containsPhrases(response.text, this.filterPhrases.praise);
+                    const hasConcernWords = this.containsPhrases(response.text, this.filterPhrases.bugs);
+                    
+                    // Categorize as strength if:
+                    // 1. Positive sentiment (> 0.7) AND contains praise words
+                    // 2. No concern/bug related words
+                    if (sentiment.label === 'positive' && 
+                        sentiment.score > 0.7 && 
+                        hasPraiseWords && 
+                        !hasConcernWords) {
                         summary.textAnalysis.topStrengths.push(response.text);
                     } 
-                    else if (sentiment.label === 'negative' && sentiment.score > 0.7) {
+                    // Categorize as concern if:
+                    // 1. Negative sentiment (> 0.7) OR
+                    // 2. Contains bug/issue related words
+                    else if ((sentiment.label === 'negative' && sentiment.score > 0.7) || 
+                            hasConcernWords) {
                         summary.textAnalysis.topConcerns.push(response.text);
                     }
 
@@ -537,8 +633,31 @@ export class FeedbackService implements OnModuleInit {
 
             // Calculate average sentiment
             if (sentimentCount > 0) {
-                summary.statistics.averageSentiment = totalSentimentScore / sentimentCount;
+                summary.statistics.averageSentiment = Number((totalSentimentScore / sentimentCount).toFixed(2));
             }
+
+            // Prepare timeline data
+            const sortedDays = Array.from(dailyFeedbacks.keys()).sort();
+            const sortedWeeks = Array.from(weeklyFeedbacks.keys()).sort();
+            const sortedMonths = Array.from(monthlyFeedbacks.keys()).sort();
+
+            summary.feedbackTrends.byDay = {
+                labels: sortedDays,
+                positive: sortedDays.map(day => dailyFeedbacks.get(day)!.positive),
+                negative: sortedDays.map(day => dailyFeedbacks.get(day)!.negative)
+            };
+
+            summary.feedbackTrends.byWeek = {
+                labels: sortedWeeks,
+                positive: sortedWeeks.map(week => weeklyFeedbacks.get(week)!.positive),
+                negative: sortedWeeks.map(week => weeklyFeedbacks.get(week)!.negative)
+            };
+
+            summary.feedbackTrends.byMonth = {
+                labels: sortedMonths,
+                positive: sortedMonths.map(month => monthlyFeedbacks.get(month)!.positive),
+                negative: sortedMonths.map(month => monthlyFeedbacks.get(month)!.negative)
+            };
 
             // Deduplicate and limit arrays to top 5 most relevant items
             summary.textAnalysis.topStrengths = [...new Set(summary.textAnalysis.topStrengths)].slice(0, 5);
@@ -551,7 +670,12 @@ export class FeedbackService implements OnModuleInit {
                 topConcernsCount: summary.textAnalysis.topConcerns.length,
                 suggestionsCount: summary.textAnalysis.suggestions.length,
                 urgentIssuesCount: summary.textAnalysis.urgentIssues.length,
-                averageSentiment: summary.statistics.averageSentiment
+                averageSentiment: summary.statistics.averageSentiment,
+                timelinePeriods: {
+                    days: sortedDays.length,
+                    weeks: sortedWeeks.length,
+                    months: sortedMonths.length
+                }
             });
 
             return summary;
@@ -983,6 +1107,25 @@ export class FeedbackService implements OnModuleInit {
             });
             return { label: 'neutral', score: 0.5 };
         }
+    }
+
+    // Helper methods for date handling
+    private getWeekKey(date: Date): string {
+        const year = date.getFullYear();
+        const weekNumber = this.getWeekNumber(date);
+        return `${year}-W${weekNumber.toString().padStart(2, '0')}`;
+    }
+
+    private getMonthKey(date: Date): string {
+        return date.toISOString().substring(0, 7); // YYYY-MM format
+    }
+
+    private getWeekNumber(date: Date): number {
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     }
 
     async onModuleInit() {
