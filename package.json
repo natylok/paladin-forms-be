@@ -43,6 +43,7 @@
     "@nestjs/platform-express": "^11.0.11",
     "@prisma/client": "^3.8.1",
     "@redis/client": "^1.6.0",
+    "@types/cookie-parser": "^1.4.8",
     "@types/json2csv": "^5.0.7",
     "@xenova/transformers": "^2.17.2",
     "amqp-connection-manager": "^4.1.14",
