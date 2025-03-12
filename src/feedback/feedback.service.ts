@@ -636,60 +636,64 @@ export class FeedbackService {
                 messages: [
                     {
                         role: 'system',
-                        content: `You are a feedback filtering system. Your ONLY task is to return a JSON array of feedbacks that match the filter criteria read all the feedbacks, and return the feedbakcs that match the filter criteria.
+                        content: `You are a precise feedback filtering system. Your task is to analyze feedback responses and return indices of ONLY those that EXACTLY match the filtering criteria.
 
 FEEDBACK STRUCTURE:
-Each feedback in the input array has this structure:
+Each feedback contains responses to survey questions:
 {
   "responses": {
     [componentId: string]: {
-      "title": string,    // Question text
-      "value": string,    // Answer/rating
-      "componentType": string  // Component type
+      "title": string,    // The question being asked
+      "value": string | string[],    // The response given
+      "componentType": string  // Type of input (rating, text, etc.)
     }
   }
 }
 
-FILTER CRITERIA: "${filterPrompt}" 
+FILTERING RULES:
+For "${filterType}" filter, apply these specific criteria:
 
-STRICT RESPONSE FORMAT:
-1. Return ONLY a JSON array of numbers (0-based indices)
-2. Example valid responses:
-   [0,1,2]
-   [5]
-   []
-3. NO other text, quotes, backticks, or explanations
-4. NO markdown formatting
-5. ONLY the array
+1. Rating-based filters (check value field):
+   - positive: ONLY include if rating is "4", "5", "Very satisfied", or "Extremely satisfied"
+   - negative: ONLY include if rating is "1", "2", "Very dissatisfied", or "Dissatisfied"
+   - neutral: ONLY include if rating is "3" or "Neutral"
 
-2. Content filters:
-   - Suggestions: contains "would be nice", "should add", "could improve", "would be better", "suggest"
-   - Bugs: contains "error", "issue", "doesn't work", "broken", "bug", "problem"
-   - Praise: contains "great", "excellent", "awesome", "love", "perfect"
-   - Urgent: contains "urgent", "critical", "immediate", "asap", "emergency"
+2. Content-based filters (check value field):
+   - suggestions: ONLY include if response contains phrases like "would be nice", "should add", "could improve", "would be better", "suggest", "would love to see", "it would be great if"
+   - bugs: ONLY include if response contains words like "error", "issue", "doesn't work", "broken", "bug", "problem", "not working", "fails", "crashed"
+   - praise: ONLY include if response contains words like "great", "excellent", "awesome", "love", "perfect", "amazing", "wonderful"
+   - urgent: ONLY include if response contains words like "urgent", "critical", "immediate", "asap", "emergency"
 
-3. Time filters:
-   - lastDay: within 24h
-   - lastWeek: within 7d
-   - lastMonth: within 30d
+3. Time-based filters (check createdAt timestamp):
+   - lastDay: ONLY include if within last 24 hours
+   - lastWeek: ONLY include if within last 7 days
+   - lastMonth: ONLY include if within last 30 days
 
-PROCESS:
-1. Read each feedback
-2. Check if it matches ALL criteria
-3. If match, include its index
-4. Return ONLY the array of indices`
+VALIDATION REQUIREMENTS:
+1. For each feedback, check ALL response values
+2. For text-based filters, check if ANY response contains the required phrases
+3. For rating-based filters, check if ANY rating matches the criteria
+4. For time-based filters, check the createdAt timestamp
+5. ONLY include index if feedback DEFINITELY matches criteria
+6. When in doubt, EXCLUDE rather than include
+
+RESPONSE FORMAT:
+Return ONLY a JSON array of indices where you are 100% confident they match the criteria.
+Example: [0,1,2] or [] if none match
+
+DO NOT INCLUDE:
+- Feedbacks without matching responses
+- Feedbacks where you're unsure about the match
+- Empty feedbacks
+- Feedbacks without relevant response types`
                     },
                     {
                         role: 'user',
                         content: JSON.stringify(feedbacks)
-                    },
-                    {
-                        role: 'user',
-                        content: `filter criteria: ${filterPrompt}`
                     }
                 ],
                 temperature: 0.1,
-                max_tokens: 150 // Limiting tokens since we only need the array
+                max_tokens: 150
             });
 
             let matchingIndices: number[] = [];
@@ -703,7 +707,7 @@ PROCESS:
             try {
                 // Clean the response of any potential formatting
                 const cleanedContent = content
-                    .replace(/\`\`\`json|\`\`\`|\`/g, '') // Remove code blocks and backticks
+                    .replace(/\`\`\`json|\`\`\`|\`/g, '')
                     .trim();
                 
                 matchingIndices = JSON.parse(cleanedContent);
@@ -716,6 +720,31 @@ PROCESS:
                     });
                     return { feedbacks: [], total: 0 };
                 }
+
+                // Additional validation of the results
+                const validatedFeedbacks = matchingIndices
+                    .filter(index => {
+                        const feedback = feedbacks[index];
+                        // Ensure feedback exists and has responses
+                        if (!feedback?.responses || Object.keys(feedback.responses).length === 0) {
+                            return false;
+                        }
+                        return true;
+                    })
+                    .map(index => feedbacks[index]);
+
+                this.logger.debug('Filtered feedbacks using AI', {
+                    user: user.email,
+                    filterType,
+                    totalFeedbacks: feedbacks.length,
+                    matchingFeedbacks: validatedFeedbacks.length
+                });
+
+                return {
+                    feedbacks: validatedFeedbacks,
+                    total: validatedFeedbacks.length
+                };
+
             } catch (error) {
                 this.logger.error(
                     'Failed to parse AI response',
@@ -728,22 +757,6 @@ PROCESS:
                 );
                 return { feedbacks: [], total: 0 };
             }
-
-            const filteredFeedbacks = matchingIndices
-                .filter(index => index >= 0 && index < feedbacks.length)
-                .map(index => feedbacks[index]);
-
-            this.logger.debug('Filtered feedbacks using AI', {
-                user: user.email,
-                filterType,
-                totalFeedbacks: feedbacks.length,
-                matchingFeedbacks: filteredFeedbacks.length
-            });
-
-            return {
-                feedbacks: filteredFeedbacks,
-                total: filteredFeedbacks.length
-            };
         } catch (error) {
             this.logger.error(
                 'Failed to filter feedbacks using AI',
