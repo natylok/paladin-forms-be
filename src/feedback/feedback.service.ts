@@ -11,13 +11,18 @@ import OpenAI from 'openai';
 import * as csv from 'csv-writer';
 import { createObjectCsvWriter } from 'csv-writer';
 import { RedisClientType } from 'redis';
-// Remove the static import and declare types
-type Pipeline = any;
+
+// Define types for the sentiment pipeline
+type SentimentResult = { label: string; score: number; }[];
+type Pipeline = (text: string) => Promise<SentimentResult>;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// Import transformers using require
+const transformers = require('@xenova/transformers/dist/transformers.js');
+
 // Add Hugging Face API configuration
-// const HUGGING_FACE_API = 'https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english';
+const HUGGING_FACE_API = 'https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english';
 
 // Add retry configuration
 // const MAX_RETRIES = 3;
@@ -867,8 +872,6 @@ export class FeedbackService implements OnModuleInit {
     async onModuleInit() {
         try {
             this.logger.log('Loading sentiment analysis model...');
-            // Use dynamic import with explicit file extension
-            const transformers = await import('@xenova/transformers/dist/transformers.js');
             this.sentimentPipeline = await transformers.pipeline('sentiment-analysis', 'siebert/sentiment-roberta-large-english');
             this.logger.log('Sentiment analysis model loaded successfully');
         } catch (error) {
