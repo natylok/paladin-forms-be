@@ -400,23 +400,20 @@ export class FeedbackService implements OnModuleInit {
         try {
             this.logger.debug('Attempting to get feedback summary', { user: user.email });
 
-            const cacheKey = this.generateCacheKey(user);
-            this.logger.debug('Checking cache with key', { cacheKey });
-
-            // Try to get from cache
-            const cachedSummary = await this.getCachedSummary(cacheKey);
-            if (cachedSummary) {
-                this.logger.debug('Returning cached feedback summary', {
-                    user: user.email,
-                    cacheKey,
-                    summaryType: typeof cachedSummary
-                });
-                return cachedSummary;
-            }
-
             // Generate new summary if not in cache
             this.logger.debug('Cache miss - generating new feedback summary', { user: user.email });
             const { feedbacks } = await this.getFeedbacks(user);
+            
+            // Debug log the feedbacks
+            this.logger.debug('Retrieved feedbacks', {
+                count: feedbacks.length,
+                sampleFeedback: feedbacks[0] ? {
+                    id: feedbacks[0]._id,
+                    responseCount: feedbacks[0].responses ? Object.keys(feedbacks[0].responses).length : 0,
+                    sampleResponse: feedbacks[0].responses ? Object.values(feedbacks[0].responses)[0] : null
+                } : null
+            });
+
             if (!feedbacks.length) {
                 this.logger.warn('No feedbacks found to summarize', { user: user.email });
                 return { message: 'No feedbacks found' };
@@ -492,15 +489,37 @@ export class FeedbackService implements OnModuleInit {
             let totalRatingSum = 0;
 
             for (const feedback of feedbacks) {
-                if (!feedback.responses) continue;
+                if (!feedback.responses) {
+                    this.logger.debug('Feedback has no responses', { feedbackId: feedback._id });
+                    continue;
+                }
 
                 const date = new Date(feedback.createdAt).toISOString().split('T')[0];
                 dateResponses[date] = (dateResponses[date] || 0) + 1;
 
+                // Debug log the responses structure
+                this.logger.debug('Processing feedback', {
+                    feedbackId: feedback._id,
+                    responseCount: Object.keys(feedback.responses).length,
+                    responseTypes: Object.values(feedback.responses).map(r => r.componentType)
+                });
+
                 for (const [componentId, response] of Object.entries(feedback.responses)) {
-                    if (!response.value) continue;
+                    if (!response.value) {
+                        this.logger.debug('Response has no value', { componentId, componentType: response.componentType });
+                        continue;
+                    }
 
                     const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
+
+                    // Debug log each response being processed
+                    this.logger.debug('Processing response', {
+                        componentId,
+                        componentType: response.componentType,
+                        valueType: typeof value,
+                        valueLength: value.length,
+                        value: value.substring(0, 50) // Log first 50 chars for debugging
+                    });
 
                     // Handle ratings
                     if (response.componentType === '1to5scale' || response.componentType === 'rating') {
@@ -508,6 +527,13 @@ export class FeedbackService implements OnModuleInit {
                         if (!isNaN(rating)) {
                             totalRatings++;
                             totalRatingSum += rating;
+
+                            this.logger.debug('Processing rating', {
+                                componentId,
+                                rating,
+                                totalRatings,
+                                totalRatingSum
+                            });
 
                             // Update satisfaction breakdown
                             if (rating >= 4) summary.overallSatisfaction.satisfactionBreakdown.verySatisfied++;
@@ -529,12 +555,20 @@ export class FeedbackService implements OnModuleInit {
                             }
                             dateScores[date].total += rating;
                             dateScores[date].count++;
+                        } else {
+                            this.logger.debug('Invalid rating value', { value });
                         }
                     }
                     // Handle text responses
                     else if (response.componentType === 'text' && value.length >= 10) {
                         try {
                             const sentiment = await this.analyzeSentiment(value);
+                            
+                            this.logger.debug('Sentiment analysis result', {
+                                componentId,
+                                sentiment,
+                                textLength: value.length
+                            });
 
                             // Categorize insights based on sentiment
                             if (sentiment.label === 'positive' && sentiment.score > 0.7) {
@@ -562,12 +596,20 @@ export class FeedbackService implements OnModuleInit {
                         } catch (error) {
                             this.logger.error('Sentiment analysis failed for text', {
                                 error: error instanceof Error ? error.message : 'Unknown error',
-                                value
+                                value: value.substring(0, 50)
                             });
                         }
                     }
                 }
             }
+
+            // Debug log the accumulated scores
+            this.logger.debug('Accumulated scores', {
+                totalRatings,
+                totalRatingSum,
+                componentScoresCount: Object.keys(componentScores).length,
+                dateScoresCount: Object.keys(dateScores).length
+            });
 
             // Calculate overall satisfaction score
             if (totalRatings > 0) {
