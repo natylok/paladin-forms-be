@@ -10,6 +10,7 @@ import { LoggerService } from '../logger/logger.service';
 import * as fs from 'fs';
 import * as path from 'path';
 import { FilterType } from './types/feedback.types';
+import { SurveyComponentType } from 'src/survey/survey.schema';
 
 @Controller('feedbacks')
 export class FeedbackController {
@@ -21,7 +22,7 @@ export class FeedbackController {
   @Post(':surveyId/submit')
   async submitFeedback(
     @Param('surveyId') surveyId: string, 
-    @Body() responses: Record<string, { componentType: string, value: string, title: string }>
+    @Body() responses: Record<string, { componentType: SurveyComponentType, value: string, title: string }>
   ) {
     try {
       this.logger.log('Submitting feedback', { surveyId, responses });

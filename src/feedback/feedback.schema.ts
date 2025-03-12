@@ -1,8 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { SurveyComponentType } from 'src/survey/survey.schema';
 
 export interface FeedbackResponse {
-  componentType: string;
+  componentType: SurveyComponentType;
   value: string;
   title: string;
 }

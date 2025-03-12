@@ -4,6 +4,7 @@ import { SentimentService } from './sentiment.service';
 import { FILTER_PHRASES } from '../constants/feedback.constants';
 import { containsPhrases, isDemographicResponse } from '../utils/feedback.utils';
 import { FilterType } from '../types/feedback.types';
+import { SurveyComponentType } from 'src/survey/survey.schema';
 
 @Injectable()
 export class FeedbackFilterService {
@@ -96,14 +97,13 @@ export class FeedbackFilterService {
     }
 
     private async matchesFilterCriteria(
-        response: { componentType: string; value?: any },
+        response: { componentType: SurveyComponentType; value?: any },
         value: string,
         filterType: FilterType
     ): Promise<boolean> {
-        // Handle rating responses first
-        if (['rating', '1to5scale', '1to10scale'].includes(response.componentType)) {
+        if (['starRating', '1to5scale', '1to10scale'].includes(response.componentType)) {
             const numericValue = Number(value);
-            if(response.componentType === '1to10scale'){
+            if(response.componentType === SurveyComponentType.SCALE_1_TO_10){
                 switch(filterType){
                     case FilterType.POSITIVE:
                         return numericValue >= 7;
