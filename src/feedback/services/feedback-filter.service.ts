@@ -104,17 +104,18 @@ export class FeedbackFilterService {
         value: string,
         filterType: FilterType
     ): Promise<boolean> {
-        if (response.componentType === 'text') {
+        // Handle text responses
+        if (response.componentType === 'text' || response.componentType === 'textbox' || response.componentType === 'input') {
             try {
                 const sentiment = await this.sentimentService.analyzeSentiment(value);
                 switch (filterType) {
                     case FilterType.POSITIVE:
-                        return sentiment.label === 'positive' && sentiment.score > 0.7;
+                        return sentiment.label === 'positive' && sentiment.score > 0.6;
                     case FilterType.NEGATIVE:
-                        return sentiment.label === 'negative' && sentiment.score > 0.7;
+                        return sentiment.label === 'negative' && sentiment.score > 0.6;
                     case FilterType.NEUTRAL:
                         return sentiment.label === 'neutral' || 
-                               (sentiment.score > 0.3 && sentiment.score < 0.7);
+                               (sentiment.score >= 0.4 && sentiment.score <= 0.6);
                     case FilterType.SUGGESTIONS:
                         return containsPhrases(value, FILTER_PHRASES.suggestions);
                     case FilterType.BUGS:

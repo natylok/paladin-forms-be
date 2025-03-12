@@ -9,6 +9,7 @@ import { PremiumGuard } from 'src/auth/guards/premium.guard';
 import { LoggerService } from '../logger/logger.service';
 import * as fs from 'fs';
 import * as path from 'path';
+import { FilterType } from './types/feedback.types';
 
 @Controller('feedbacks')
 export class FeedbackController {
@@ -181,7 +182,7 @@ export class FeedbackController {
   @Get('filter/:filterType')
   async getFilteredFeedbacks(
     @Req() req: Request,
-    @Param('filterType') filterType: string,
+    @Param('filterType') filterType: FilterType,
     @Query('surveyId') surveyId?: string
   ) {
     try {
