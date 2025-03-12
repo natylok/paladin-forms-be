@@ -31,6 +31,7 @@
   "dependencies": {
     "@google-cloud/storage": "^7.15.2",
     "@huggingface/inference": "^3.4.1",
+    "@huggingface/transformers": "^3.4.0",
     "@nestjs/cache-manager": "^3.0.0",
     "@nestjs/cli": "^11.0.5",
     "@nestjs/common": "11.0.10",

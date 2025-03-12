@@ -11,15 +11,32 @@ import OpenAI from 'openai';
 import * as csv from 'csv-writer';
 import { createObjectCsvWriter } from 'csv-writer';
 import { RedisClientType } from 'redis';
+import { HfInference } from '@huggingface/inference';
 
-// Define types for the sentiment pipeline
-type SentimentResult = { label: string; score: number; }[];
-type Pipeline = (text: string) => Promise<SentimentResult>;
+// Define types for sentiment analysis
+interface SentimentResult {
+    label: string;
+    score: number;
+}
+
+interface TextClassificationOutput {
+    label: string;
+    score: number;
+}
+
+interface HuggingFaceResponse {
+    [0]: {
+        label: string;
+        score: number;
+    };
+}
+
+type Pipeline = (text: string) => Promise<HuggingFaceResponse>;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Import transformers using require
-const transformers = require('@xenova/transformers/dist/transformers.js');
+// Initialize Hugging Face client
+const hf = new HfInference(process.env.HUGGING_FACE_API_KEY);
 
 // Add Hugging Face API configuration
 const HUGGING_FACE_API = 'https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english';
@@ -169,7 +186,6 @@ Strict Analysis Rules:
 export class FeedbackService implements OnModuleInit {
     private readonly logger = new Logger(FeedbackService.name);
     private readonly CACHE_TTL = 200; // 200 seconds
-    private sentimentPipeline: Pipeline;
 
     private readonly filterPrompts = {
         positive: 'Find feedbacks with positive sentiment and high satisfaction ratings (4-5 stars)',
@@ -834,23 +850,18 @@ export class FeedbackService implements OnModuleInit {
         }
     }
 
-    private async analyzeSentiment(text: string): Promise<{ label: string; score: number }> {
+    private async analyzeSentiment(text: string): Promise<SentimentResult> {
         try {
-            if (!this.sentimentPipeline) {
-                this.logger.warn('Sentiment analysis model not loaded, returning neutral');
-                return { label: 'neutral', score: 0.5 };
-            }
-
-            const result = await this.sentimentPipeline(text);
-            
-            // Get the highest scoring sentiment
-            const [{ label, score }] = result;
+            const result = await hf.textClassification({
+                model: 'siebert/sentiment-roberta-large-english',
+                inputs: text
+            });
             
             // Convert label to our format (positive, negative, neutral)
             let normalizedLabel: string;
-            if (label.includes('POSITIVE')) {
+            if (result[0].label.includes('POSITIVE')) {
                 normalizedLabel = 'positive';
-            } else if (label.includes('NEGATIVE')) {
+            } else if (result[0].label.includes('NEGATIVE')) {
                 normalizedLabel = 'negative';
             } else {
                 normalizedLabel = 'neutral';
@@ -858,7 +869,7 @@ export class FeedbackService implements OnModuleInit {
 
             return { 
                 label: normalizedLabel, 
-                score: score 
+                score: result[0].score 
             };
         } catch (error) {
             this.logger.error('Error in sentiment analysis', {
@@ -870,16 +881,7 @@ export class FeedbackService implements OnModuleInit {
     }
 
     async onModuleInit() {
-        try {
-            this.logger.log('Loading sentiment analysis model...');
-            this.sentimentPipeline = await transformers.pipeline('sentiment-analysis', 'siebert/sentiment-roberta-large-english');
-            this.logger.log('Sentiment analysis model loaded successfully');
-        } catch (error) {
-            this.logger.error('Failed to load sentiment analysis model', {
-                error: error instanceof Error ? error.message : 'Unknown error'
-            });
-            throw error;
-        }
+        this.logger.log('Feedback service initialized');
     }
 
 }
