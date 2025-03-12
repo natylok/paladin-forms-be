@@ -96,5 +96,3 @@ export const SENTIMENT_THRESHOLDS = {
     negative: 0.7,
     neutral: 0.5
 };
-
-export const HUGGING_FACE_API = 'https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english'; 
