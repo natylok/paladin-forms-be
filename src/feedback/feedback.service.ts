@@ -9,7 +9,7 @@ import { LoggerService } from '../logger/logger.service';
 import { RedisClientType } from 'redis';
 import { SentimentService } from './services/sentiment.service';
 import { FeedbackCacheService } from './services/cache.service';
-import { FeedbackSummary, TextResponse } from './types/feedback.types';
+import { FeedbackSummary, TextResponse, FilterType } from './types/feedback.types';
 import { FeedbackAnalysisService } from './services/feedback-analysis.service';
 import { FeedbackExportService } from './services/feedback-export.service';
 import { FeedbackFilterService } from './services/feedback-filter.service';
@@ -218,15 +218,19 @@ export class FeedbackService implements OnModuleInit {
         return this.exportService.exportToCSV(surveyId);
     }
 
-    async getAvailableFilters(): Promise<string[]> {
+    async getAvailableFilters(): Promise<FilterType[]> {
         return this.filterService.getAvailableFilters();
     }
 
-    async getFilterDescription(filterType: string): Promise<string> {
+    async getFilterDescription(filterType: FilterType): Promise<string> {
         return this.filterService.getFilterDescription(filterType);
     }
 
-    async getFilteredFeedbacks(user: User, filterType: string, surveyId?: string): Promise<{ feedbacks: Feedback[], total: number }> {
+    async getFilteredFeedbacks(
+        user: User, 
+        filterType: FilterType, 
+        surveyId?: string
+    ): Promise<{ feedbacks: Feedback[], total: number }> {
         try {
             const query = surveyId ? { surveyId } : {};
             const feedbacks = await this.feedbackModel.find(query).exec();

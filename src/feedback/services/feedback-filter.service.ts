@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Feedback } from '../feedback.schema';
 import { SentimentService } from './sentiment.service';
-import { FILTER_PROMPTS, FILTER_PHRASES } from '../constants/feedback.constants';
+import { FILTER_PHRASES } from '../constants/feedback.constants';
 import { containsPhrases, isDemographicResponse } from '../utils/feedback.utils';
+import { FilterType } from '../types/feedback.types';
 
 @Injectable()
 export class FeedbackFilterService {
@@ -10,15 +11,27 @@ export class FeedbackFilterService {
 
     constructor(private readonly sentimentService: SentimentService) {}
 
-    getAvailableFilters(): string[] {
-        return Object.keys(FILTER_PROMPTS);
+    getAvailableFilters(): FilterType[] {
+        return Object.values(FilterType);
     }
 
-    getFilterDescription(filterType: string): string {
-        return FILTER_PROMPTS[filterType] || 'Filter description not found';
+    getFilterDescription(filterType: FilterType): string {
+        const descriptions = {
+            [FilterType.POSITIVE]: 'Find feedbacks with positive sentiment and high satisfaction ratings',
+            [FilterType.NEGATIVE]: 'Find feedbacks with negative sentiment and low satisfaction ratings',
+            [FilterType.NEUTRAL]: 'Find feedbacks with neutral sentiment and medium ratings',
+            [FilterType.SUGGESTIONS]: 'Find feedbacks containing improvement suggestions',
+            [FilterType.BUGS]: 'Find feedbacks mentioning bugs or technical issues',
+            [FilterType.PRAISE]: 'Find feedbacks containing praise or compliments',
+            [FilterType.URGENT]: 'Find feedbacks marked as urgent or critical',
+            [FilterType.LAST_DAY]: 'Find feedbacks from the last 24 hours',
+            [FilterType.LAST_WEEK]: 'Find feedbacks from the last 7 days',
+            [FilterType.LAST_MONTH]: 'Find feedbacks from the last 30 days'
+        };
+        return descriptions[filterType] || 'Filter description not found';
     }
 
-    async filterFeedbacks(feedbacks: Feedback[], filterType: string): Promise<{ feedbacks: Feedback[], total: number }> {
+    async filterFeedbacks(feedbacks: Feedback[], filterType: FilterType): Promise<{ feedbacks: Feedback[], total: number }> {
         try {
             this.logger.debug('Filtering feedbacks', { filterType, totalFeedbacks: feedbacks.length });
 
@@ -26,9 +39,9 @@ export class FeedbackFilterService {
                 return { feedbacks: [], total: 0 };
             }
 
-            // Handle time-based filtering first
-            if (['lastDay', 'lastWeek', 'lastMonth'].includes(filterType)) {
-                return this.getTimeBasedFeedbacks(feedbacks, filterType as 'lastDay' | 'lastWeek' | 'lastMonth');
+            // Handle time-based filtering
+            if (this.isTimeBasedFilter(filterType)) {
+                return this.getTimeBasedFeedbacks(feedbacks, filterType);
             }
 
             // For other filter types, process each feedback
@@ -61,7 +74,11 @@ export class FeedbackFilterService {
         }
     }
 
-    private async shouldIncludeFeedback(feedback: Feedback, filterType: string): Promise<boolean> {
+    private isTimeBasedFilter(filterType: FilterType): boolean {
+        return [FilterType.LAST_DAY, FilterType.LAST_WEEK, FilterType.LAST_MONTH].includes(filterType);
+    }
+
+    private async shouldIncludeFeedback(feedback: Feedback, filterType: FilterType): Promise<boolean> {
         if (!feedback.responses || Object.keys(feedback.responses).length === 0) return false;
 
         for (const response of Object.values(feedback.responses)) {
@@ -85,47 +102,27 @@ export class FeedbackFilterService {
     private async matchesFilterCriteria(
         response: { componentType: string },
         value: string,
-        filterType: string
-    ): Promise<boolean> {
-        switch (filterType) {
-            case 'positive':
-            case 'negative':
-            case 'neutral':
-                return await this.matchesSentimentCriteria(response, value, filterType);
-
-            case 'suggestions':
-                return containsPhrases(value, FILTER_PHRASES.suggestions);
-
-            case 'bugs':
-                return containsPhrases(value, FILTER_PHRASES.bugs);
-
-            case 'praise':
-                return containsPhrases(value, FILTER_PHRASES.praise);
-
-            case 'urgent':
-                return containsPhrases(value, FILTER_PHRASES.urgent);
-
-            default:
-                return false;
-        }
-    }
-
-    private async matchesSentimentCriteria(
-        response: { componentType: string },
-        value: string,
-        filterType: 'positive' | 'negative' | 'neutral'
+        filterType: FilterType
     ): Promise<boolean> {
         if (response.componentType === 'text') {
             try {
                 const sentiment = await this.sentimentService.analyzeSentiment(value);
                 switch (filterType) {
-                    case 'positive':
+                    case FilterType.POSITIVE:
                         return sentiment.label === 'positive' && sentiment.score > 0.7;
-                    case 'negative':
+                    case FilterType.NEGATIVE:
                         return sentiment.label === 'negative' && sentiment.score > 0.7;
-                    case 'neutral':
+                    case FilterType.NEUTRAL:
                         return sentiment.label === 'neutral' || 
                                (sentiment.score > 0.3 && sentiment.score < 0.7);
+                    case FilterType.SUGGESTIONS:
+                        return containsPhrases(value, FILTER_PHRASES.suggestions);
+                    case FilterType.BUGS:
+                        return containsPhrases(value, FILTER_PHRASES.bugs);
+                    case FilterType.PRAISE:
+                        return containsPhrases(value, FILTER_PHRASES.praise);
+                    case FilterType.URGENT:
+                        return containsPhrases(value, FILTER_PHRASES.urgent);
                 }
             } catch (error) {
                 this.logger.error('Sentiment analysis failed', {
@@ -139,21 +136,23 @@ export class FeedbackFilterService {
 
     private getTimeBasedFeedbacks(
         feedbacks: Feedback[],
-        filterType: 'lastDay' | 'lastWeek' | 'lastMonth'
+        filterType: FilterType
     ): { feedbacks: Feedback[], total: number } {
         const now = new Date();
         const timeThreshold = new Date();
 
         switch (filterType) {
-            case 'lastDay':
+            case FilterType.LAST_DAY:
                 timeThreshold.setDate(now.getDate() - 1);
                 break;
-            case 'lastWeek':
+            case FilterType.LAST_WEEK:
                 timeThreshold.setDate(now.getDate() - 7);
                 break;
-            case 'lastMonth':
+            case FilterType.LAST_MONTH:
                 timeThreshold.setDate(now.getDate() - 30);
                 break;
+            default:
+                return { feedbacks: [], total: 0 };
         }
 
         const filteredFeedbacks = feedbacks.filter(feedback => 

@@ -63,7 +63,18 @@ export interface TextResponse {
 
 export type Pipeline = (text: string) => Promise<HuggingFaceResponse>;
 
-export type FilterType = 'positive' | 'negative' | 'neutral' | 'all';
+export enum FilterType {
+    POSITIVE = 'positive',
+    NEGATIVE = 'negative',
+    NEUTRAL = 'neutral',
+    SUGGESTIONS = 'suggestions',
+    BUGS = 'bugs',
+    PRAISE = 'praise',
+    URGENT = 'urgent',
+    LAST_DAY = 'lastDay',
+    LAST_WEEK = 'lastWeek',
+    LAST_MONTH = 'lastMonth'
+}
 
 export interface FeedbackFilter {
     type: FilterType;
