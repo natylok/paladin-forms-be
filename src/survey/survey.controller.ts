@@ -57,7 +57,18 @@ export class SurveyController {
     }
 
     @EventPattern('survey_changed')
-    handleSurveyCreated(@Payload() user: User) {
-        this.surveyService.generateJavascriptCode(user);
+    async handleSurveyCreated(@Payload() user: User) {
+        this.logger.log('Received survey_changed event', { user: user.email });
+        try {
+            await this.surveyService.generateJavascriptCode(user);
+            this.logger.log('Successfully processed survey_changed event', { user: user.email });
+        } catch (error) {
+            this.logger.error(
+                'Failed to process survey_changed event',
+                error instanceof Error ? error.stack : undefined,
+                { user: user.email }
+            );
+            throw error; // This will ensure the message isn't acknowledged if processing fails
+        }
     }
 }

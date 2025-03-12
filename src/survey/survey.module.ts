@@ -21,7 +21,8 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
             queue: 'survey_queue',
             queueOptions: {
               durable: true
-            }
+            },
+            persistent: true
           },
         }),
         inject: [ConfigService],

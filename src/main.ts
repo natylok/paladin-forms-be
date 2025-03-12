@@ -3,9 +3,11 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
   
   // Enable CORS with credentials
   app.enableCors({
@@ -21,19 +23,34 @@ async function bootstrap() {
     }),
   );
 
-  // Configure RabbitMQ connection
+  // Configure RabbitMQ connections for different queues
+  const rabbitMQConfig = {
+    urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@localhost:5672`],
+    queueOptions: {
+      durable: true
+    },
+    prefetchCount: 1,
+    noAck: false,
+    socketOptions: {
+      heartbeat: 60
+    }
+  };
+
+  // Connect main queue microservice
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
     options: {
-      urls: [`amqp://${process.env.RABBITMQ_DEFAULT_USER}:${process.env.RABBITMQ_DEFAULT_PASS}@localhost:5672`],
+      ...rabbitMQConfig,
       queue: 'main_queue',
-      queueOptions: {
-        durable: true
-      },
-      prefetchCount: 1,
-      socketOptions: {
-        heartbeat: 60
-      }
+    },
+  });
+
+  // Connect survey queue microservice
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.RMQ,
+    options: {
+      ...rabbitMQConfig,
+      queue: 'survey_queue',
     },
   });
 

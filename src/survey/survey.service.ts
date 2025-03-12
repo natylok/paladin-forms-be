@@ -17,11 +17,23 @@ export class SurveyService {
         @Inject('SURVEY_SERVICE') private readonly client: ClientProxy,
         private readonly configService: ConfigService,
         private readonly logger: LoggerService
-    ) {}
+    ) {
+        // Log RabbitMQ connection status
+        this.client.connect().then(() => {
+            this.logger.log('Successfully connected to RabbitMQ');
+        }).catch(err => {
+            this.logger.error('Failed to connect to RabbitMQ', err.stack);
+        });
+    }
 
     async createSurvey(createSurveyDto: CreateSurveyDto, user: User): Promise<Survey> {
         this.logger.log('Creating new survey', { user: user.email, dto: createSurveyDto });
-        this.client.emit('survey_changed', user);
+        try {
+            await this.client.emit('survey_changed', user).toPromise();
+            this.logger.debug('Successfully emitted survey_changed event', { user: user.email });
+        } catch (error) {
+            this.logger.error('Failed to emit survey_changed event', error instanceof Error ? error.stack : undefined, { user: user.email });
+        }
         const createdSurvey = new this.surveyModel({ ...createSurveyDto, creatorEmail: user.email });
         const result = await createdSurvey.save();
         this.logger.log('Survey created successfully', { surveyId: result.surveyId, user: user.email });
