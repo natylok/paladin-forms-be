@@ -1,4 +1,4 @@
-import { Injectable, Inject, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, Inject, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Document, ObjectId } from 'mongoose';
@@ -11,20 +11,21 @@ import OpenAI from 'openai';
 import * as csv from 'csv-writer';
 import { createObjectCsvWriter } from 'csv-writer';
 import { RedisClientType } from 'redis';
+import { pipeline } from '@xenova/transformers';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Add Hugging Face API configuration
-const HUGGING_FACE_API = 'https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english';
+// const HUGGING_FACE_API = 'https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english';
 
 // Add retry configuration
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // 1 second
+// const MAX_RETRIES = 3;
+// const RETRY_DELAY = 1000; // 1 second
 
 // Add API key validation
-if (!process.env.HUGGING_FACE_API_KEY) {
-    throw new Error('HUGGING_FACE_API_KEY environment variable is not set');
-}
+// if (!process.env.HUGGING_FACE_API_KEY) {
+//     throw new Error('HUGGING_FACE_API_KEY environment variable is not set');
+// }
 
 const overviewFeedbackSystemPrompt = () => `
 You are a deterministic feedback analysis system analyzing survey responses. Before starting your analysis, understand the feedback structure:
@@ -159,9 +160,10 @@ Strict Analysis Rules:
 `;
 
 @Injectable()
-export class FeedbackService {
+export class FeedbackService implements OnModuleInit {
     private readonly logger = new Logger(FeedbackService.name);
     private readonly CACHE_TTL = 200; // 200 seconds
+    private sentimentPipeline: any;
 
     private readonly filterPrompts = {
         positive: 'Find feedbacks with positive sentiment and high satisfaction ratings (4-5 stars)',
@@ -827,70 +829,51 @@ export class FeedbackService {
     }
 
     private async analyzeSentiment(text: string): Promise<{ label: string; score: number }> {
-        let retries = 0;
-        while (retries < MAX_RETRIES) {
-            try {
-                const response = await fetch(HUGGING_FACE_API, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${process.env.HUGGING_FACE_API_KEY}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ inputs: text })
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    this.logger.error('Hugging Face API error', {
-                        status: response.status,
-                        statusText: response.statusText,
-                        error: errorText,
-                        retry: retries + 1
-                    });
-
-                    // Handle rate limiting and service unavailable errors
-                    if (response.status === 429 || response.status === 503) {
-                        retries++;
-                        if (retries < MAX_RETRIES) {
-                            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-                            continue;
-                        }
-                    }
-                    throw new Error(`Hugging Face API error: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                if (!Array.isArray(data) || data.length === 0) {
-                    throw new Error('Invalid response format from Hugging Face API');
-                }
-
-                const result = data[0];
-                if (!result || !result.label || typeof result.score !== 'number') {
-                    throw new Error('Invalid sentiment analysis result');
-                }
-
-                return {
-                    label: result.label,
-                    score: result.score
-                };
-            } catch (error) {
-                this.logger.error('Error in sentiment analysis', {
-                    error: error instanceof Error ? error.message : 'Unknown error',
-                    retry: retries + 1
-                });
-
-                retries++;
-                if (retries < MAX_RETRIES) {
-                    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-                    continue;
-                }
-                throw error;
+        try {
+            if (!this.sentimentPipeline) {
+                this.logger.warn('Sentiment analysis model not loaded, returning neutral');
+                return { label: 'neutral', score: 0.5 };
             }
-        }
 
-        // If we've exhausted all retries, return neutral sentiment
-        this.logger.warn('Exhausted all retries for sentiment analysis, returning neutral', { text });
-        return { label: 'neutral', score: 0.5 };
+            const result = await this.sentimentPipeline(text);
+            
+            // Get the highest scoring sentiment
+            const [{ label, score }] = result;
+            
+            // Convert label to our format (positive, negative, neutral)
+            let normalizedLabel: string;
+            if (label.includes('POSITIVE')) {
+                normalizedLabel = 'positive';
+            } else if (label.includes('NEGATIVE')) {
+                normalizedLabel = 'negative';
+            } else {
+                normalizedLabel = 'neutral';
+            }
+
+            return { 
+                label: normalizedLabel, 
+                score: score 
+            };
+        } catch (error) {
+            this.logger.error('Error in sentiment analysis', {
+                error: error instanceof Error ? error.message : 'Unknown error',
+                text
+            });
+            return { label: 'neutral', score: 0.5 };
+        }
+    }
+
+    async onModuleInit() {
+        try {
+            this.logger.log('Loading sentiment analysis model...');
+            this.sentimentPipeline = await pipeline('sentiment-analysis', 'siebert/sentiment-roberta-large-english');
+            this.logger.log('Sentiment analysis model loaded successfully');
+        } catch (error) {
+            this.logger.error('Failed to load sentiment analysis model', {
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+            throw error;
+        }
     }
 
 }
