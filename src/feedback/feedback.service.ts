@@ -15,7 +15,31 @@ import { RedisClientType } from 'redis';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const overviewFeedbackSystemPrompt = () => `
-You are a deterministic feedback analysis system. Your task is to analyze feedback data using strict, predefined rules to ensure consistent results. Return a JSON object with the following structure:
+You are a deterministic feedback analysis system analyzing survey responses. Before starting your analysis, understand the feedback structure:
+
+Feedback Structure:
+Each feedback object contains a 'responses' field that is a map of component responses:
+{
+  responses: {
+    [componentId: string]: {
+      title: string,    // The question or component title
+      value: string,    // The actual response/answer
+      componentType: string  // Type of the component (e.g., 'rating', 'text', etc.)
+    }
+  }
+}
+
+Important Context:
+- Each componentId represents a unique question in the survey
+- The 'value' field contains the actual response (could be rating numbers or text)
+- For rating components: values are on a scale of 0-5
+- Text responses may contain sentiment, suggestions, or issues
+- The 'title' field contains the actual question being asked
+
+Your Task:
+Analyze all feedbacks by first understanding each component's purpose through its title, then interpreting the values accordingly.
+
+Return a JSON object with the following structure:
 
 {
   "overallSatisfaction": {
@@ -78,8 +102,16 @@ You are a deterministic feedback analysis system. Your task is to analyze feedba
   }
 }
 
+Analysis Process:
+1. First pass: Read through all feedback components to understand question context
+2. Second pass: Categorize components by type (rating vs text)
+3. Third pass: Process ratings and calculate statistics
+4. Fourth pass: Analyze text responses for sentiment and themes
+5. Final pass: Combine insights and generate summary
+
 Strict Analysis Rules:
 1. Satisfaction Score Calculation:
+   - Only use components that are clearly ratings
    - Convert all ratings to 0-5 scale
    - Calculate average rating
    - Multiply by 20 to get 0-100 score
@@ -90,42 +122,28 @@ Strict Analysis Rules:
    - Use 0 for undefined values
 
 3. Component Analysis:
+   - First identify rating components by their titles and values
    - Calculate average rating per component
    - Sort by average rating
    - Select highest and lowest rated components
 
-4. Trend Analysis:
-   - Group by date
-   - Calculate daily averages
-   - Sort dates chronologically
-
-5. User Segmentation:
-   - Calculate average rating per user
-   - Segment based on rating thresholds
-   - Count percentages of each segment
-
-6. Text Analysis:
+4. Text Analysis:
    - Extract exact phrases from feedback
-   - Count frequency of phrases
-   - Select most frequent phrases
+   - Consider the question context when interpreting responses
+   - Count frequency of themes
    - Limit to top 5 phrases per category
 
-7. Data Handling:
+5. Data Handling:
    - Use 0 for missing numeric values
    - Use empty arrays [] for missing array values
    - Use empty strings "" for missing text values
    - Round all percentages to 2 decimal places
-   - Round all averages to 2 decimal places
 
-8. Response Format:
+6. Response Format:
    - Return ONLY the JSON object
    - No additional text or explanation
-   - No markdown formatting
-   - No code blocks
    - Ensure all strings are properly escaped
    - Ensure all numbers are valid JSON numbers
-
-This system will produce identical results for identical input data, following these strict rules without any interpretation or variation.
 `;
 
 @Injectable()
@@ -603,7 +621,6 @@ export class FeedbackService {
         try {
             this.logger.debug('Getting filtered feedbacks', { user: user.email, filterType, surveyId });
 
-            // Get all feedbacks first
             const query = surveyId ? { surveyId } : {};
             const feedbacks = await this.feedbackModel.find(query).exec();
 
@@ -612,52 +629,77 @@ export class FeedbackService {
                 return { feedbacks: [], total: 0 };
             }
 
-            // Get the filter prompt
             const filterPrompt = this.filterPrompts[filterType] || `Find feedbacks that match the ${filterType} criteria`;
 
-            // Use GPT-4-mini to filter the feedbacks with improved prompt
             const response = await openai.chat.completions.create({
                 model: 'gpt-4o-mini',
                 messages: [
                     {
                         role: 'system',
-                        content: `You are a highly precise feedback analysis system. Your task is to thoroughly analyze each feedback in the provided dataset and identify those that match specific criteria.
+                        content: `You are a highly precise feedback analysis system. Before analyzing, understand the feedback structure:
 
-Analysis Instructions:
-1. Read and analyze EVERY feedback in detail
-2. For each feedback:
-   - Examine all response values and their context
-   - Consider both explicit ratings and implicit sentiment in text responses
-   - Look for specific keywords and phrases that match the filter criteria
-   - Consider the overall context and tone of the feedback
-   - Check timestamps for time-based filters
-   - Analyze component types and their responses
+Feedback Structure:
+Each feedback object contains a 'responses' field that is a map of component responses:
+{
+  responses: {
+    [componentId: string]: {
+      title: string,    // The question or component title
+      value: string,    // The actual response/answer
+      componentType: string  // Type of the component (e.g., 'rating', 'text', etc.)
+    }
+  }
+}
+
+Important Context:
+- Each componentId represents a unique question in the survey
+- The 'value' field contains the actual response (could be rating numbers or text)
+- For rating components: values are on a scale of 0-5
+- Text responses may contain sentiment, suggestions, or issues
+- The 'title' field contains the actual question being asked
+
+Analysis Process:
+1. First pass: Read all feedback components to understand the questions being asked
+2. Second pass: Analyze each response in context of its question
+3. Third pass: Apply filtering criteria to identify matching feedbacks
+4. Final pass: Verify matches meet ALL required criteria
 
 Filter Criteria: "${filterPrompt}"
 
-Response Format:
-- Return ONLY a JSON array of indices (0-based) for feedbacks that STRONGLY match the criteria
-- Example: [0, 2, 5]
-- Do not include any explanation or additional text
-- Only include indices where you are highly confident of the match
-
 Specific Analysis Rules:
-- For positive feedback: Look for high ratings (4-5) AND positive language/sentiment
-- For negative feedback: Look for low ratings (1-2) AND negative language/sentiment
-- For neutral feedback: Look for middle ratings (3) AND balanced/neutral language
-- For suggestions: Look for phrases indicating improvements, ideas, or recommendations
-- For bugs: Look for descriptions of technical issues, errors, or malfunctions
-- For urgent: Look for language indicating immediacy or critical problems
-- For time-based filters: Check the createdAt timestamp against the specified timeframe
+1. For Rating-Based Filters:
+   - Positive feedback: Must have ratings >= 4 AND positive language in text responses
+   - Negative feedback: Must have ratings <= 2 AND negative language in text responses
+   - Neutral feedback: Must have ratings = 3 AND neutral/balanced language
 
-Be thorough and precise in your analysis. Only return indices for feedbacks that definitively match the criteria.`
+2. For Content-Based Filters:
+   - Suggestions: Look for phrases like "would be nice if", "should add", "could improve"
+   - Bugs: Look for phrases about errors, issues, "doesn't work", "broken"
+   - Praise: Look for positive language, compliments, "great", "excellent"
+   - Urgent: Look for words indicating immediacy, "urgent", "critical", "immediate"
+
+3. For Time-Based Filters:
+   - Check createdAt timestamp against current time
+   - lastDay: within last 24 hours
+   - lastWeek: within last 7 days
+   - lastMonth: within last 30 days
+
+Response Format:
+Return ONLY a JSON array of indices (0-based) for feedbacks that match ALL criteria for the filter type.
+Example: [0, 2, 5]
+
+Remember:
+- First understand the question from the title
+- Then interpret the response value in context
+- Consider both explicit ratings and implicit sentiment
+- Only include indices where you are 100% confident of the match
+- A feedback must match ALL aspects of the filter criteria to be included`
                     },
                     {
                         role: 'user',
                         content: JSON.stringify(feedbacks)
                     }
                 ],
-                temperature: 0.1 // Low temperature for more consistent results
+                temperature: 0.1
             });
 
             const matchingIndices = JSON.parse(response.choices[0]?.message?.content || '[]');
