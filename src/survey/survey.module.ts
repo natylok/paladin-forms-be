@@ -22,7 +22,9 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
             queueOptions: {
               durable: true
             },
-            persistent: true
+            persistent: true,
+            noAck: false,
+            prefetchCount: 1
           },
         }),
         inject: [ConfigService],

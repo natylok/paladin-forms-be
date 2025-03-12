@@ -6,7 +6,7 @@ import { Request } from 'express';
 import { User } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-import { EventPattern, Payload } from '@nestjs/microservices';
+import { EventPattern, Payload, RmqContext, Ctx } from '@nestjs/microservices';
 import { generateSurvey } from './ai.service';
 import { LimitSurveysGuard } from './limitSurveyGuard';
 import { RateLimit } from 'src/decorators/rate-limit.decorator';
@@ -58,18 +58,24 @@ export class SurveyController {
     }
 
     @EventPattern('survey_changed')
-    async handleSurveyCreated(@Payload() user: User) {
+    async handleSurveyCreated(@Payload() user: User, @Ctx() context: RmqContext) {
+        const channel = context.getChannelRef();
+        const message = context.getMessage();
+        
         this.logger.log('Received survey_changed event', { user: user.email });
         try {
             await this.surveyService.generateJavascriptCode(user);
             this.logger.log('Successfully processed survey_changed event', { user: user.email });
+            // Acknowledge and remove the message from queue
+            channel.ack(message);
         } catch (error) {
             this.logger.error(
                 'Failed to process survey_changed event',
                 error instanceof Error ? error.stack : undefined,
                 { user: user.email }
             );
-            throw error; // This will ensure the message isn't acknowledged if processing fails
+            // Negative acknowledge and don't requeue the message
+            channel.nack(message, false, false);
         }
     }
 }
