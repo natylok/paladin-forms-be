@@ -662,33 +662,7 @@ export class FeedbackService {
                     messages: [
                         {
                             role: 'system',
-                            content: `You are analyzing survey responses. For each feedback, check if it matches these criteria for "${filterType}":
-
-1. For negative feedback:
-   - Look for ratings of 1-2 or "Dissatisfied"/"Very dissatisfied"
-   - Check for negative sentiment in text responses
-   - Consider responses expressing dissatisfaction or problems
-
-2. For positive feedback:
-   - Look for ratings of 4-5 or "Satisfied"/"Very satisfied"
-   - Check for positive sentiment in text responses
-   - Consider responses expressing satisfaction or praise
-
-3. For neutral feedback:
-   - Look for ratings of 3 or "Neutral"
-   - Check for balanced or neutral sentiment
-
-4. For suggestions:
-   - Look for phrases about improvements or changes
-   - Check for constructive feedback
-   - Consider "would like", "could be better", "suggest"
-
-5. For bugs/issues:
-   - Look for technical problems or errors
-   - Check for functionality issues
-   - Consider "not working", "broken", "error"
-
-Return ONLY an array of indices for matching feedbacks. Example: [0,2,5]`
+                            content: `return me all the feedbacks that matches the filter criteria "${filterType}" as json format`
                         },
                         {
                             role: 'user',
