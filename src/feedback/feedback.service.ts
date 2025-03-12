@@ -1,7 +1,7 @@
 import { Injectable, Inject, BadRequestException, Logger } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Document, ObjectId } from 'mongoose';
 import { Feedback, FeedbackResponse } from './feedback.schema';
 import { Survey } from '../survey/survey.schema';
 import { User } from '@prisma/client';
@@ -174,6 +174,26 @@ export class FeedbackService {
         bugs: 'Find feedbacks mentioning bugs, issues, or technical problems',
         praise: 'Find feedbacks containing praise or compliments',
         urgent: 'Find feedbacks marked as urgent or critical issues'
+    };
+
+    private readonly demographicPatterns = [
+        /^(Yes|No|Rarely|Occasionally|Multiple times a week|Once a week)$/,
+        /^(\$[0-9,]+|Less than \$25,000|Prefer not to say)$/,
+        /^(18-24|25-34|35-44|45-54|55-64|65 and over)$/,
+        /^(Male|Female|Non-binary|Prefer not to say)$/
+    ];
+
+    private readonly ratingPhrases = {
+        positive: ['very satisfied', 'satisfied', 'extremely satisfied', '5', '4'],
+        negative: ['very dissatisfied', 'dissatisfied', 'not satisfied', '1', '2'],
+        neutral: ['neutral', 'neither satisfied nor dissatisfied', '3']
+    };
+
+    private readonly filterPhrases = {
+        suggestions: ['would be nice', 'should add', 'could improve', 'would be better', 'suggest', 'would love to see', 'it would be great if'],
+        bugs: ['error', 'bug', 'not working', 'broken', 'fails', 'crash', 'issue', 'problem'],
+        praise: ['great', 'excellent', 'awesome', 'love', 'perfect', 'amazing', 'wonderful'],
+        urgent: ['urgent', 'critical', 'immediate', 'asap', 'emergency']
     };
 
     constructor(
@@ -629,6 +649,136 @@ export class FeedbackService {
         return this.filterPrompts[filterType] || 'Filter description not found';
     }
 
+    private isDemographicResponse(value: string): boolean {
+        return this.demographicPatterns.some(pattern => pattern.test(value));
+    }
+
+    private matchesRatingCriteria(value: string | string[], type: 'positive' | 'negative' | 'neutral'): boolean {
+        if (Array.isArray(value)) return false;
+        
+        const numericValue = parseInt(value);
+        if (!isNaN(numericValue)) {
+            switch (type) {
+                case 'positive': return numericValue >= 4;
+                case 'negative': return numericValue <= 2;
+                case 'neutral': return numericValue === 3;
+            }
+        }
+
+        const normalizedValue = value.toLowerCase();
+        return this.ratingPhrases[type].includes(normalizedValue);
+    }
+
+    private containsPhrases(text: string, phrases: string[]): boolean {
+        const normalizedText = text.toLowerCase();
+        return phrases.some(phrase => normalizedText.includes(phrase.toLowerCase()));
+    }
+
+    private async shouldIncludeFeedback(feedback: Feedback, filterType: string): Promise<boolean> {
+        if (!feedback.responses || Object.keys(feedback.responses).length === 0) return false;
+
+        for (const response of Object.values(feedback.responses)) {
+            if (!response.value) continue;
+
+            const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
+            
+            // Skip demographic data and short responses
+            if (value.length < 10 || this.isDemographicResponse(value)) {
+                continue;
+            }
+
+            switch (filterType) {
+                case 'positive':
+                case 'negative':
+                case 'neutral':
+                    if (response.componentType === '1to5scale' || response.componentType === 'rating') {
+                        if (this.matchesRatingCriteria(value, filterType as 'positive' | 'negative' | 'neutral')) {
+                            return true;
+                        }
+                    } else if (response.componentType === 'text') {
+                        // Use sentiment analysis for text responses
+                        try {
+                            const sentiment = await this.analyzeSentiment(value);
+                            switch (filterType) {
+                                case 'positive':
+                                    return sentiment.label === 'positive' && sentiment.score > 0.7;
+                                case 'negative':
+                                    return sentiment.label === 'negative' && sentiment.score > 0.7;
+                                case 'neutral':
+                                    return sentiment.label === 'neutral' || 
+                                           (sentiment.score > 0.3 && sentiment.score < 0.7);
+                            }
+                        } catch (error) {
+                            this.logger.error('Sentiment analysis failed', {
+                                error: error instanceof Error ? error.message : 'Unknown error',
+                                value
+                            });
+                        }
+                    }
+                    break;
+
+                case 'suggestions':
+                    if (this.containsPhrases(value, this.filterPhrases.suggestions)) {
+                        return true;
+                    }
+                    break;
+
+                case 'bugs':
+                    if (this.containsPhrases(value, this.filterPhrases.bugs)) {
+                        return true;
+                    }
+                    break;
+
+                case 'praise':
+                    if (this.containsPhrases(value, this.filterPhrases.praise)) {
+                        return true;
+                    }
+                    break;
+
+                case 'urgent':
+                    if (this.containsPhrases(value, this.filterPhrases.urgent)) {
+                        return true;
+                    }
+                    break;
+            }
+        }
+
+        return false;
+    }
+
+    private getTimeBasedFeedbacks(feedbacks: Feedback[], filterType: 'lastDay' | 'lastWeek' | 'lastMonth'): { feedbacks: Feedback[], total: number } {
+        const now = new Date();
+        const timeThreshold = new Date();
+
+        switch (filterType) {
+            case 'lastDay':
+                timeThreshold.setDate(now.getDate() - 1);
+                break;
+            case 'lastWeek':
+                timeThreshold.setDate(now.getDate() - 7);
+                break;
+            case 'lastMonth':
+                timeThreshold.setDate(now.getDate() - 30);
+                break;
+        }
+
+        const filteredFeedbacks = feedbacks.filter(feedback => 
+            new Date(feedback.createdAt) >= timeThreshold
+        );
+
+        this.logger.debug('Time-based filtering completed', {
+            filterType,
+            totalFeedbacks: feedbacks.length,
+            matchingFeedbacks: filteredFeedbacks.length,
+            timeThreshold: timeThreshold.toISOString()
+        });
+
+        return {
+            feedbacks: filteredFeedbacks,
+            total: filteredFeedbacks.length
+        };
+    }
+
     async getFilteredFeedbacks(user: User, filterType: string, surveyId?: string): Promise<{ feedbacks: Feedback[], total: number }> {
         try {
             this.logger.debug('Getting filtered feedbacks', { user: user.email, filterType, surveyId });
@@ -641,191 +791,20 @@ export class FeedbackService {
                 return { feedbacks: [], total: 0 };
             }
 
-            const matchingFeedbacks: Feedback[] = [];
-
-            // Helper function to analyze sentiment using Hugging Face with retries
-            const analyzeSentiment = async (text: string, retryCount = 0): Promise<'positive' | 'negative' | 'neutral'> => {
-                try {
-                    if (!process.env.HUGGING_FACE_API_KEY) {
-                        this.logger.error('Hugging Face API key is not configured');
-                        return 'neutral';
-                    }
-
-                    const response = await fetch(HUGGING_FACE_API, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${process.env.HUGGING_FACE_API_KEY}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ inputs: text })
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        
-                        // Handle rate limiting and service unavailable errors
-                        if (response.status === 429 || response.status === 503) {
-                            if (retryCount < MAX_RETRIES) {
-                                this.logger.warn(`Retrying sentiment analysis (attempt ${retryCount + 1}/${MAX_RETRIES})`, {
-                                    status: response.status,
-                                    text: text.substring(0, 100)
-                                });
-                                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
-                                return analyzeSentiment(text, retryCount + 1);
-                            }
-                        }
-
-                        this.logger.error('Hugging Face API error', {
-                            status: response.status,
-                            statusText: response.statusText,
-                            error: errorText,
-                            text: text.substring(0, 100)
-                        });
-                        return 'neutral';
-                    }
-
-                    const data = await response.json();
-                    const sentiment = data[0];
-                    
-                    if (sentiment.label === 'POSITIVE' && sentiment.score > 0.7) return 'positive';
-                    if (sentiment.label === 'NEGATIVE' && sentiment.score > 0.7) return 'negative';
-                    return 'neutral';
-                } catch (error) {
-                    if (retryCount < MAX_RETRIES) {
-                        this.logger.warn(`Retrying sentiment analysis after error (attempt ${retryCount + 1}/${MAX_RETRIES})`, {
-                            error: error instanceof Error ? error.message : 'Unknown error',
-                            text: text.substring(0, 100)
-                        });
-                        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
-                        return analyzeSentiment(text, retryCount + 1);
-                    }
-
-                    this.logger.error('Sentiment analysis failed after retries', {
-                        error: error instanceof Error ? error.message : 'Unknown error',
-                        text: text.substring(0, 100)
-                    });
-                    return 'neutral';
-                }
-            };
-
-            // Helper function to check if a value matches rating criteria
-            const matchesRatingCriteria = (value: string | string[], type: 'positive' | 'negative' | 'neutral'): boolean => {
-                if (Array.isArray(value)) return false;
-                
-                const numericValue = parseInt(value);
-                if (!isNaN(numericValue)) {
-                    switch (type) {
-                        case 'positive': return numericValue >= 4;
-                        case 'negative': return numericValue <= 2;
-                        case 'neutral': return numericValue === 3;
-                    }
-                }
-
-                const normalizedValue = value.toLowerCase();
-                switch (type) {
-                    case 'positive':
-                        return ['very satisfied', 'satisfied', 'extremely satisfied', '5', '4'].includes(normalizedValue);
-                    case 'negative':
-                        return ['very dissatisfied', 'dissatisfied', 'not satisfied', '1', '2'].includes(normalizedValue);
-                    case 'neutral':
-                        return ['neutral', 'neither satisfied nor dissatisfied', '3'].includes(normalizedValue);
-                    default:
-                        return false;
-                }
-            };
-
-            // Helper function to check for specific phrases
-            const containsPhrases = (text: string, phrases: string[]): boolean => {
-                const normalizedText = text.toLowerCase();
-                return phrases.some(phrase => normalizedText.includes(phrase.toLowerCase()));
-            };
-
-            // Process each feedback
-            for (const feedback of feedbacks) {
-                if (!feedback.responses || Object.keys(feedback.responses).length === 0) continue;
-
-                let shouldInclude = false;
-                let textResponses = '';
-
-                // Collect all text responses for sentiment analysis
-                for (const response of Object.values(feedback.responses)) {
-                    if (!response.value) continue;
-
-                    const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
-                    
-                    // Skip demographic data and short responses
-                    if (value.length < 10 || 
-                        value.match(/^(Yes|No|Rarely|Occasionally|Multiple times a week|Once a week)$/) ||
-                        value.match(/^(\$[0-9,]+|Less than \$25,000|Prefer not to say)$/) ||
-                        value.match(/^(18-24|25-34|35-44|45-54|55-64|65 and over)$/) ||
-                        value.match(/^(Male|Female|Non-binary|Prefer not to say)$/)) {
-                        continue;
-                    }
-
-                    switch (filterType) {
-                        case 'positive':
-                        case 'negative':
-                        case 'neutral':
-                            if (response.componentType === '1to5scale' || response.componentType === 'rating') {
-                                if (matchesRatingCriteria(value, filterType as 'positive' | 'negative' | 'neutral')) {
-                                    shouldInclude = true;
-                                }
-                            } else if (typeof value === 'string') {
-                                textResponses += ' ' + value;
-                            }
-                            break;
-
-                        case 'suggestions':
-                            if (containsPhrases(value, ['would be nice', 'should add', 'could improve', 'would be better', 'suggest', 'would love to see', 'it would be great if'])) {
-                                shouldInclude = true;
-                            }
-                            break;
-
-                        case 'bugs':
-                            if (containsPhrases(value, ['error', 'bug', 'not working', 'broken', 'fails', 'crash', 'issue', 'problem'])) {
-                                shouldInclude = true;
-                            }
-                            break;
-
-                        case 'praise':
-                            if (containsPhrases(value, ['great', 'excellent', 'awesome', 'love', 'perfect', 'amazing', 'wonderful'])) {
-                                shouldInclude = true;
-                            }
-                            break;
-
-                        case 'urgent':
-                            if (containsPhrases(value, ['urgent', 'critical', 'immediate', 'asap', 'emergency'])) {
-                                shouldInclude = true;
-                            }
-                            break;
-
-                        case 'lastDay':
-                        case 'lastWeek':
-                        case 'lastMonth':
-                            const feedbackDate = new Date(feedback.createdAt);
-                            const now = new Date();
-                            const diffInDays = (now.getTime() - feedbackDate.getTime()) / (1000 * 60 * 60 * 24);
-                            
-                            shouldInclude = filterType === 'lastDay' ? diffInDays <= 1 :
-                                          filterType === 'lastWeek' ? diffInDays <= 7 :
-                                          diffInDays <= 30;
-                            break;
-                    }
-                }
-
-                // If we have text responses and haven't already decided to include the feedback,
-                // analyze sentiment for relevant filter types
-                if (textResponses && !shouldInclude && ['positive', 'negative', 'neutral'].includes(filterType)) {
-                    const sentiment = await analyzeSentiment(textResponses.trim());
-                    shouldInclude = sentiment === filterType;
-                }
-
-                if (shouldInclude) {
-                    matchingFeedbacks.push(feedback);
-                }
+            // Handle time-based filtering first
+            if (['lastDay', 'lastWeek', 'lastMonth'].includes(filterType)) {
+                return this.getTimeBasedFeedbacks(feedbacks, filterType as 'lastDay' | 'lastWeek' | 'lastMonth');
             }
 
-            this.logger.debug('Filtered feedbacks using sentiment analysis', {
+            // For other filter types, process each feedback
+            const matchingFeedbacksPromises = feedbacks.map(async feedback => {
+                const shouldInclude = await this.shouldIncludeFeedback(feedback, filterType);
+                return shouldInclude ? feedback : null;
+            });
+
+            const matchingFeedbacks = (await Promise.all(matchingFeedbacksPromises)).filter((feedback): feedback is Document<unknown, {}, Feedback> & Feedback & { _id: ObjectId } => feedback !== null);
+
+            this.logger.debug('Filtered feedbacks', {
                 user: user.email,
                 filterType,
                 totalFeedbacks: feedbacks.length,
@@ -845,6 +824,73 @@ export class FeedbackService {
             );
             throw error;
         }
+    }
+
+    private async analyzeSentiment(text: string): Promise<{ label: string; score: number }> {
+        let retries = 0;
+        while (retries < MAX_RETRIES) {
+            try {
+                const response = await fetch(HUGGING_FACE_API, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${process.env.HUGGING_FACE_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ inputs: text })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    this.logger.error('Hugging Face API error', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        error: errorText,
+                        retry: retries + 1
+                    });
+
+                    // Handle rate limiting and service unavailable errors
+                    if (response.status === 429 || response.status === 503) {
+                        retries++;
+                        if (retries < MAX_RETRIES) {
+                            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                            continue;
+                        }
+                    }
+                    throw new Error(`Hugging Face API error: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                if (!Array.isArray(data) || data.length === 0) {
+                    throw new Error('Invalid response format from Hugging Face API');
+                }
+
+                const result = data[0];
+                if (!result || !result.label || typeof result.score !== 'number') {
+                    throw new Error('Invalid sentiment analysis result');
+                }
+
+                return {
+                    label: result.label,
+                    score: result.score
+                };
+            } catch (error) {
+                this.logger.error('Error in sentiment analysis', {
+                    error: error instanceof Error ? error.message : 'Unknown error',
+                    retry: retries + 1
+                });
+
+                retries++;
+                if (retries < MAX_RETRIES) {
+                    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                    continue;
+                }
+                throw error;
+            }
+        }
+
+        // If we've exhausted all retries, return neutral sentiment
+        this.logger.warn('Exhausted all retries for sentiment analysis, returning neutral', { text });
+        return { label: 'neutral', score: 0.5 };
     }
 
 }
