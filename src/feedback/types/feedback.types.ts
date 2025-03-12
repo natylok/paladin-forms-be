@@ -36,7 +36,7 @@ export interface FeedbackSummary {
                 [key: string]: number;
             };
         };
-        "1to10scale": {
+        "1to10": {
             total: number;
             average: number;
             distribution: {

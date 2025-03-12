@@ -36,7 +36,7 @@ export class FeedbackAnalysisService {
                 totalFeedbacks,
                 textResponseCount: 0,
                 averageSentiment: 0,
-                "1to10scale": {
+                "1to10": {
                     total: 0,
                     average: 0,
                     distribution: {
@@ -91,8 +91,8 @@ export class FeedbackAnalysisService {
                 const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
             
                 if(response.componentType === SurveyComponentType.SCALE_1_TO_10) {
-                    stats["1to10scale"].total++;
-                    stats["1to10scale"].distribution[value]++;
+                    stats["1to10"].total++;
+                    stats["1to10"].distribution[value]++;
                 }
 
                 if (this.isRatingResponse(response)) {
