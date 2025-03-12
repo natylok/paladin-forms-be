@@ -12,7 +12,7 @@ import * as csv from 'csv-writer';
 import { createObjectCsvWriter } from 'csv-writer';
 import { RedisClientType } from 'redis';
 
-const openai = new OpenAI({apiKey: process.env.OPENAI_API_KEY});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const overviewFeedbackSystemPrompt = () => `
 You are a deterministic feedback analysis system. Your task is to analyze feedback data using strict, predefined rules to ensure consistent results. Return a JSON object with the following structure:
@@ -152,7 +152,7 @@ export class FeedbackService {
         @InjectModel(Feedback.name) private readonly feedbackModel: Model<Feedback>,
         private readonly loggerService: LoggerService,
         @Inject('REDIS_CLIENT') private readonly redis: RedisClientType
-    ) {}
+    ) { }
 
     private generateCacheKey(user: User): string {
         return `paladin:feedback:summary:${user.email}`;
@@ -161,7 +161,7 @@ export class FeedbackService {
     private async getCachedSummary(cacheKey: string): Promise<any | null> {
         try {
             const cachedData = await this.redis.get(cacheKey);
-            
+
             this.logger.debug('Cache get attempt', {
                 cacheKey,
                 hasData: !!cachedData,
@@ -178,9 +178,9 @@ export class FeedbackService {
                 return null;
             }
         } catch (error) {
-            this.logger.error('Cache get error', { 
+            this.logger.error('Cache get error', {
                 error: error instanceof Error ? error.message : 'Unknown error',
-                cacheKey 
+                cacheKey
             });
             return null;
         }
@@ -189,7 +189,7 @@ export class FeedbackService {
     private async setCachedSummary(cacheKey: string, data: any): Promise<boolean> {
         try {
             const serializedData = JSON.stringify(data);
-            
+
             this.logger.debug('Cache set attempt', {
                 cacheKey,
                 dataSize: serializedData.length,
@@ -198,10 +198,10 @@ export class FeedbackService {
 
             // Set data with TTL in seconds
             await this.redis.setEx(cacheKey, this.CACHE_TTL, serializedData);
-            
+
             // Verify it was set
             const exists = await this.redis.exists(cacheKey);
-            
+
             const success = exists === 1;
             this.logger.debug('Cache set result', {
                 cacheKey,
@@ -211,7 +211,7 @@ export class FeedbackService {
 
             return success;
         } catch (error) {
-            this.logger.error('Cache set error', { 
+            this.logger.error('Cache set error', {
                 error: error instanceof Error ? error.message : 'Unknown error',
                 stack: error instanceof Error ? error.stack : undefined,
                 cacheKey
@@ -223,13 +223,13 @@ export class FeedbackService {
     async submitFeedback(surveyId: string, responses: Record<string, FeedbackResponse>): Promise<void> {
         try {
             this.logger.debug('Processing feedback submission', { surveyId, responses });
-            
+
             // Clean the responses object to remove any nested responses
             const cleanResponses: Record<string, FeedbackResponse> = {};
-            
+
             // If responses is nested inside another responses object, get the inner responses
             const actualResponses = responses.responses || responses;
-            
+
             Object.entries(actualResponses).forEach(([key, value]) => {
                 // Skip if the key is 'responses' or 'surveyId' or 'submittedAt'
                 if (key === 'responses' || key === 'surveyId' || key === 'submittedAt') {
@@ -244,14 +244,14 @@ export class FeedbackService {
                     };
                 }
             });
-            
+
             // Create a new feedback document
             const feedback = new this.feedbackModel({
                 surveyId,
                 responses: cleanResponses,
                 isRead: false
             });
-            
+
             await feedback.save();
             this.logger.debug('Feedback saved to database', { surveyId, feedbackId: feedback._id });
         } catch (error) {
@@ -269,9 +269,9 @@ export class FeedbackService {
             this.logger.debug('Saving feedback', { surveyId: feedback.surveyId });
             const newFeedback = new this.feedbackModel(feedback);
             await newFeedback.save();
-            this.logger.debug('Feedback saved successfully', { 
+            this.logger.debug('Feedback saved successfully', {
                 surveyId: feedback.surveyId,
-                feedbackId: newFeedback._id 
+                feedbackId: newFeedback._id
             });
         } catch (error) {
             this.logger.error(
@@ -304,8 +304,8 @@ export class FeedbackService {
                 return { feedbacks: [], totalPages: 0 };
             }
 
-            this.logger.debug('Feedbacks fetched successfully', { 
-                user: user.email, 
+            this.logger.debug('Feedbacks fetched successfully', {
+                user: user.email,
                 count: feedbacks.length,
                 page,
                 totalPages
@@ -325,14 +325,14 @@ export class FeedbackService {
     async summerizeAllFeedbacks(user: User): Promise<any> {
         try {
             this.logger.debug('Attempting to get feedback summary', { user: user.email });
-            
+
             const cacheKey = this.generateCacheKey(user);
             this.logger.debug('Checking cache with key', { cacheKey });
-            
+
             // Try to get from cache
             const cachedSummary = await this.getCachedSummary(cacheKey);
             if (cachedSummary) {
-                this.logger.debug('Returning cached feedback summary', { 
+                this.logger.debug('Returning cached feedback summary', {
                     user: user.email,
                     cacheKey,
                     summaryType: typeof cachedSummary
@@ -351,11 +351,11 @@ export class FeedbackService {
             const response = await openai.chat.completions.create({
                 model: 'gpt-4o-mini',
                 messages: [
-                    { 
+                    {
                         role: 'system',
                         content: overviewFeedbackSystemPrompt()
                     },
-                    { 
+                    {
                         role: 'user',
                         content: JSON.stringify(feedbacks.feedbacks)
                     }
@@ -363,7 +363,7 @@ export class FeedbackService {
                 temperature: 0.2,
                 max_tokens: 1000
             });
-            
+
             const summary = response.choices[0]?.message?.content;
 
             if (!summary) {
@@ -372,21 +372,21 @@ export class FeedbackService {
 
             // Parse the summary
             const parsedSummary = JSON.parse(summary);
-            
+
             // Attempt to cache the parsed summary
             const cached = await this.setCachedSummary(cacheKey, parsedSummary);
             if (cached) {
-                this.logger.debug('Feedback summary cached successfully', { 
+                this.logger.debug('Feedback summary cached successfully', {
                     user: user.email,
                     cacheKey
                 });
             } else {
-                this.logger.warn('Failed to cache feedback summary', { 
+                this.logger.warn('Failed to cache feedback summary', {
                     user: user.email,
                     cacheKey
                 });
             }
-            
+
             return parsedSummary;
         } catch (error) {
             this.logger.error(
@@ -423,9 +423,9 @@ export class FeedbackService {
                 recentFeedbacks: feedbacks.feedbacks.slice(-5)  // Last 5 feedbacks
             };
 
-            this.logger.debug('Feedback overview generated', { 
+            this.logger.debug('Feedback overview generated', {
                 user: user.email,
-                totalFeedbacks: overview.totalFeedbacks 
+                totalFeedbacks: overview.totalFeedbacks
             });
             return overview;
         } catch (error) {
@@ -472,7 +472,7 @@ export class FeedbackService {
     async exportFeedbacksToCSV(user: User, surveyId: string): Promise<string> {
         try {
             this.logger.debug('Starting feedback export to CSV', { user: user.email, surveyId });
-            
+
             // Get survey details
             const survey = await this.surveyModel.findOne({ surveyId }).exec();
             if (!survey) {
@@ -602,11 +602,11 @@ export class FeedbackService {
     async getFilteredFeedbacks(user: User, filterType: string, surveyId?: string): Promise<{ feedbacks: Feedback[], total: number }> {
         try {
             this.logger.debug('Getting filtered feedbacks', { user: user.email, filterType, surveyId });
-            
+
             // Get all feedbacks first
             const query = surveyId ? { surveyId } : {};
             const feedbacks = await this.feedbackModel.find(query).exec();
-            
+
             if (!feedbacks.length) {
                 this.logger.warn('No feedbacks found to filter', { user: user.email, filterType, surveyId });
                 return { feedbacks: [], total: 0 };
@@ -615,13 +615,42 @@ export class FeedbackService {
             // Get the filter prompt
             const filterPrompt = this.filterPrompts[filterType] || `Find feedbacks that match the ${filterType} criteria`;
 
-            // Use GPT-4-mini to filter the feedbacks
+            // Use GPT-4-mini to filter the feedbacks with improved prompt
             const response = await openai.chat.completions.create({
                 model: 'gpt-4o-mini',
                 messages: [
                     {
                         role: 'system',
-                        content: `You are a feedback filtering system. Your task is to analyze the given feedbacks and return the indices of feedbacks that match the following criteria: ${filterPrompt}. Return ONLY a JSON array of indices (0-based) of matching feedbacks. Example: [0, 2, 5]. Do not include any explanation or other text.`
+                        content: `You are a highly precise feedback analysis system. Your task is to thoroughly analyze each feedback in the provided dataset and identify those that match specific criteria.
+
+Analysis Instructions:
+1. Read and analyze EVERY feedback in detail
+2. For each feedback:
+   - Examine all response values and their context
+   - Consider both explicit ratings and implicit sentiment in text responses
+   - Look for specific keywords and phrases that match the filter criteria
+   - Consider the overall context and tone of the feedback
+   - Check timestamps for time-based filters
+   - Analyze component types and their responses
+
+Filter Criteria: "${filterPrompt}"
+
+Response Format:
+- Return ONLY a JSON array of indices (0-based) for feedbacks that STRONGLY match the criteria
+- Example: [0, 2, 5]
+- Do not include any explanation or additional text
+- Only include indices where you are highly confident of the match
+
+Specific Analysis Rules:
+- For positive feedback: Look for high ratings (4-5) AND positive language/sentiment
+- For negative feedback: Look for low ratings (1-2) AND negative language/sentiment
+- For neutral feedback: Look for middle ratings (3) AND balanced/neutral language
+- For suggestions: Look for phrases indicating improvements, ideas, or recommendations
+- For bugs: Look for descriptions of technical issues, errors, or malfunctions
+- For urgent: Look for language indicating immediacy or critical problems
+- For time-based filters: Check the createdAt timestamp against the specified timeframe
+
+Be thorough and precise in your analysis. Only return indices for feedbacks that definitively match the criteria.`
                     },
                     {
                         role: 'user',
@@ -634,16 +663,16 @@ export class FeedbackService {
             const matchingIndices = JSON.parse(response.choices[0]?.message?.content || '[]');
             const filteredFeedbacks = matchingIndices.map((index: number) => feedbacks[index]).filter(Boolean);
 
-            this.logger.debug('Filtered feedbacks using AI', { 
-                user: user.email, 
+            this.logger.debug('Filtered feedbacks using AI', {
+                user: user.email,
                 filterType,
                 totalFeedbacks: feedbacks.length,
-                matchingFeedbacks: filteredFeedbacks.length 
+                matchingFeedbacks: filteredFeedbacks.length
             });
 
-            return { 
-                feedbacks: filteredFeedbacks, 
-                total: filteredFeedbacks.length 
+            return {
+                feedbacks: filteredFeedbacks,
+                total: filteredFeedbacks.length
             };
         } catch (error) {
             this.logger.error(
