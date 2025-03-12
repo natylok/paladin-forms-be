@@ -682,6 +682,10 @@ PROCESS:
                     {
                         role: 'user',
                         content: JSON.stringify(feedbacks)
+                    },
+                    {
+                        role: 'user',
+                        content: `filter criteria: ${filterPrompt}`
                     }
                 ],
                 temperature: 0.1,
