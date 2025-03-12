@@ -662,17 +662,68 @@ export class FeedbackService {
                     messages: [
                         {
                             role: 'system',
-                            content: `From all the feedbacks you gonna get, give me all feedbacks that match the filter criteria "${filterType}" as json format, read the feedbacks as follow responses: Record<string, {
-        value: string | string[];
-        title: string;
-         read the value this is your answers and the question is the title`
+                            content: `You are a feedback filtering system. Analyze each feedback's responses and return indices of those matching the "${filterType}" criteria.
+
+FEEDBACK STRUCTURE:
+Each feedback contains responses where:
+- title: The question text
+- value: The answer (can be text, rating, or array of choices)
+
+FILTERING CRITERIA:
+For "${filterType}" filter, use these rules:
+
+1. For "negative" feedback:
+   - Rating questions: Look for values "1", "2", "Very dissatisfied", "Dissatisfied", "Not satisfied"
+   - Text responses: Look for negative sentiment, complaints, or dissatisfaction
+   - Return if ANY response in the feedback matches these criteria
+
+2. For "positive" feedback:
+   - Rating questions: Look for values "4", "5", "Very satisfied", "Satisfied", "Extremely satisfied"
+   - Text responses: Look for positive sentiment, praise, or satisfaction
+   - Return if ANY response in the feedback matches these criteria
+
+3. For "neutral" feedback:
+   - Rating questions: Look for values "3", "Neutral", "Neither satisfied nor dissatisfied"
+   - Text responses: Look for balanced or neutral sentiment
+   - Return if MOST responses in the feedback are neutral
+
+4. For "suggestions" feedback:
+   - Look for phrases like: "would be nice", "should add", "could improve", "would be better", "suggest", "would love to see"
+   - Look for constructive feedback or feature requests
+   - Return if ANY response contains suggestions
+
+5. For "bugs" feedback:
+   - Look for phrases about technical issues: "error", "bug", "not working", "broken", "fails", "crash"
+   - Look for descriptions of malfunctions or technical problems
+   - Return if ANY response mentions technical issues
+
+6. For "praise" feedback:
+   - Look for positive phrases: "great", "excellent", "awesome", "love", "perfect", "amazing"
+   - Look for explicit compliments or positive experiences
+   - Return if ANY response contains praise
+
+7. For "urgent" feedback:
+   - Look for urgency indicators: "urgent", "critical", "immediate", "asap", "emergency"
+   - Look for time-sensitive issues or critical problems
+   - Return if ANY response indicates urgency
+
+RESPONSE FORMAT:
+Return ONLY an array of indices (numbers) for matching feedbacks.
+Example: [0, 2, 4] or [] if none match.
+
+ANALYSIS STEPS:
+1. Read each feedback's responses
+2. Check values against the criteria for the specified filter type
+3. If ANY response in a feedback matches the criteria, include its index
+4. Return array of matching indices`
                         },
                         {
                             role: 'user',
                             content: JSON.stringify(simplifiedBatch)
                         }
                     ],
-                    temperature: 0.1
+                    temperature: 0.1,
+                    max_tokens: 150
                 });
 
                 const content = response.choices[0]?.message?.content;
