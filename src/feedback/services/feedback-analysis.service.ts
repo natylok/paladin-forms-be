@@ -111,7 +111,7 @@ export class FeedbackAnalysisService {
     }
 
     private isRatingResponse(response: { componentType: string }): boolean {
-        return ['rating', '1to5scale', '1to10scale'].includes(response.componentType);
+        return ['rating', '1to5scale', '1to10scale', '1to5faces'].includes(response.componentType);
     }
 
     private shouldSkipTextAnalysis(value: string): boolean {

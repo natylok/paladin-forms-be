@@ -7,8 +7,6 @@ import { Request, Response } from 'express';
 import { JwtGuard } from 'src/auth/guards';
 import { PremiumGuard } from 'src/auth/guards/premium.guard';
 import { LoggerService } from '../logger/logger.service';
-import * as fs from 'fs';
-import * as path from 'path';
 import { FilterType } from './types/feedback.types';
 import { SurveyComponentType } from 'src/survey/survey.schema';
 
@@ -100,28 +98,6 @@ export class FeedbackController {
       );
       throw new HttpException(
         'Failed to summarize feedbacks',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
-    }
-  }
-
-  @UseGuards(JwtGuard, PremiumGuard)
-  @Get('overview')
-  async overviewFeedbacks(@Req() req: Request) {
-    try {
-      const user = req.user as User;
-      this.logger.log('Generating feedback overview', { user: user.email });
-      const overview = await this.feedbackService.overviewFeedbacks(user);
-      this.logger.log('Feedback overview generated successfully', { user: user.email });
-      return overview;
-    } catch (error) {
-      this.logger.error(
-        'Error generating feedback overview',
-        error instanceof Error ? error.stack : undefined,
-        { user: (req.user as User)?.email }
-      );
-      throw new HttpException(
-        'Failed to generate feedback overview',
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
