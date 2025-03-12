@@ -140,7 +140,7 @@ export class FeedbackAnalysisService {
         date: Date,
         textResponses: TextResponse[]
     ): void {
-        if (response.componentType === 'textbox' || response.componentType === 'input') {
+        if (response.componentType === 'text' || response.componentType === 'textbox' || response.componentType === 'input') {
             textResponses.push({
                 text: value,
                 type: response.title || 'general',
@@ -216,7 +216,15 @@ export class FeedbackAnalysisService {
     ): void {
         totalSentimentScore += sentiment.score;
         sentimentCount++;
-        sentimentCounts[sentiment.label as keyof typeof sentimentCounts]++;
+
+        // Increment the appropriate sentiment counter
+        if (sentiment.label === 'positive' && sentiment.score > 0.7) {
+            sentimentCounts.positive++;
+        } else if (sentiment.label === 'negative' && sentiment.score > 0.7) {
+            sentimentCounts.negative++;
+        } else {
+            sentimentCounts.neutral++;
+        }
 
         const dayKey = response.date.toISOString().split('T')[0];
         const weekKey = getWeekKey(response.date);
