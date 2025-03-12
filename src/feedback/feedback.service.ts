@@ -423,21 +423,8 @@ export class FeedbackService implements OnModuleInit {
 
     async summerizeAllFeedbacks(user: User): Promise<any> {
         try {
-            this.logger.debug('Attempting to get feedback summary', { user: user.email });
-
-            // Generate new summary if not in cache
-            this.logger.debug('Cache miss - generating new feedback summary', { user: user.email });
+            this.logger.debug('Starting feedback summary generation', { user: user.email });
             const { feedbacks } = await this.getFeedbacks(user);
-            
-            // Debug log the feedbacks
-            this.logger.debug('Retrieved feedbacks', {
-                count: feedbacks.length,
-                sampleFeedback: feedbacks[0] ? {
-                    id: feedbacks[0]._id,
-                    responseCount: feedbacks[0].responses ? Object.keys(feedbacks[0].responses).length : 0,
-                    sampleResponse: feedbacks[0].responses ? Object.values(feedbacks[0].responses)[0] : null
-                } : null
-            });
 
             if (!feedbacks.length) {
                 this.logger.warn('No feedbacks found to summarize', { user: user.email });
@@ -446,295 +433,108 @@ export class FeedbackService implements OnModuleInit {
 
             // Initialize summary structure
             const summary = {
-                overallSatisfaction: {
-                    score: 0,
-                    totalResponses: 0,
-                    satisfactionBreakdown: {
-                        verySatisfied: 0,
-                        satisfied: 0,
-                        neutral: 0,
-                        dissatisfied: 0,
-                        veryDissatisfied: 0
-                    }
-                },
-                keyInsights: {
+                textAnalysis: {
                     topStrengths: [] as string[],
                     topConcerns: [] as string[],
-                    improvementAreas: [] as string[],
-                    userPreferences: [] as string[]
+                    suggestions: [] as string[],
+                    urgentIssues: [] as string[]
                 },
-                componentAnalysis: {
-                    mostLiked: {
-                        component: '',
-                        satisfactionScore: 0,
-                        totalResponses: 0
-                    },
-                    needsImprovement: {
-                        component: '',
-                        satisfactionScore: 0,
-                        totalResponses: 0
-                    }
-                },
-                trends: {
-                    satisfactionOverTime: {
-                        labels: [] as string[],
-                        values: [] as number[]
-                    },
-                    responseVolume: {
-                        labels: [] as string[],
-                        values: [] as number[]
-                    }
-                },
-                userSegments: {
-                    satisfiedUsers: {
-                        percentage: 0,
-                        commonCharacteristics: [] as string[]
-                    },
-                    neutralUsers: {
-                        percentage: 0,
-                        commonCharacteristics: [] as string[]
-                    },
-                    dissatisfiedUsers: {
-                        percentage: 0,
-                        commonCharacteristics: [] as string[]
-                    }
-                },
-                actionableInsights: {
-                    priorityActions: [] as string[],
-                    quickWins: [] as string[],
-                    longTermGoals: [] as string[]
+                statistics: {
+                    totalFeedbacks: feedbacks.length,
+                    textResponseCount: 0,
+                    averageSentiment: 0
                 }
             };
 
-            // Process each feedback
-            const componentScores: Record<string, { total: number; count: number }> = {};
-            const dateScores: Record<string, { total: number; count: number }> = {};
-            const dateResponses: Record<string, number> = {};
-            let totalRatings = 0;
-            let totalRatingSum = 0;
+            // Collect all text responses for analysis
+            const textResponses: { text: string, type: string }[] = [];
+            let totalSentimentScore = 0;
+            let sentimentCount = 0;
 
+            // First pass: collect all text responses
             for (const feedback of feedbacks) {
-                if (!feedback.responses) {
-                    this.logger.debug('Feedback has no responses', { feedbackId: feedback._id });
-                    continue;
-                }
-
-                const date = new Date(feedback.createdAt).toISOString().split('T')[0];
-                dateResponses[date] = (dateResponses[date] || 0) + 1;
-
-                // Debug log the responses structure
-                this.logger.debug('Processing feedback', {
-                    feedbackId: feedback._id,
-                    responseCount: Object.keys(feedback.responses).length,
-                    responseTypes: Object.values(feedback.responses).map(r => r.componentType)
-                });
+                if (!feedback.responses) continue;
 
                 for (const [componentId, response] of Object.entries(feedback.responses)) {
-                    if (!response.value) {
-                        this.logger.debug('Response has no value', { componentId, componentType: response.componentType });
+                    if (!response.value) continue;
+
+                    const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
+                    
+                    // Skip demographic or very short responses
+                    if (value.length < 10 || this.isDemographicResponse(value)) {
                         continue;
                     }
 
-                    const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
-
-                    // Debug log each response being processed
-                    this.logger.debug('Processing response', {
-                        componentId,
-                        componentType: response.componentType,
-                        valueType: typeof value,
-                        valueLength: value.length,
-                        value: value.substring(0, 50) // Log first 50 chars for debugging
-                    });
-
-                    // Handle ratings
-                    if (response.componentType === '1to5scale' || response.componentType === 'rating') {
-                        const rating = this.convertRatingToNumber(value);
-                        if (rating !== -1) {
-                            totalRatings++;
-                            totalRatingSum += rating;
-
-                            this.logger.debug('Processing rating', {
-                                componentId,
-                                originalValue: value,
-                                convertedRating: rating,
-                                totalRatings,
-                                totalRatingSum
-                            });
-
-                            // Update satisfaction breakdown
-                            if (rating >= 5) summary.overallSatisfaction.satisfactionBreakdown.verySatisfied++;
-                            else if (rating === 4) summary.overallSatisfaction.satisfactionBreakdown.satisfied++;
-                            else if (rating === 3) summary.overallSatisfaction.satisfactionBreakdown.neutral++;
-                            else if (rating === 2) summary.overallSatisfaction.satisfactionBreakdown.dissatisfied++;
-                            else if (rating === 1) summary.overallSatisfaction.satisfactionBreakdown.veryDissatisfied++;
-
-                            // Track component scores
-                            if (!componentScores[componentId]) {
-                                componentScores[componentId] = { total: 0, count: 0 };
-                            }
-                            componentScores[componentId].total += rating;
-                            componentScores[componentId].count++;
-
-                            // Track date scores
-                            if (!dateScores[date]) {
-                                dateScores[date] = { total: 0, count: 0 };
-                            }
-                            dateScores[date].total += rating;
-                            dateScores[date].count++;
-                        } else {
-                            this.logger.debug('Invalid rating value', { value });
-                        }
-                    }
-                    // Handle text responses
-                    else if (response.componentType === 'text' && value.length >= 10) {
-                        try {
-                            const sentiment = await this.analyzeSentiment(value);
-                            
-                            this.logger.debug('Sentiment analysis result', {
-                                componentId,
-                                sentiment,
-                                textLength: value.length
-                            });
-
-                            // Categorize insights based on sentiment
-                            if (sentiment.label === 'positive' && sentiment.score > 0.7) {
-                                summary.keyInsights.topStrengths.push(value);
-                            } else if (sentiment.label === 'negative' && sentiment.score > 0.7) {
-                                summary.keyInsights.topConcerns.push(value);
-                            }
-
-                            // Check for suggestions and improvements
-                            if (this.containsPhrases(value, this.filterPhrases.suggestions)) {
-                                summary.keyInsights.improvementAreas.push(value);
-                            }
-
-                            // Check for urgent issues
-                            if (this.containsPhrases(value, this.filterPhrases.urgent)) {
-                                summary.actionableInsights.priorityActions.push(value);
-                            }
-
-                            // Categorize quick wins and long-term goals
-                            if (value.length < 100 && this.containsPhrases(value, this.filterPhrases.suggestions)) {
-                                summary.actionableInsights.quickWins.push(value);
-                            } else if (value.length >= 100 && this.containsPhrases(value, this.filterPhrases.suggestions)) {
-                                summary.actionableInsights.longTermGoals.push(value);
-                            }
-                        } catch (error) {
-                            this.logger.error('Sentiment analysis failed for text', {
-                                error: error instanceof Error ? error.message : 'Unknown error',
-                                value: value.substring(0, 50)
-                            });
-                        }
+                    if (response.componentType === 'textbox' || response.componentType === 'text') {
+                        textResponses.push({
+                            text: value,
+                            type: response.title || 'general'
+                        });
+                        summary.statistics.textResponseCount++;
                     }
                 }
             }
 
-            // Debug log the accumulated scores
-            this.logger.debug('Accumulated scores', {
-                totalRatings,
-                totalRatingSum,
-                componentScoresCount: Object.keys(componentScores).length,
-                dateScoresCount: Object.keys(dateScores).length
+            this.logger.debug('Collected text responses', {
+                count: textResponses.length,
+                types: [...new Set(textResponses.map(r => r.type))]
             });
 
-            // Calculate overall satisfaction score
-            if (totalRatings > 0) {
-                summary.overallSatisfaction.score = (totalRatingSum / totalRatings) * 20;
-                summary.overallSatisfaction.totalResponses = totalRatings;
+            // Second pass: analyze sentiment and categorize responses
+            for (const response of textResponses) {
+                try {
+                    const sentiment = await this.analyzeSentiment(response.text);
+                    totalSentimentScore += sentiment.score;
+                    sentimentCount++;
 
-                // Convert satisfaction breakdown to percentages
-                for (const key in summary.overallSatisfaction.satisfactionBreakdown) {
-                    summary.overallSatisfaction.satisfactionBreakdown[key] = 
-                        (summary.overallSatisfaction.satisfactionBreakdown[key] / totalRatings) * 100;
+                    this.logger.debug('Sentiment analysis result', {
+                        text: response.text.substring(0, 50),
+                        sentiment,
+                        type: response.type
+                    });
+
+                    // Categorize based on sentiment and content
+                    if (sentiment.label === 'positive' && sentiment.score > 0.7) {
+                        summary.textAnalysis.topStrengths.push(response.text);
+                    } 
+                    else if (sentiment.label === 'negative' && sentiment.score > 0.7) {
+                        summary.textAnalysis.topConcerns.push(response.text);
+                    }
+
+                    // Check for suggestions and urgent issues
+                    if (this.containsPhrases(response.text, this.filterPhrases.suggestions)) {
+                        summary.textAnalysis.suggestions.push(response.text);
+                    }
+                    if (this.containsPhrases(response.text, this.filterPhrases.urgent)) {
+                        summary.textAnalysis.urgentIssues.push(response.text);
+                    }
+
+                } catch (error) {
+                    this.logger.error('Failed to analyze text response', {
+                        error: error instanceof Error ? error.message : 'Unknown error',
+                        text: response.text.substring(0, 50)
+                    });
                 }
             }
 
-            // Find most and least liked components
-            const componentAnalysis = Object.entries(componentScores).map(([component, scores]) => ({
-                component,
-                satisfactionScore: scores.total / scores.count,
-                totalResponses: scores.count
-            }));
-
-            if (componentAnalysis.length > 0) {
-                const sorted = componentAnalysis.sort((a, b) => b.satisfactionScore - a.satisfactionScore);
-                summary.componentAnalysis.mostLiked = sorted[0];
-                summary.componentAnalysis.needsImprovement = sorted[sorted.length - 1];
+            // Calculate average sentiment
+            if (sentimentCount > 0) {
+                summary.statistics.averageSentiment = totalSentimentScore / sentimentCount;
             }
 
-            // Process trends
-            const dates = Object.keys(dateScores).sort();
-            summary.trends.satisfactionOverTime = {
-                labels: dates,
-                values: dates.map(date => dateScores[date].total / dateScores[date].count)
-            };
-            summary.trends.responseVolume = {
-                labels: dates,
-                values: dates.map(date => dateResponses[date] || 0)
-            };
+            // Deduplicate and limit arrays to top 5 most relevant items
+            summary.textAnalysis.topStrengths = [...new Set(summary.textAnalysis.topStrengths)].slice(0, 5);
+            summary.textAnalysis.topConcerns = [...new Set(summary.textAnalysis.topConcerns)].slice(0, 5);
+            summary.textAnalysis.suggestions = [...new Set(summary.textAnalysis.suggestions)].slice(0, 5);
+            summary.textAnalysis.urgentIssues = [...new Set(summary.textAnalysis.urgentIssues)].slice(0, 5);
 
-            // Calculate user segments
-            const totalUsers = feedbacks.length;
-            if (totalUsers > 0) {
-                const satisfiedCount = feedbacks.filter(f => 
-                    Object.values(f.responses || {}).some(r => 
-                        r.componentType === 'rating' && parseInt(r.value as string) >= 4
-                    )
-                ).length;
-                const dissatisfiedCount = feedbacks.filter(f => 
-                    Object.values(f.responses || {}).some(r => 
-                        r.componentType === 'rating' && parseInt(r.value as string) <= 1
-                    )
-                ).length;
-                const neutralCount = totalUsers - satisfiedCount - dissatisfiedCount;
-
-                summary.userSegments = {
-                    satisfiedUsers: {
-                        percentage: (satisfiedCount / totalUsers) * 100,
-                        commonCharacteristics: this.extractCommonPhrases(
-                            feedbacks.filter(f => Object.values(f.responses || {})
-                                .some(r => r.componentType === 'rating' && parseInt(r.value as string) >= 4))
-                                .flatMap(f => Object.values(f.responses || {})
-                                    .filter(r => r.componentType === 'text')
-                                    .map(r => r.value as string)
-                                )
-                        )
-                    },
-                    neutralUsers: {
-                        percentage: (neutralCount / totalUsers) * 100,
-                        commonCharacteristics: this.extractCommonPhrases(
-                            feedbacks.filter(f => Object.values(f.responses || {})
-                                .some(r => r.componentType === 'rating' && parseInt(r.value as string) === 2 || parseInt(r.value as string) === 3))
-                                .flatMap(f => Object.values(f.responses || {})
-                                    .filter(r => r.componentType === 'text')
-                                    .map(r => r.value as string)
-                                )
-                        )
-                    },
-                    dissatisfiedUsers: {
-                        percentage: (dissatisfiedCount / totalUsers) * 100,
-                        commonCharacteristics: this.extractCommonPhrases(
-                            feedbacks.filter(f => Object.values(f.responses || {})
-                                .some(r => r.componentType === 'rating' && parseInt(r.value as string) <= 1))
-                                .flatMap(f => Object.values(f.responses || {})
-                                    .filter(r => r.componentType === 'text')
-                                    .map(r => r.value as string)
-                                )
-                        )
-                    }
-                };
-            }
-
-            // Limit arrays to top 5 items and remove duplicates
-            summary.keyInsights.topStrengths = [...new Set(summary.keyInsights.topStrengths)].slice(0, 5);
-            summary.keyInsights.topConcerns = [...new Set(summary.keyInsights.topConcerns)].slice(0, 5);
-            summary.keyInsights.improvementAreas = [...new Set(summary.keyInsights.improvementAreas)].slice(0, 5);
-            summary.keyInsights.userPreferences = [...new Set(summary.keyInsights.userPreferences)].slice(0, 5);
-            summary.actionableInsights.priorityActions = [...new Set(summary.actionableInsights.priorityActions)].slice(0, 5);
-            summary.actionableInsights.quickWins = [...new Set(summary.actionableInsights.quickWins)].slice(0, 5);
-            summary.actionableInsights.longTermGoals = [...new Set(summary.actionableInsights.longTermGoals)].slice(0, 5);
-
-
+            this.logger.debug('Summary generated', {
+                topStrengthsCount: summary.textAnalysis.topStrengths.length,
+                topConcernsCount: summary.textAnalysis.topConcerns.length,
+                suggestionsCount: summary.textAnalysis.suggestions.length,
+                urgentIssuesCount: summary.textAnalysis.urgentIssues.length,
+                averageSentiment: summary.statistics.averageSentiment
+            });
 
             return summary;
         } catch (error) {
