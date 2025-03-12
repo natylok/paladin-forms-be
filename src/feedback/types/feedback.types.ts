@@ -1,0 +1,92 @@
+import { HfInference } from '@huggingface/inference';
+import { FeedbackResponse } from '../feedback.schema';
+
+export interface SentimentResult {
+    label: string;
+    score: number;
+}
+
+export interface TextClassificationOutput {
+    label: string;
+    score: number;
+}
+
+export interface HuggingFaceResponse {
+    [0]: {
+        label: string;
+        score: number;
+    };
+}
+
+export interface FeedbackSummary {
+    textAnalysis: {
+        topStrengths: string[];
+        topConcerns: string[];
+        suggestions: string[];
+        urgentIssues: string[];
+    };
+    statistics: {
+        totalFeedbacks: number;
+        textResponseCount: number;
+        averageSentiment: number;
+        ratingStats: {
+            total: number;
+            average: number;
+            distribution: {
+                [key: string]: number;
+            };
+        };
+    };
+    sentimentDistribution: {
+        positive: number;
+        negative: number;
+        neutral: number;
+    };
+    feedbackTrends: {
+        byDay: TimelineTrend;
+        byWeek: TimelineTrend;
+        byMonth: TimelineTrend;
+    };
+}
+
+export interface TimelineTrend {
+    labels: string[];
+    positive: number[];
+    negative: number[];
+}
+
+export interface TextResponse {
+    text: string;
+    type: string;
+    date: Date;
+}
+
+export type Pipeline = (text: string) => Promise<HuggingFaceResponse>;
+
+export type FilterType = 'positive' | 'negative' | 'neutral' | 'all';
+
+export interface FeedbackFilter {
+    type: FilterType;
+    threshold?: number;
+    includeText?: boolean;
+    includeRatings?: boolean;
+    dateRange?: {
+        start: Date;
+        end: Date;
+    };
+}
+
+export interface ComponentScore {
+    componentId: string;
+    title: string;
+    averageRating: number;
+    totalResponses: number;
+    sentimentScore: number;
+    textResponses: string[];
+}
+
+export interface DemographicPattern {
+    field: string;
+    pattern: RegExp;
+    category: string;
+} 
