@@ -15,6 +15,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule,
     MongooseModule.forFeature([
       { name: Feedback.name, schema: FeedbackSchema },
       { name: Survey.name, schema: SurveySchema }
