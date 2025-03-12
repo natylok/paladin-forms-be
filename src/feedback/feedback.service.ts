@@ -643,8 +643,7 @@ export class FeedbackService {
                         content: JSON.stringify(feedbacks)
                     }
                 ],
-                temperature: 0.1,
-                max_tokens: 150
+                temperature: 0.1
             });
 
             let matchingIndices: number[] = [];
