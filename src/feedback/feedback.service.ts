@@ -708,19 +708,7 @@ export class FeedbackService implements OnModuleInit {
             summary.actionableInsights.quickWins = [...new Set(summary.actionableInsights.quickWins)].slice(0, 5);
             summary.actionableInsights.longTermGoals = [...new Set(summary.actionableInsights.longTermGoals)].slice(0, 5);
 
-            // Cache the summary
-            const cached = await this.setCachedSummary(cacheKey, summary);
-            if (cached) {
-                this.logger.debug('Feedback summary cached successfully', {
-                    user: user.email,
-                    cacheKey
-                });
-            } else {
-                this.logger.warn('Failed to cache feedback summary', {
-                    user: user.email,
-                    cacheKey
-                });
-            }
+
 
             return summary;
         } catch (error) {
