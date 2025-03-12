@@ -96,22 +96,47 @@ export class FeedbackFilterService {
     }
 
     private async matchesFilterCriteria(
-        response: { componentType: string },
+        response: { componentType: string; value?: any },
         value: string,
         filterType: FilterType
     ): Promise<boolean> {
-        // Handle text responses
-        if (response.componentType === 'textbox' || response.componentType === 'input') {
+        // Handle rating responses first
+        if (['rating', '1to5scale', '1to10scale'].includes(response.componentType)) {
+            const numericValue = Number(value);
+            if(response.componentType === '1to10scale'){
+                switch(filterType){
+                    case FilterType.POSITIVE:
+                        return numericValue >= 7;
+                    case FilterType.NEGATIVE:
+                        return numericValue <= 3;
+                    case FilterType.NEUTRAL:
+                        return numericValue === 5;
+                }
+            }
+            if (!isNaN(numericValue)) {
+                switch (filterType) {
+                    case FilterType.POSITIVE:
+                        return numericValue >= 4;
+                    case FilterType.NEGATIVE:
+                        return numericValue <= 2;
+                    case FilterType.NEUTRAL:
+                        return numericValue === 3;
+                }
+            }
+        }
+
+        // Then handle text responses
+        if (response.componentType === 'text' || response.componentType === 'textbox' || response.componentType === 'input') {
             try {
                 const sentiment = await this.sentimentService.analyzeSentiment(value);
                 switch (filterType) {
                     case FilterType.POSITIVE:
-                        return sentiment.label === 'positive' && sentiment.score > 0.5;
+                        return sentiment.label === 'positive' && sentiment.score > 0.7;
                     case FilterType.NEGATIVE:
-                        return sentiment.label === 'negative' && sentiment.score > 0.5;
+                        return sentiment.label === 'negative' && sentiment.score > 0.7;
                     case FilterType.NEUTRAL:
                         return sentiment.label === 'neutral' || 
-                               (sentiment.score >= 0.3 && sentiment.score <= 0.7);
+                               (sentiment.score > 0.3 && sentiment.score < 0.7);
                     case FilterType.SUGGESTIONS:
                         return containsPhrases(value, FILTER_PHRASES.suggestions);
                     case FilterType.BUGS:
