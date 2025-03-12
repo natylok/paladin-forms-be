@@ -396,6 +396,31 @@ export class FeedbackService implements OnModuleInit {
         }
     }
 
+    private convertRatingToNumber(value: string): number {
+        // First try parsing as a number
+        const numericValue = parseInt(value);
+        if (!isNaN(numericValue)) {
+            return numericValue;
+        }
+
+        // If not a number, convert text ratings to numbers
+        const normalizedValue = value.toLowerCase();
+        switch (normalizedValue) {
+            case 'very satisfied':
+                return 5;
+            case 'satisfied':
+                return 4;
+            case 'neutral':
+                return 3;
+            case 'dissatisfied':
+                return 2;
+            case 'very dissatisfied':
+                return 1;
+            default:
+                return -1; // Invalid rating
+        }
+    }
+
     async summerizeAllFeedbacks(user: User): Promise<any> {
         try {
             this.logger.debug('Attempting to get feedback summary', { user: user.email });
@@ -523,24 +548,25 @@ export class FeedbackService implements OnModuleInit {
 
                     // Handle ratings
                     if (response.componentType === '1to5scale' || response.componentType === 'rating') {
-                        const rating = parseInt(value);
-                        if (!isNaN(rating)) {
+                        const rating = this.convertRatingToNumber(value);
+                        if (rating !== -1) {
                             totalRatings++;
                             totalRatingSum += rating;
 
                             this.logger.debug('Processing rating', {
                                 componentId,
-                                rating,
+                                originalValue: value,
+                                convertedRating: rating,
                                 totalRatings,
                                 totalRatingSum
                             });
 
                             // Update satisfaction breakdown
-                            if (rating >= 4) summary.overallSatisfaction.satisfactionBreakdown.verySatisfied++;
-                            else if (rating === 3) summary.overallSatisfaction.satisfactionBreakdown.satisfied++;
-                            else if (rating === 2) summary.overallSatisfaction.satisfactionBreakdown.neutral++;
-                            else if (rating === 1) summary.overallSatisfaction.satisfactionBreakdown.dissatisfied++;
-                            else summary.overallSatisfaction.satisfactionBreakdown.veryDissatisfied++;
+                            if (rating >= 5) summary.overallSatisfaction.satisfactionBreakdown.verySatisfied++;
+                            else if (rating === 4) summary.overallSatisfaction.satisfactionBreakdown.satisfied++;
+                            else if (rating === 3) summary.overallSatisfaction.satisfactionBreakdown.neutral++;
+                            else if (rating === 2) summary.overallSatisfaction.satisfactionBreakdown.dissatisfied++;
+                            else if (rating === 1) summary.overallSatisfaction.satisfactionBreakdown.veryDissatisfied++;
 
                             // Track component scores
                             if (!componentScores[componentId]) {
