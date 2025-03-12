@@ -265,6 +265,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   - Don't add component id to the components array (let the uuid be default)
   - Don't add the key surveyId to the survey object
   - Set style height to be 500px always and width to be 500px always
+  - Please use  variaty of component types dont repeat on the same component type
   - Prepare the survey to fit the schema in form schema
   - Remove all /n or any other thing so I can clearly do JSON.parse on the response
   - Just fill out the components with questions, don't modify other settings (leave them as their default)
