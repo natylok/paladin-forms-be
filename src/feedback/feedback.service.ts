@@ -658,11 +658,14 @@ export class FeedbackService {
                 });
 
                 const response = await openai.chat.completions.create({
-                    model: 'gpt-4o-mini',
+                    model: 'gpt-4',
                     messages: [
                         {
                             role: 'system',
-                            content: `From all the feedbacks you gonna get, give me all feedbacks that match the filter criteria "${filterType}" as json format`
+                            content: `From all the feedbacks you gonna get, give me all feedbacks that match the filter criteria "${filterType}" as json format, read the feedbacks as follow responses: Record<string, {
+        value: string | string[];
+        title: string;
+         read the value this is your answers and the question is the title`
                         },
                         {
                             role: 'user',
