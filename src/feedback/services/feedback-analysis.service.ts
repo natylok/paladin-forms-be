@@ -229,10 +229,12 @@ export class FeedbackAnalysisService {
         stats.totalSentimentScore += sentiment.score;
         stats.sentimentCount++;
 
-        // Categorize based on sentiment label and appropriate score thresholds
+        // The sentiment model returns scores between 0 and 1
+        // For positive sentiments: score is confidence of being positive
+        // For negative sentiments: score is confidence of being negative
         if (sentiment.label === 'positive' && sentiment.score > 0.7) {
             stats.sentimentCounts.positive++;
-        } else if (sentiment.label === 'negative' && sentiment.score < -0.3) {
+        } else if (sentiment.label === 'negative' && sentiment.score > 0.7) {
             stats.sentimentCounts.negative++;
         } else {
             stats.sentimentCounts.neutral++;
