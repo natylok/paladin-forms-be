@@ -867,9 +867,9 @@ export class FeedbackService implements OnModuleInit {
     async onModuleInit() {
         try {
             this.logger.log('Loading sentiment analysis model...');
-            // Use dynamic import
-            const { pipeline } = await import('@xenova/transformers');
-            this.sentimentPipeline = await pipeline('sentiment-analysis', 'siebert/sentiment-roberta-large-english');
+            // Use dynamic import with explicit file extension
+            const transformers = await import('@xenova/transformers/dist/transformers.js');
+            this.sentimentPipeline = await transformers.pipeline('sentiment-analysis', 'siebert/sentiment-roberta-large-english');
             this.logger.log('Sentiment analysis model loaded successfully');
         } catch (error) {
             this.logger.error('Failed to load sentiment analysis model', {
