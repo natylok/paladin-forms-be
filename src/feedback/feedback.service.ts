@@ -14,6 +14,9 @@ import { RedisClientType } from 'redis';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// Add Hugging Face API configuration
+const HUGGING_FACE_API = 'https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english';
+
 const overviewFeedbackSystemPrompt = () => `
 You are a deterministic feedback analysis system analyzing survey responses. Before starting your analysis, understand the feedback structure:
 
@@ -629,143 +632,162 @@ export class FeedbackService {
                 return { feedbacks: [], total: 0 };
             }
 
-            // Process feedbacks in batches of 10 to avoid token limits
-            const BATCH_SIZE = 10;
-            const allMatchingFeedbacks: Feedback[] = [];
-            
-            for (let i = 0; i < feedbacks.length; i += BATCH_SIZE) {
-                const batch = feedbacks.slice(i, i + BATCH_SIZE);
-                
-                // Create a simplified version of feedbacks for the prompt
-                const simplifiedBatch = batch.map((feedback, index) => {
-                    const responses: Record<string, { value: string | string[], title: string }> = {};
-                    
-                    if (feedback.responses) {
-                        Object.entries(feedback.responses).forEach(([key, response]) => {
-                            if (response.value !== undefined && response.title) {
-                                responses[key] = {
-                                    value: response.value,
-                                    title: response.title
-                                };
-                            }
-                        });
-                    }
-                    
-                    return {
-                        index: i + index, // Global index in the original array
-                        responses
-                    };
-                });
+            const matchingFeedbacks: Feedback[] = [];
 
-                const response = await openai.chat.completions.create({
-                    model: 'gpt-4',
-                    messages: [
-                        {
-                            role: 'system',
-                            content: `You are a feedback filtering system. Analyze each feedback's responses and return indices of those matching the "${filterType}" criteria.
-
-FEEDBACK STRUCTURE:
-Each feedback contains responses where:
-- title: The question text
-- value: The answer (can be text, rating, or array of choices)
-
-FILTERING CRITERIA:
-For "${filterType}" filter, use these rules:
-
-1. For "negative" feedback:
-   - Rating questions: Look for values "1", "2", "Very dissatisfied", "Dissatisfied", "Not satisfied"
-   - Text responses: Look for negative sentiment, complaints, or dissatisfaction
-   - Return if ANY response in the feedback matches these criteria
-
-2. For "positive" feedback:
-   - Rating questions: Look for values "4", "5", "Very satisfied", "Satisfied", "Extremely satisfied"
-   - Text responses: Look for positive sentiment, praise, or satisfaction
-   - Return if ANY response in the feedback matches these criteria
-
-3. For "neutral" feedback:
-   - Rating questions: Look for values "3", "Neutral", "Neither satisfied nor dissatisfied"
-   - Text responses: Look for balanced or neutral sentiment
-   - Return if MOST responses in the feedback are neutral
-
-4. For "suggestions" feedback:
-   - Look for phrases like: "would be nice", "should add", "could improve", "would be better", "suggest", "would love to see"
-   - Look for constructive feedback or feature requests
-   - Return if ANY response contains suggestions
-
-5. For "bugs" feedback:
-   - Look for phrases about technical issues: "error", "bug", "not working", "broken", "fails", "crash"
-   - Look for descriptions of malfunctions or technical problems
-   - Return if ANY response mentions technical issues
-
-6. For "praise" feedback:
-   - Look for positive phrases: "great", "excellent", "awesome", "love", "perfect", "amazing"
-   - Look for explicit compliments or positive experiences
-   - Return if ANY response contains praise
-
-7. For "urgent" feedback:
-   - Look for urgency indicators: "urgent", "critical", "immediate", "asap", "emergency"
-   - Look for time-sensitive issues or critical problems
-   - Return if ANY response indicates urgency
-
-RESPONSE FORMAT:
-Return ONLY an array of indices (numbers) for matching feedbacks.
-Example: [0, 2, 4] or [] if none match.
-
-ANALYSIS STEPS:
-1. Read each feedback's responses
-2. Check values against the criteria for the specified filter type
-3. If ANY response in a feedback matches the criteria, include its index
-4. Return array of matching indices`
+            // Helper function to analyze sentiment using Hugging Face
+            const analyzeSentiment = async (text: string): Promise<'positive' | 'negative' | 'neutral'> => {
+                try {
+                    const response = await fetch(HUGGING_FACE_API, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${process.env.HUGGING_FACE_API_KEY}`,
+                            'Content-Type': 'application/json',
                         },
-                        {
-                            role: 'user',
-                            content: JSON.stringify(simplifiedBatch)
-                        }
-                    ],
-                    temperature: 0.1,
-                    max_tokens: 150
-                });
+                        body: JSON.stringify({ inputs: text })
+                    });
 
-                const content = response.choices[0]?.message?.content;
-
-                if (content) {
-                    try {
-                        const cleanedContent = content.replace(/\`\`\`json|\`\`\`|\`/g, '').trim();
-                        const batchIndices: number[] = JSON.parse(cleanedContent);
-
-                        if (Array.isArray(batchIndices)) {
-                            // Convert batch indices to global indices and add matching feedbacks
-                            const matchingBatchFeedbacks = batchIndices
-                                .map(index => batch[index])
-                                .filter(feedback => feedback?.responses && Object.keys(feedback.responses).length > 0);
-                            
-                            allMatchingFeedbacks.push(...matchingBatchFeedbacks);
-                        }
-                    } catch (error) {
-                        this.logger.warn('Failed to parse batch results', {
-                            error: error instanceof Error ? error.message : 'Unknown error',
-                            batch: i,
-                            content
-                        });
+                    if (!response.ok) {
+                        throw new Error(`Hugging Face API error: ${response.statusText}`);
                     }
+
+                    const data = await response.json();
+                    const sentiment = data[0];
+                    
+                    if (sentiment.label === 'POSITIVE' && sentiment.score > 0.7) return 'positive';
+                    if (sentiment.label === 'NEGATIVE' && sentiment.score > 0.7) return 'negative';
+                    return 'neutral';
+                } catch (error) {
+                    this.logger.error('Sentiment analysis failed', {
+                        error: error instanceof Error ? error.message : 'Unknown error',
+                        text: text.substring(0, 100) // Log only first 100 chars
+                    });
+                    return 'neutral';
+                }
+            };
+
+            // Helper function to check if a value matches rating criteria
+            const matchesRatingCriteria = (value: string | string[], type: 'positive' | 'negative' | 'neutral'): boolean => {
+                if (Array.isArray(value)) return false;
+                
+                const numericValue = parseInt(value);
+                if (!isNaN(numericValue)) {
+                    switch (type) {
+                        case 'positive': return numericValue >= 4;
+                        case 'negative': return numericValue <= 2;
+                        case 'neutral': return numericValue === 3;
+                    }
+                }
+
+                const normalizedValue = value.toLowerCase();
+                switch (type) {
+                    case 'positive':
+                        return ['very satisfied', 'satisfied', 'extremely satisfied', '5', '4'].includes(normalizedValue);
+                    case 'negative':
+                        return ['very dissatisfied', 'dissatisfied', 'not satisfied', '1', '2'].includes(normalizedValue);
+                    case 'neutral':
+                        return ['neutral', 'neither satisfied nor dissatisfied', '3'].includes(normalizedValue);
+                    default:
+                        return false;
+                }
+            };
+
+            // Helper function to check for specific phrases
+            const containsPhrases = (text: string, phrases: string[]): boolean => {
+                const normalizedText = text.toLowerCase();
+                return phrases.some(phrase => normalizedText.includes(phrase.toLowerCase()));
+            };
+
+            // Process each feedback
+            for (const feedback of feedbacks) {
+                if (!feedback.responses || Object.keys(feedback.responses).length === 0) continue;
+
+                let shouldInclude = false;
+                let textResponses = '';
+
+                // Collect all text responses for sentiment analysis
+                for (const response of Object.values(feedback.responses)) {
+                    if (!response.value) continue;
+
+                    const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
+                    
+                    switch (filterType) {
+                        case 'positive':
+                        case 'negative':
+                        case 'neutral':
+                            if (response.componentType === '1to5scale' || response.componentType === 'rating') {
+                                if (matchesRatingCriteria(value, filterType as 'positive' | 'negative' | 'neutral')) {
+                                    shouldInclude = true;
+                                }
+                            } else if (typeof value === 'string') {
+                                textResponses += ' ' + value;
+                            }
+                            break;
+
+                        case 'suggestions':
+                            if (containsPhrases(value, ['would be nice', 'should add', 'could improve', 'would be better', 'suggest', 'would love to see', 'it would be great if'])) {
+                                shouldInclude = true;
+                            }
+                            break;
+
+                        case 'bugs':
+                            if (containsPhrases(value, ['error', 'bug', 'not working', 'broken', 'fails', 'crash', 'issue', 'problem'])) {
+                                shouldInclude = true;
+                            }
+                            break;
+
+                        case 'praise':
+                            if (containsPhrases(value, ['great', 'excellent', 'awesome', 'love', 'perfect', 'amazing', 'wonderful'])) {
+                                shouldInclude = true;
+                            }
+                            break;
+
+                        case 'urgent':
+                            if (containsPhrases(value, ['urgent', 'critical', 'immediate', 'asap', 'emergency'])) {
+                                shouldInclude = true;
+                            }
+                            break;
+
+                        case 'lastDay':
+                        case 'lastWeek':
+                        case 'lastMonth':
+                            const feedbackDate = new Date(feedback.createdAt);
+                            const now = new Date();
+                            const diffInDays = (now.getTime() - feedbackDate.getTime()) / (1000 * 60 * 60 * 24);
+                            
+                            shouldInclude = filterType === 'lastDay' ? diffInDays <= 1 :
+                                          filterType === 'lastWeek' ? diffInDays <= 7 :
+                                          diffInDays <= 30;
+                            break;
+                    }
+                }
+
+                // If we have text responses and haven't already decided to include the feedback,
+                // analyze sentiment for relevant filter types
+                if (textResponses && !shouldInclude && ['positive', 'negative', 'neutral'].includes(filterType)) {
+                    const sentiment = await analyzeSentiment(textResponses.trim());
+                    shouldInclude = sentiment === filterType;
+                }
+
+                if (shouldInclude) {
+                    matchingFeedbacks.push(feedback);
                 }
             }
 
-            this.logger.debug('Filtered feedbacks using AI', {
+            this.logger.debug('Filtered feedbacks using sentiment analysis', {
                 user: user.email,
                 filterType,
                 totalFeedbacks: feedbacks.length,
-                matchingFeedbacks: allMatchingFeedbacks.length
+                matchingFeedbacks: matchingFeedbacks.length
             });
 
             return {
-                feedbacks: allMatchingFeedbacks,
-                total: allMatchingFeedbacks.length
+                feedbacks: matchingFeedbacks,
+                total: matchingFeedbacks.length
             };
 
         } catch (error) {
             this.logger.error(
-                'Failed to filter feedbacks using AI',
+                'Failed to filter feedbacks',
                 error instanceof Error ? error.stack : undefined,
                 { user: user.email, filterType, surveyId }
             );
