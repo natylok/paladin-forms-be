@@ -11,7 +11,8 @@ import OpenAI from 'openai';
 import * as csv from 'csv-writer';
 import { createObjectCsvWriter } from 'csv-writer';
 import { RedisClientType } from 'redis';
-import { pipeline } from '@xenova/transformers';
+// Remove the static import and declare types
+type Pipeline = any;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -163,7 +164,7 @@ Strict Analysis Rules:
 export class FeedbackService implements OnModuleInit {
     private readonly logger = new Logger(FeedbackService.name);
     private readonly CACHE_TTL = 200; // 200 seconds
-    private sentimentPipeline: any;
+    private sentimentPipeline: Pipeline;
 
     private readonly filterPrompts = {
         positive: 'Find feedbacks with positive sentiment and high satisfaction ratings (4-5 stars)',
@@ -866,6 +867,8 @@ export class FeedbackService implements OnModuleInit {
     async onModuleInit() {
         try {
             this.logger.log('Loading sentiment analysis model...');
+            // Use dynamic import
+            const { pipeline } = await import('@xenova/transformers');
             this.sentimentPipeline = await pipeline('sentiment-analysis', 'siebert/sentiment-roberta-large-english');
             this.logger.log('Sentiment analysis model loaded successfully');
         } catch (error) {
