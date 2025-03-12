@@ -632,7 +632,7 @@ export class FeedbackService {
             const filterPrompt = this.filterPrompts[filterType] || `Find feedbacks that match the ${filterType} criteria`;
 
             const response = await openai.chat.completions.create({
-                model: 'gpt-4',
+                model: 'gpt-4-turbo',
                 messages: [
                     {
                         role: 'system',
