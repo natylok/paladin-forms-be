@@ -58,24 +58,24 @@ export class SurveyController {
     }
 
     @EventPattern('survey_changed')
-    async handleSurveyCreated(@Payload() user: User, @Ctx() context: RmqContext) {
-        const channel = context.getChannelRef();
-        const message = context.getMessage();
-        
+    async handleSurveyCreated(
+        @Payload() user: User,
+        @Ctx() context: RmqContext
+    ) {
         this.logger.log('Received survey_changed event', { user: user.email });
         try {
             await this.surveyService.generateJavascriptCode(user);
             this.logger.log('Successfully processed survey_changed event', { user: user.email });
-            // Acknowledge and remove the message from queue
-            channel.ack(message);
+            // Use the built-in acknowledgment pattern
+            context.getChannelRef().ack(context.getMessage());
         } catch (error) {
             this.logger.error(
                 'Failed to process survey_changed event',
                 error instanceof Error ? error.stack : undefined,
                 { user: user.email }
             );
-            // Negative acknowledge and don't requeue the message
-            channel.nack(message, false, false);
+            // Reject the message without requeuing
+            context.getChannelRef().reject(context.getMessage(), false);
         }
     }
 }

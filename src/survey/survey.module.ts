@@ -20,11 +20,12 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
             urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@localhost:5672`],
             queue: 'survey_queue',
             queueOptions: {
-              durable: true
+              durable: true,
+              noAck: false
             },
             persistent: true,
-            noAck: false,
-            prefetchCount: 1
+            prefetchCount: 1,
+            isGlobalPrefetchCount: false
           },
         }),
         inject: [ConfigService],
