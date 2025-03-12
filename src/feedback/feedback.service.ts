@@ -632,11 +632,11 @@ export class FeedbackService {
             const filterPrompt = this.filterPrompts[filterType] || `Find feedbacks that match the ${filterType} criteria`;
 
             const response = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
+                model: 'gpt-4',
                 messages: [
                     {
                         role: 'system',
-                        content: `You are a feedback filtering system. Your ONLY task is to return a JSON array of indices for matching feedbacks.
+                        content: `You are a feedback filtering system. Your ONLY task is to return a JSON array of feedbacks that match the filter criteria read all the feedbacks, and return the feedbakcs that match the filter criteria.
 
 FEEDBACK STRUCTURE:
 Each feedback in the input array has this structure:
@@ -650,7 +650,7 @@ Each feedback in the input array has this structure:
   }
 }
 
-FILTER CRITERIA: "${filterPrompt}"
+FILTER CRITERIA: "${filterPrompt}" 
 
 STRICT RESPONSE FORMAT:
 1. Return ONLY a JSON array of numbers (0-based indices)
@@ -661,12 +661,6 @@ STRICT RESPONSE FORMAT:
 3. NO other text, quotes, backticks, or explanations
 4. NO markdown formatting
 5. ONLY the array
-
-ANALYSIS RULES:
-1. Rating filters:
-   - Positive: ratings >= 4
-   - Negative: ratings <= 2
-   - Neutral: ratings = 3
 
 2. Content filters:
    - Suggestions: contains "would be nice", "should add", "could improve", "would be better", "suggest"
