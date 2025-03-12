@@ -251,6 +251,8 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
      - Likert scale questions (1-5 rating scale)
      - Yes/No or True/False questions if applicable
      - Open-ended questions for free-form feedback
+     - 1 to 10 scale questions
+     - 1 to 5 faces questions
   4. Tone & Style: Determine an appropriate tone based on the user's prompt and target audience.
   5. Logical Flow: Organize questions in a sensible order, starting with easier/general questions and moving to more specific ones.
   6. Quality Over Quantity: Aim for an optimal number of questions that thoroughly cover the topic without unnecessary length.
@@ -265,7 +267,6 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   - Don't add component id to the components array (let the uuid be default)
   - Don't add the key surveyId to the survey object
   - Set style height to be 500px always and width to be 500px always
-  - Please use variety of question(component) types not just one type dont repeat on the same component type
   - Prepare the survey to fit the schema in form schema
   - Remove all /n or any other thing so I can clearly do JSON.parse on the response
   - Just fill out the components with questions, don't modify other settings (leave them as their default)
