@@ -17,6 +17,15 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 // Add Hugging Face API configuration
 const HUGGING_FACE_API = 'https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english';
 
+// Add retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+// Add API key validation
+if (!process.env.HUGGING_FACE_API_KEY) {
+    throw new Error('HUGGING_FACE_API_KEY environment variable is not set');
+}
+
 const overviewFeedbackSystemPrompt = () => `
 You are a deterministic feedback analysis system analyzing survey responses. Before starting your analysis, understand the feedback structure:
 
@@ -634,9 +643,14 @@ export class FeedbackService {
 
             const matchingFeedbacks: Feedback[] = [];
 
-            // Helper function to analyze sentiment using Hugging Face
-            const analyzeSentiment = async (text: string): Promise<'positive' | 'negative' | 'neutral'> => {
+            // Helper function to analyze sentiment using Hugging Face with retries
+            const analyzeSentiment = async (text: string, retryCount = 0): Promise<'positive' | 'negative' | 'neutral'> => {
                 try {
+                    if (!process.env.HUGGING_FACE_API_KEY) {
+                        this.logger.error('Hugging Face API key is not configured');
+                        return 'neutral';
+                    }
+
                     const response = await fetch(HUGGING_FACE_API, {
                         method: 'POST',
                         headers: {
@@ -647,7 +661,27 @@ export class FeedbackService {
                     });
 
                     if (!response.ok) {
-                        throw new Error(`Hugging Face API error: ${response.statusText}`);
+                        const errorText = await response.text();
+                        
+                        // Handle rate limiting and service unavailable errors
+                        if (response.status === 429 || response.status === 503) {
+                            if (retryCount < MAX_RETRIES) {
+                                this.logger.warn(`Retrying sentiment analysis (attempt ${retryCount + 1}/${MAX_RETRIES})`, {
+                                    status: response.status,
+                                    text: text.substring(0, 100)
+                                });
+                                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
+                                return analyzeSentiment(text, retryCount + 1);
+                            }
+                        }
+
+                        this.logger.error('Hugging Face API error', {
+                            status: response.status,
+                            statusText: response.statusText,
+                            error: errorText,
+                            text: text.substring(0, 100)
+                        });
+                        return 'neutral';
                     }
 
                     const data = await response.json();
@@ -657,9 +691,18 @@ export class FeedbackService {
                     if (sentiment.label === 'NEGATIVE' && sentiment.score > 0.7) return 'negative';
                     return 'neutral';
                 } catch (error) {
-                    this.logger.error('Sentiment analysis failed', {
+                    if (retryCount < MAX_RETRIES) {
+                        this.logger.warn(`Retrying sentiment analysis after error (attempt ${retryCount + 1}/${MAX_RETRIES})`, {
+                            error: error instanceof Error ? error.message : 'Unknown error',
+                            text: text.substring(0, 100)
+                        });
+                        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
+                        return analyzeSentiment(text, retryCount + 1);
+                    }
+
+                    this.logger.error('Sentiment analysis failed after retries', {
                         error: error instanceof Error ? error.message : 'Unknown error',
-                        text: text.substring(0, 100) // Log only first 100 chars
+                        text: text.substring(0, 100)
                     });
                     return 'neutral';
                 }
@@ -710,6 +753,15 @@ export class FeedbackService {
 
                     const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
                     
+                    // Skip demographic data and short responses
+                    if (value.length < 10 || 
+                        value.match(/^(Yes|No|Rarely|Occasionally|Multiple times a week|Once a week)$/) ||
+                        value.match(/^(\$[0-9,]+|Less than \$25,000|Prefer not to say)$/) ||
+                        value.match(/^(18-24|25-34|35-44|45-54|55-64|65 and over)$/) ||
+                        value.match(/^(Male|Female|Non-binary|Prefer not to say)$/)) {
+                        continue;
+                    }
+
                     switch (filterType) {
                         case 'positive':
                         case 'negative':
