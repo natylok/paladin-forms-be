@@ -629,84 +629,113 @@ export class FeedbackService {
                 return { feedbacks: [], total: 0 };
             }
 
-            const filterPrompt = this.filterPrompts[filterType] || `Find feedbacks that match the ${filterType} criteria`;
-
-            const response = await openai.chat.completions.create({
-                model: 'gpt-4',
-                messages: [
-                    {
-                        role: 'system',
-                        content: `From all feedbacks you will get give me the ${filterPrompt} ones structure of json`
-                    },
-                    {
-                        role: 'user',
-                        content: JSON.stringify(feedbacks.map(feedback => Object.values(feedback.responses).map(response => response.value)))
-                    }
-                ],
-                temperature: 0.1
-            });
-
-            let matchingIndices: number[] = [];
-            const content = response.choices[0]?.message?.content;
-
-            if (!content) {
-                this.logger.warn('Empty response from AI', { user: user.email, filterType });
-                return { feedbacks: [], total: 0 };
-            }
-
-            try {
-                // Clean the response of any potential formatting
-                const cleanedContent = content
-                    .replace(/\`\`\`json|\`\`\`|\`/g, '')
-                    .trim();
+            // Process feedbacks in batches of 10 to avoid token limits
+            const BATCH_SIZE = 10;
+            const allMatchingFeedbacks: Feedback[] = [];
+            
+            for (let i = 0; i < feedbacks.length; i += BATCH_SIZE) {
+                const batch = feedbacks.slice(i, i + BATCH_SIZE);
                 
-                matchingIndices = JSON.parse(cleanedContent);
-
-                if (!Array.isArray(matchingIndices)) {
-                    this.logger.warn('AI returned non-array response', { 
-                        user: user.email, 
-                        filterType,
-                        response: cleanedContent 
-                    });
-                    return { feedbacks: [], total: 0 };
-                }
-
-                // Additional validation of the results
-                const validatedFeedbacks = matchingIndices
-                    .filter(index => {
-                        const feedback = feedbacks[index];
-                        // Ensure feedback exists and has responses
-                        if (!feedback?.responses || Object.keys(feedback.responses).length === 0) {
-                            return false;
-                        }
-                        return true;
-                    })
-                    .map(index => feedbacks[index]);
-
-                this.logger.debug('Filtered feedbacks using AI', {
-                    user: user.email,
-                    filterType,
-                    totalFeedbacks: feedbacks.length,
-                    matchingFeedbacks: validatedFeedbacks.length
+                // Create a simplified version of feedbacks for the prompt
+                const simplifiedBatch = batch.map((feedback, index) => {
+                    const responses: Record<string, { value: string | string[], title: string }> = {};
+                    
+                    if (feedback.responses) {
+                        Object.entries(feedback.responses).forEach(([key, response]) => {
+                            if (response.value !== undefined && response.title) {
+                                responses[key] = {
+                                    value: response.value,
+                                    title: response.title
+                                };
+                            }
+                        });
+                    }
+                    
+                    return {
+                        index: i + index, // Global index in the original array
+                        responses
+                    };
                 });
 
-                return {
-                    feedbacks: validatedFeedbacks,
-                    total: validatedFeedbacks.length
-                };
+                const response = await openai.chat.completions.create({
+                    model: 'gpt-4',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: `You are analyzing survey responses. For each feedback, check if it matches these criteria for "${filterType}":
 
-            } catch (error) {
-                this.logger.error(
-                    'Failed to parse AI response',
-                    error instanceof Error ? error.stack : undefined,
-                    { 
-                        user: user.email, 
-                        filterType,
-                        response: content 
+1. For negative feedback:
+   - Look for ratings of 1-2 or "Dissatisfied"/"Very dissatisfied"
+   - Check for negative sentiment in text responses
+   - Consider responses expressing dissatisfaction or problems
+
+2. For positive feedback:
+   - Look for ratings of 4-5 or "Satisfied"/"Very satisfied"
+   - Check for positive sentiment in text responses
+   - Consider responses expressing satisfaction or praise
+
+3. For neutral feedback:
+   - Look for ratings of 3 or "Neutral"
+   - Check for balanced or neutral sentiment
+
+4. For suggestions:
+   - Look for phrases about improvements or changes
+   - Check for constructive feedback
+   - Consider "would like", "could be better", "suggest"
+
+5. For bugs/issues:
+   - Look for technical problems or errors
+   - Check for functionality issues
+   - Consider "not working", "broken", "error"
+
+Return ONLY an array of indices for matching feedbacks. Example: [0,2,5]`
+                        },
+                        {
+                            role: 'user',
+                            content: JSON.stringify(simplifiedBatch)
+                        }
+                    ],
+                    temperature: 0.1,
+                    max_tokens: 150
+                });
+
+                const content = response.choices[0]?.message?.content;
+
+                if (content) {
+                    try {
+                        const cleanedContent = content.replace(/\`\`\`json|\`\`\`|\`/g, '').trim();
+                        const batchIndices: number[] = JSON.parse(cleanedContent);
+
+                        if (Array.isArray(batchIndices)) {
+                            // Convert batch indices to global indices and add matching feedbacks
+                            const matchingBatchFeedbacks = batchIndices
+                                .map(index => batch[index])
+                                .filter(feedback => feedback?.responses && Object.keys(feedback.responses).length > 0);
+                            
+                            allMatchingFeedbacks.push(...matchingBatchFeedbacks);
+                        }
+                    } catch (error) {
+                        this.logger.warn('Failed to parse batch results', {
+                            error: error instanceof Error ? error.message : 'Unknown error',
+                            batch: i,
+                            content
+                        });
                     }
-                );
-                return { feedbacks: [], total: 0 };
+                }
             }
+
+            this.logger.debug('Filtered feedbacks using AI', {
+                user: user.email,
+                filterType,
+                totalFeedbacks: feedbacks.length,
+                matchingFeedbacks: allMatchingFeedbacks.length
+            });
+
+            return {
+                feedbacks: allMatchingFeedbacks,
+                total: allMatchingFeedbacks.length
+            };
+
         } catch (error) {
             this.logger.error(
                 'Failed to filter feedbacks using AI',
