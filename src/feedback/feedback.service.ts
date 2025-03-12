@@ -640,7 +640,7 @@ export class FeedbackService {
                     },
                     {
                         role: 'user',
-                        content: JSON.stringify(feedbacks)
+                        content: JSON.stringify(feedbacks.map(feedback => Object.values(feedback.responses).map(response => response.value)))
                     }
                 ],
                 temperature: 0.1
