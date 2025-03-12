@@ -137,7 +137,7 @@ export class FeedbackAnalysisService {
         date: Date,
         textResponses: TextResponse[]
     ): void {
-        if (response.componentType === 'text' || response.componentType === 'textbox' || response.componentType === 'input') {
+        if (response.componentType === 'textbox' || response.componentType === 'input') {
             textResponses.push({
                 text: value,
                 type: response.title || 'general',
@@ -217,9 +217,9 @@ export class FeedbackAnalysisService {
         stats.sentimentCount++;
 
         // Update sentiment counts based on score thresholds
-        if (sentiment.score >= 0.6) {
+        if(sentiment.label === 'positive' && sentiment.score > 0.7) {
             stats.sentimentCounts.positive++;
-        } else if (sentiment.score <= -0.6) {
+        } else if (sentiment.label === 'negative' && sentiment.score > 0.7) {
             stats.sentimentCounts.negative++;
         } else {
             stats.sentimentCounts.neutral++;
