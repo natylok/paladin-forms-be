@@ -38,13 +38,9 @@ export class FeedbackFilterService {
             if (!feedbacks.length) {
                 return { feedbacks: [], total: 0 };
             }
-
-            // Handle time-based filtering
             if (this.isTimeBasedFilter(filterType)) {
                 return this.getTimeBasedFeedbacks(feedbacks, filterType);
             }
-
-            // For other filter types, process each feedback
             const matchingFeedbacksPromises = feedbacks.map(async feedback => {
                 const shouldInclude = await this.shouldIncludeFeedback(feedback, filterType);
                 return shouldInclude ? feedback : null;
@@ -110,12 +106,12 @@ export class FeedbackFilterService {
                 const sentiment = await this.sentimentService.analyzeSentiment(value);
                 switch (filterType) {
                     case FilterType.POSITIVE:
-                        return sentiment.label === 'positive' && sentiment.score > 0.6;
+                        return sentiment.label === 'positive' && sentiment.score > 0.5;
                     case FilterType.NEGATIVE:
-                        return sentiment.label === 'negative' && sentiment.score > 0.6;
+                        return sentiment.label === 'negative' && sentiment.score > 0.5;
                     case FilterType.NEUTRAL:
                         return sentiment.label === 'neutral' || 
-                               (sentiment.score >= 0.4 && sentiment.score <= 0.6);
+                               (sentiment.score >= 0.3 && sentiment.score <= 0.7);
                     case FilterType.SUGGESTIONS:
                         return containsPhrases(value, FILTER_PHRASES.suggestions);
                     case FilterType.BUGS:
