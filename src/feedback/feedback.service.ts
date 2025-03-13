@@ -94,19 +94,27 @@ export class FeedbackService implements OnModuleInit {
             this.logger.debug('Fetching feedbacks for user', { user: user.email, page });
             const itemsPerPage = 100;
             const skip = (page - 1) * itemsPerPage;
-            const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
+
+            // First get all surveys for the user
+            const surveys = await this.surveyModel.find(
+                user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email }
+            ).select('surveyId').lean().exec();
+
+            const surveyIds = surveys.map(survey => survey.surveyId);
+
+            // Then get feedbacks for those surveys
             const [feedbacks, total] = await Promise.all([
-                this.feedbackModel.find(filter)
+                this.feedbackModel.find({ surveyId: { $in: surveyIds } })
                     .skip(skip)
                     .limit(itemsPerPage)
                     .exec(),
-                this.feedbackModel.countDocuments(filter)
+                this.feedbackModel.countDocuments({ surveyId: { $in: surveyIds } })
             ]);
 
             const totalPages = Math.ceil(total / itemsPerPage);
 
             if (!feedbacks) {
-                this.logger.warn('No feedbacks found for user', { user: user.email, page, filter });
+                this.logger.warn('No feedbacks found for user', { user: user.email, page, surveyIds });
                 return { feedbacks: [], totalPages: 0 };
             }
 
