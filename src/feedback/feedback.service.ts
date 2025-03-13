@@ -94,19 +94,19 @@ export class FeedbackService implements OnModuleInit {
             this.logger.debug('Fetching feedbacks for user', { user: user.email, page });
             const itemsPerPage = 100;
             const skip = (page - 1) * itemsPerPage;
-
+            const filter = user.customerId ? {customerId: user.customerId} : {creatorEmail: user.email};
             const [feedbacks, total] = await Promise.all([
-                this.feedbackModel.find()
+                this.feedbackModel.find({...filter})
                     .skip(skip)
                     .limit(itemsPerPage)
                     .exec(),
-                this.feedbackModel.countDocuments()
+                this.feedbackModel.countDocuments({...filter})
             ]);
 
             const totalPages = Math.ceil(total / itemsPerPage);
 
             if (!feedbacks) {
-                this.logger.warn('No feedbacks found for user', { user: user.email, page });
+                this.logger.warn('No feedbacks found for user', { user: user.email, page, filter });
                 return { feedbacks: [], totalPages: 0 };
             }
 
@@ -215,7 +215,7 @@ export class FeedbackService implements OnModuleInit {
     }
 
     async exportFeedbacksToCSV(user: User, surveyId: string): Promise<string> {
-        return this.exportService.exportToCSV(surveyId);
+        return this.exportService.exportToCSV(surveyId, user);
     }
 
     async getAvailableFilters(): Promise<FilterType[]> {
@@ -232,7 +232,8 @@ export class FeedbackService implements OnModuleInit {
         surveyId?: string
     ): Promise<{ feedbacks: Feedback[], total: number }> {
         try {
-            const query = surveyId ? { surveyId } : {};
+            const filter = user.customerId ? {customerId: user.customerId} : {creatorEmail: user.email};
+            const query = surveyId ? { surveyId, ...filter } : { ...filter };
             const feedbacks = await this.feedbackModel.find(query).exec();
             return this.filterService.filterFeedbacks(feedbacks, filterType);
         } catch (error) {

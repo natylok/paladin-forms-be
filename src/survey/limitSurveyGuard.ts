@@ -14,7 +14,7 @@ export class LimitSurveysGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-
+    
     const userSurveys = await this.surveyService.getSurveysByUser(user);
     const userFromDb = await this.prisma.user.findUnique({
       where: { id: user.id }

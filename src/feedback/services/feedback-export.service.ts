@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { Feedback, FeedbackResponse } from '../feedback.schema';
 import { Survey } from '../../survey/survey.schema';
 import { createObjectCsvWriter } from 'csv-writer';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class FeedbackExportService {
@@ -14,11 +15,11 @@ export class FeedbackExportService {
         @InjectModel(Feedback.name) private readonly feedbackModel: Model<Feedback>
     ) {}
 
-    async exportToCSV(surveyId: string): Promise<string> {
+    async exportToCSV(surveyId: string, user: User): Promise<string> {
         try {
             this.logger.debug('Starting feedback export to CSV', { surveyId });
-
-            const survey = await this.surveyModel.findOne({ surveyId }).exec();
+            const filter = user.customerId ? {customerId: user.customerId} : {creatorEmail: user.email};
+            const survey = await this.surveyModel.findOne({ surveyId, ...filter }).exec();
             if (!survey) {
                 this.logger.warn('Survey not found', { surveyId });
                 throw new BadRequestException('Survey not found');

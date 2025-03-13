@@ -49,12 +49,13 @@ export class FeedbackController {
     try {
       const user = req.user as User;
       const pageNumber = page ? parseInt(page, 10) : 1;
-      
-      this.logger.log('Fetching all feedbacks', { user: user.email, page: pageNumber });
+      const filter = user.customerId ? {customerId: user.customerId} : {creatorEmail: user.email};
+      this.logger.log('Fetching all feedbacks', { page: pageNumber, filter });
       const { feedbacks, totalPages } = await this.feedbackService.getFeedbacks(user, pageNumber);
       
       this.logger.log('Feedbacks fetched successfully', { 
         user: user.email, 
+        customerId: user.customerId,
         count: feedbacks.length,
         page: pageNumber,
         totalPages
@@ -138,9 +139,9 @@ export class FeedbackController {
   async getAvailableFilters(@Req() req: Request) {
     try {
       const user = req.user as User;
-      this.logger.log('Getting available filters', { user: user.email });
+      this.logger.log('Getting available filters', { user: user.email, customerId: user.customerId });
       const filters = await this.feedbackService.getAvailableFilters();
-      this.logger.log('Available filters retrieved successfully', { user: user.email });
+      this.logger.log('Available filters retrieved successfully', { user: user.email, customerId: user.customerId });
       return filters;
     } catch (error) {
       this.logger.error(

@@ -19,6 +19,7 @@ model User {
   updatedAt DateTime @updatedAt
   surveysLimit  Int @default(3)
   userType UserType @default(FREEMIUM)
+  customerId String?
 }
 
 enum UserType {

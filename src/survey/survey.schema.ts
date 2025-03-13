@@ -24,6 +24,7 @@ export interface ISurvey {
   surveyName: string;
   title: string;
   creatorEmail: string;
+  customerId?: string;
   style: {
     backgroundColor: string;
     width: string;
@@ -187,6 +188,9 @@ export const PageSchema = SchemaFactory.createForClass(Page);
 
 @Schema({ timestamps: true })
 export class Survey extends Document {
+  @Prop({ type: String })
+  customerId?: string;
+
   @Prop({ type: String, required: true })
   surveyName: string;
 

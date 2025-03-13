@@ -175,4 +175,8 @@ export class CreateSurveyDto {
   @ValidateNested({ each: true })
   @Type(() => SkipLogicDto)
   skipLogic?: SkipLogicDto[];
+
+  @IsString()
+  @IsOptional()
+  customerId?: string;
 }

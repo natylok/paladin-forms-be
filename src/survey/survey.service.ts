@@ -28,6 +28,9 @@ export class SurveyService {
 
     async createSurvey(createSurveyDto: CreateSurveyDto, user: User): Promise<Survey> {
         this.logger.log('Creating new survey', { user: user.email, dto: createSurveyDto });
+        if (user.customerId) {
+            createSurveyDto.customerId = user.customerId;
+        }
         try {
             await this.client.emit('survey_changed', user).toPromise();
             this.logger.debug('Successfully emitted survey_changed event', { user: user.email });
@@ -41,13 +44,18 @@ export class SurveyService {
     }
 
     async getSurveys(user: User): Promise<Survey[]> {
+        if (user.customerId) {
+            this.logger.log(`Fetching all surveys for user ${user.email} ${user.customerId}`);
+            return this.surveyModel.find({ customerId: user.customerId }).exec();
+        }
         this.logger.log(`Fetching all surveys for user ${user.email}`);
-        return this.surveyModel.find().exec();
+        return this.surveyModel.find({ creatorEmail: user.email }).exec();
     }
 
-    async getSurveyById(id: string): Promise<Survey> {
+    async getSurveyById(id: string, user: User): Promise<Survey> {
         this.logger.log(`Fetching survey by ID ${id}`);
-        const survey = await this.surveyModel.findOne({surveyId: id}).exec();
+        const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
+        const survey = await this.surveyModel.findOne({ surveyId: id, ...filter }).exec();
         if (!survey) {
             this.logger.error(`Survey not found with ID ${id}`);
             throw new NotFoundException(`Survey with ID ${id} not found`);
@@ -57,23 +65,23 @@ export class SurveyService {
 
     private cleanData(data: any): any {
         const cleanData = JSON.parse(JSON.stringify(data));
-        
+
         const removeObjectIds = (obj: any) => {
             if (!obj) return obj;
-            
+
             if (obj._id) delete obj._id;
             if (obj.$oid) delete obj.$oid;
-            
+
             if (Array.isArray(obj)) {
                 return obj.map(item => removeObjectIds(item));
             }
-            
+
             if (typeof obj === 'object') {
                 Object.keys(obj).forEach(key => {
                     obj[key] = removeObjectIds(obj[key]);
                 });
             }
-            
+
             return obj;
         };
 
@@ -106,10 +114,10 @@ export class SurveyService {
         if (!settings) return { updateQuery, unsetQuery };
 
         const { triggerByVariable, triggerByAction, ...restSettings } = settings;
-        if(triggerByVariable){
+        if (triggerByVariable) {
             this.validateTriggerByVariable(triggerByVariable, user);
         }
-       
+
         // Handle triggerByVariable
         if (triggerByVariable) {
             updateQuery['settings.triggerByVariable'] = {
@@ -160,7 +168,7 @@ export class SurveyService {
         });
 
         // Handle settings
-        const { updateQuery: settingsUpdateQuery, unsetQuery: settingsUnsetQuery } = 
+        const { updateQuery: settingsUpdateQuery, unsetQuery: settingsUnsetQuery } =
             this.prepareSettingsUpdate(updateObject.settings, user);
 
         // Create the final update object
@@ -184,13 +192,19 @@ export class SurveyService {
     }
 
     async updateSurvey(id: string, updateData: Partial<CreateSurveyDto>, user: User): Promise<Survey> {
+        const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
+        const survey = await this.surveyModel.findOne({ surveyId: id, ...filter }).exec();
+        if (!survey) {
+            this.logger.error(`Survey not found with ID ${id} for user ${user.email}`);
+            throw new NotFoundException(`Survey with ID ${id} not found`);
+        }
         this.logger.log(`Updating survey ${id} for user ${user.email}`);
         this.client.emit('survey_changed', user);
-        
+
         // Get and clean the update data
         const surveyData = updateData;
         this.logger.debug(`Original update data for survey ${id} and user ${user.email}`);
-        
+
         const cleanedData = this.cleanData(surveyData);
         this.logger.debug(`Cleaned data for survey ${id} and user ${user.email}`);
 
@@ -218,7 +232,7 @@ export class SurveyService {
         // Prepare and execute the update operation
         const updateOperation = this.prepareUpdateOperation(updateObject, user);
         this.logger.debug(`Final update operation for survey ${id} and user ${user.email}`);
-        
+
         const updatedSurvey = await this.surveyModel
             .findOneAndUpdate(
                 { surveyId: id },
@@ -237,9 +251,10 @@ export class SurveyService {
     }
 
     async deleteSurvey(id: string, user: User): Promise<{ message: string }> {
+        const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
         this.logger.log(`Deleting survey ${id} for user ${user.email}`);
         this.client.emit('survey_changed', user);
-        const result = await this.surveyModel.deleteOne({ surveyId: id }).exec();
+        const result = await this.surveyModel.deleteOne({ surveyId: id, ...filter }).exec();
         if (result.deletedCount === 0) {
             this.logger.error(`Survey not found during deletion with ID ${id} for user ${user.email}`);
             throw new NotFoundException(`Survey with ID ${id} not found`);
@@ -250,15 +265,17 @@ export class SurveyService {
 
     async getSurveysByUser(user: User) {
         this.logger.log(`Fetching surveys for user ${user.email}`);
-        return await this.surveyModel.find({ creatorEmail: user.email }).lean().exec();
+        const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
+        return await this.surveyModel.find({ ...filter }).lean().exec();
     }
 
     async generateJavascriptCode(user: User) {
         this.logger.log(`Generating JavaScript code for user ${user.email}`);
         try {
-            const surveys = await this.surveyModel.find({ creatorEmail: user.email }).exec();
+            const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
+            const surveys = await this.surveyModel.find({ ...filter }).exec();
             if (!surveys) {
-                this.logger.error(`No surveys found for user ${user.email}`);
+                this.logger.error(`No surveys found for user ${user.email} ${user.customerId}`);
                 throw new NotFoundException('Survey not found');
             }
             const storage = new Storage({
@@ -267,7 +284,7 @@ export class SurveyService {
             const bucket = storage.bucket(this.configService.get('GCP_BUCKET_NAME'));
             const filePath = `embedded/${user.email}/latest/embed.js`;
             this.logger.debug(`Writing JavaScript code to storage at ${filePath} for user ${user.email}`);
-            
+
             const stream = await bucket.file(filePath).createWriteStream();
             const javascriptCode = `
                 window.paladinSurveys = ${JSON.stringify(surveys)};
@@ -279,7 +296,7 @@ export class SurveyService {
             stream.end(javascriptCode);
             this.logger.log(`JavaScript code generated successfully for user ${user.email}`);
         }
-        catch(error: unknown) {
+        catch (error: unknown) {
             this.logger.error(`Error generating JavaScript code for user ${user.email}: ${error instanceof Error ? error.stack : 'Unknown error'}`);
             console.log(error);
         }

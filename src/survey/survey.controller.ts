@@ -32,8 +32,8 @@ export class SurveyController {
     }
 
     @Get(':id')
-    async getSurveyById(@Param('id') id: string) {
-        return this.surveyService.getSurveyById(id);
+    async getSurveyById(@Param('id') id: string, @Req() req: Request) {
+        return this.surveyService.getSurveyById(id, req.user as User);
     }
 
     @UseGuards(JwtGuard)
@@ -62,7 +62,7 @@ export class SurveyController {
         @Payload() user: User,
         @Ctx() context: RmqContext
     ) {
-        this.logger.log('Received survey_changed event', { user: user.email });
+        this.logger.log('Received survey_changed event', { user: user.email, customerId: user.customerId });
         try {
             await this.surveyService.generateJavascriptCode(user);
             this.logger.log('Successfully processed survey_changed event', { user: user.email });
@@ -72,7 +72,7 @@ export class SurveyController {
             this.logger.error(
                 'Failed to process survey_changed event',
                 error instanceof Error ? error.stack : undefined,
-                { user: user.email }
+                { user: user.email, customerId: user.customerId }
             );
             // Reject the message without requeuing
             context.getChannelRef().reject(context.getMessage(), false);
