@@ -222,26 +222,24 @@ export class FeedbackService implements OnModuleInit {
         }
     }
 
-    async exportFeedbacksToCSV(user: User, surveyId: string): Promise<string> {
-        return this.exportService.exportToCSV(surveyId, user);
-    }
-
-    async getAvailableFilters(): Promise<FilterType[]> {
-        return this.filterService.getAvailableFilters();
-    }
-
-    async getFilterDescription(filterType: FilterType): Promise<string> {
-        return this.filterService.getFilterDescription(filterType);
-    }
-
     async getFilteredFeedbacks(
         user: User,
         filterType: FilterType,
         surveyId?: string
     ): Promise<{ feedbacks: Feedback[], total: number }> {
         try {
-            const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
-            const query = surveyId ? { surveyId, ...filter } : { ...filter };
+            // First get all surveys for the user
+            const surveys = await this.surveyModel.find(
+                user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email }
+            ).select('surveyId').lean().exec();
+
+            const surveyIds = surveys.map(survey => survey.surveyId);
+
+            // Then get feedbacks for those surveys
+            const query = surveyId 
+                ? { surveyId } 
+                : { surveyId: { $in: surveyIds } };
+            
             const feedbacks = await this.feedbackModel.find(query).exec();
             return this.filterService.filterFeedbacks(feedbacks, filterType);
         } catch (error) {
@@ -252,6 +250,28 @@ export class FeedbackService implements OnModuleInit {
             );
             throw error;
         }
+    }
+
+    async exportFeedbacksToCSV(user: User, surveyId: string): Promise<string> {
+        // First verify the survey belongs to the user
+        const survey = await this.surveyModel.findOne({
+            surveyId,
+            ...(user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email })
+        }).lean().exec();
+
+        if (!survey) {
+            throw new Error('Survey not found or access denied');
+        }
+
+        return this.exportService.exportToCSV(surveyId, user);
+    }
+
+    async getAvailableFilters(): Promise<FilterType[]> {
+        return this.filterService.getAvailableFilters();
+    }
+
+    async getFilterDescription(filterType: FilterType): Promise<string> {
+        return this.filterService.getFilterDescription(filterType);
     }
 
     async onModuleInit() {
