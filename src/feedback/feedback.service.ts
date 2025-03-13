@@ -94,13 +94,13 @@ export class FeedbackService implements OnModuleInit {
             this.logger.debug('Fetching feedbacks for user', { user: user.email, page });
             const itemsPerPage = 100;
             const skip = (page - 1) * itemsPerPage;
-            const filter = user.customerId ? {customerId: user.customerId} : {creatorEmail: user.email};
+            const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
             const [feedbacks, total] = await Promise.all([
                 this.feedbackModel.find(filter)
                     .skip(skip)
                     .limit(itemsPerPage)
                     .exec(),
-                this.feedbackModel.countDocuments({...filter})
+                this.feedbackModel.countDocuments(filter)
             ]);
 
             const totalPages = Math.ceil(total / itemsPerPage);
@@ -227,12 +227,12 @@ export class FeedbackService implements OnModuleInit {
     }
 
     async getFilteredFeedbacks(
-        user: User, 
-        filterType: FilterType, 
+        user: User,
+        filterType: FilterType,
         surveyId?: string
     ): Promise<{ feedbacks: Feedback[], total: number }> {
         try {
-            const filter = user.customerId ? {customerId: user.customerId} : {creatorEmail: user.email};
+            const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
             const query = surveyId ? { surveyId, ...filter } : { ...filter };
             const feedbacks = await this.feedbackModel.find(query).exec();
             return this.filterService.filterFeedbacks(feedbacks, filterType);
