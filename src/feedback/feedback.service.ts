@@ -96,7 +96,7 @@ export class FeedbackService implements OnModuleInit {
             const skip = (page - 1) * itemsPerPage;
             const filter = user.customerId ? {customerId: user.customerId} : {creatorEmail: user.email};
             const [feedbacks, total] = await Promise.all([
-                this.feedbackModel.find({...filter})
+                this.feedbackModel.find(filter)
                     .skip(skip)
                     .limit(itemsPerPage)
                     .exec(),
