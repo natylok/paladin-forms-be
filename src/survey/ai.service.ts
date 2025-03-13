@@ -283,7 +283,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
 
 export const generateSurvey = async (prompt: string, surveyType: string, userEmail: string) => {
   const response = await openai.chat.completions.create({
-    model: 'gpt-4-mini',
+    model: 'gpt-4o-mini',
     messages: [
       {
         role: 'system',
