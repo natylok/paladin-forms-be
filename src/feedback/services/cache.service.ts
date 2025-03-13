@@ -12,7 +12,8 @@ export class FeedbackCacheService {
     ) {}
 
     generateCacheKey(user: User): string {
-        return `paladin:feedback:summary:${user.email}`;
+        const customerId = user.customerId ? `:${user.customerId}` : '';
+        return `paladin:feedback:summary:${user.email}${customerId}`;
     }
 
     async getCachedSummary(cacheKey: string): Promise<any | null> {
