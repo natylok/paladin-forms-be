@@ -52,10 +52,9 @@ export class SurveyService {
         return this.surveyModel.find({ creatorEmail: user.email }).exec();
     }
 
-    async getSurveyById(id: string, user: User): Promise<Survey> {
+    async getSurveyById(id: string): Promise<Survey> {
         this.logger.log(`Fetching survey by ID ${id}`);
-        const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
-        const survey = await this.surveyModel.findOne({ surveyId: id, ...filter }).exec();
+        const survey = await this.surveyModel.findOne({ surveyId: id }).exec();
         if (!survey) {
             this.logger.error(`Survey not found with ID ${id}`);
             throw new NotFoundException(`Survey with ID ${id} not found`);
