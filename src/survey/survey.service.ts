@@ -53,13 +53,23 @@ export class SurveyService {
     }
 
     async getSurveyById(id: string): Promise<Survey> {
-        this.logger.log(`Fetching survey by ID ${id}`);
-        const survey = await this.surveyModel.findOne({ surveyId: id }).exec();
-        if (!survey) {
-            this.logger.error(`Survey not found with ID ${id}`);
-            throw new NotFoundException(`Survey with ID ${id} not found`);
+        try {
+            this.logger.log(`Fetching survey by ID ${id}`);
+            const survey = await this.surveyModel.findOne({ surveyId: id }).exec();
+            if (!survey) {
+                this.logger.error(`Survey not found with ID ${id}`);
+                throw new NotFoundException(`Survey with ID ${id} not found`);
+            }
+            this.logger.log(`Survey ${id} fetched successfully`);
+            return survey;
+        } catch (error) {
+            this.logger.error(
+                'Error fetching survey by ID',
+                error instanceof Error ? error.stack : undefined,
+                { surveyId: id }
+            );
+            throw error;
         }
-        return survey;
     }
 
     private cleanData(data: any): any {

@@ -32,8 +32,20 @@ export class SurveyController {
     }
 
     @Get(':id')
-    async getSurveyById(@Param('id') id: string, @Req() req: Request) {
-        return this.surveyService.getSurveyById(id);
+    async getSurveyById(@Param('id') id: string) {
+        try {
+            this.logger.log('Fetching survey by ID', { surveyId: id });
+            const survey = await this.surveyService.getSurveyById(id);
+            this.logger.log('Survey fetched successfully', { surveyId: id });
+            return survey;
+        } catch (error) {
+            this.logger.error(
+                'Error fetching survey',
+                error instanceof Error ? error.stack : undefined,
+                { surveyId: id }
+            );
+            throw error;
+        }
     }
 
     @UseGuards(JwtGuard)
