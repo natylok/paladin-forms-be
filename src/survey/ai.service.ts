@@ -246,17 +246,43 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   Instructions and Requirements:
   1. Relevance & Specificity: Tailor all questions directly to the user's prompt. Incorporate the topic details or requirements provided by the user so that the survey feels customized and highly relevant.
   2. Clarity & Engagement: Ensure each question is clear, concise, and engaging. Use simple language and avoid ambiguity or jargon (unless the survey's audience expects it).
-  3. Variety of Question Types: Include a mix of question formats as appropriate to the topic:
-     - Multiple-choice questions with plausible options (and "Other" if needed)
-     - Likert scale questions (1-5 rating scale)
-     - Yes/No or True/False questions if applicable
-     - Open-ended questions for free-form feedback
-     - 1 to 10 scale questions
-     - 1 to 5 faces questions
+  3. Component Type Requirements - You MUST include at least one of each of these categories:
+     a) Rating Components (choose at least 2):
+        - STAR_1_TO_5 ('1to5stars') for visual rating with stars
+        - FACE_1_TO_5 ('1to5faces') for emotional feedback
+        - SCALE_1_TO_10 ('1to10') for detailed numerical rating
+        - SCALE_1_TO_5 ('1to5scale') for simple numerical rating
+     b) Text Input Components (choose at least 1):
+        - TEXTBOX ('textbox') for long-form responses
+        - INPUT ('input') for short text answers
+        - TEXT ('text') for medium-length responses
+     c) Choice Components (choose at least 2):
+        - RADIO_BUTTONS ('radioButtons') for single-choice questions
+        - DROPDOWN ('dropdown') for single selection from many options
+        - CHECKBOX ('checkbox') for multiple selection
+        - MULTIPLE_CHOICE ('multi') for multiple-choice questions
+     d) Special Components (choose at least 1):
+        - SLIDER ('slider') for continuous range input
+        - DATE_PICKER ('datePicker') for temporal data
+        - DIVIDER ('divider') for visual separation
   4. Tone & Style: Determine an appropriate tone based on the user's prompt and target audience.
   5. Logical Flow: Organize questions in a sensible order, starting with easier/general questions and moving to more specific ones.
-  6. Quality Over Quantity: Aim for an optimal number of questions that thoroughly cover the topic without unnecessary length.
-  7.Should be only one page, no more, no less
+  6. Quality Over Quantity: Aim for 8-12 questions that thoroughly cover the topic.
+  7. Should be only one page, no more, no less.
+
+  Component Type Usage Guidelines:
+  - Use STAR_1_TO_5 or FACE_1_TO_5 for emotional or satisfaction ratings
+  - Use SCALE_1_TO_10 for detailed numerical feedback
+  - Use TEXTBOX for detailed opinions or explanations
+  - Use INPUT for short, specific answers (name, email, etc.)
+  - Use TEXT for medium-length responses
+  - Use RADIO_BUTTONS for 3-5 options
+  - Use DROPDOWN for more than 5 options
+  - Use CHECKBOX for "select all that apply" questions
+  - Use MULTIPLE_CHOICE for structured multiple-choice questions
+  - Use SLIDER for continuous ranges (age, budget, etc.)
+  - Use DATE_PICKER for date-related questions
+  - Use DIVIDER to separate question groups logically
 
   You need to use the following schema please use the exact same schema:
   ${formSchemaFile}
@@ -278,7 +304,8 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   - Ensure questions flow logically
   - Keep the survey focused and concise
   - Use clear, unambiguous language
-  - Include a mix of question types as appropriate
+  - Include ALL the required component types as specified above
+  - Add appropriate options array for components that need them (radioButtons, dropdown, checkbox, multi)
 `;
 
 export const generateSurvey = async (prompt: string, surveyType: string, userEmail: string) => {

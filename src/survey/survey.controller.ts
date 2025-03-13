@@ -50,7 +50,7 @@ export class SurveyController {
   
     @Post('generate')
     @UseGuards(JwtGuard, LimitSurveysGuard)
-    @RateLimit(10)
+    @RateLimit(50)
     async generateSurvey(@Body() data: { prompt: string, surveyType?: string }, @Req() req: Request) {
         this.logger.log('Generating survey', { prompt: data.prompt, surveyType: data.surveyType, user: (req.user as User).email });
         const survey = await generateSurvey(data.prompt, data.surveyType, (req.user as User).email);

@@ -188,7 +188,7 @@ export class SurveyService {
         this.client.emit('survey_changed', user);
         
         // Get and clean the update data
-        const surveyData = updateData['survey'] || updateData;
+        const surveyData = updateData;
         this.logger.debug(`Original update data for survey ${id} and user ${user.email}`);
         
         const cleanedData = this.cleanData(surveyData);
