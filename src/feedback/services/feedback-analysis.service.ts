@@ -71,7 +71,15 @@ export class FeedbackAnalysisService {
             sentimentCount: 0,
             sentimentCounts: { positive: 0, negative: 0, neutral: 0 },
             totalRatingScore: 0,
-            ratingCount: 0
+            ratingCount: 0,
+            "1to10": {
+                total: 0,
+                average: 0,
+                distribution: {
+                    '1': 0, '2': 0, '3': 0, '4': 0, '5': 0,
+                    '6': 0, '7': 0, '8': 0, '9': 0, '10': 0
+                }
+            }
         };
 
         const dailyFeedbacks = new Map<string, { positive: number, negative: number }>();
