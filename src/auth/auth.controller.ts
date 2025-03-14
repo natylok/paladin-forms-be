@@ -52,6 +52,8 @@ export class AuthController {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
+        domain: process.env.NODE_ENV === 'production' ? '.paladin-forms.com' : 'localhost',
+        path: '/',
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
       });
 
@@ -59,8 +61,11 @@ export class AuthController {
         email: req.user.email
       });
 
-      // Redirect to the dashboard
-      return res.redirect('http://localhost:3000/dashboard?access_token=' + accessToken);
+      // Redirect to the dashboard with the access token as a query parameter
+      // This allows the frontend to store it for Bearer token usage
+      return res.redirect(`${process.env.NODE_ENV === 'production' 
+        ? 'https://app.paladin-forms.com' 
+        : 'http://localhost:3000'}/dashboard?access_token=${accessToken}`);
     } catch (error) {
       this.logger.error(
         'Google authentication failed',

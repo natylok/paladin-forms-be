@@ -11,11 +11,13 @@ async function bootstrap() {
   
   // Enable CORS with credentials
   app.enableCors({
-    origin: true, // Allow all origins
+    origin: process.env.NODE_ENV === 'production' 
+      ? ['https://app.paladin-forms.com', 'https://paladin-forms.com']
+      : ['http://localhost:3000'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
-    exposedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Set-Cookie', 'Authorization'],
     maxAge: 3600,
   });
 
