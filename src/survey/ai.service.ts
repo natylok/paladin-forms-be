@@ -248,10 +248,10 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   2. Clarity & Engagement: Ensure each question is clear, concise, and engaging. Use simple language and avoid ambiguity or jargon (unless the survey's audience expects it).
   3. Component Type Requirements - You MUST include at least one of each of these categories:
      a) Rating Components (choose at least 2):
-        - STAR_1_TO_5 ('1to5stars') for visual rating with stars
-        - FACE_1_TO_5 ('1to5faces') for emotional feedback
-        - SCALE_1_TO_10 ('1to10') for detailed numerical rating
-        - SCALE_1_TO_5 ('1to5scale') for simple numerical rating
+        - ('1to5stars') for visual rating with stars
+        -  ('1to5faces') for emotional feedback
+        -  ('1to10scale') for detailed numerical rating
+        -  ('1to5scale') for simple numerical rating
      b) Text Input Components (choose at least 1):
         - TEXTBOX ('textbox') for long-form responses
         - INPUT ('input') for short text answers
