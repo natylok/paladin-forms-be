@@ -60,7 +60,7 @@ export class AuthController {
       });
 
       // Redirect to the dashboard
-      return res.redirect('http://localhost:3000/dashboard');
+      return res.redirect('http://localhost:3000/dashboard?access_token=' + accessToken);
     } catch (error) {
       this.logger.error(
         'Google authentication failed',
