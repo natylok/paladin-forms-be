@@ -189,8 +189,4 @@ export class FeedbackController {
     }
   }
 
-  @EventPattern('feedback_created')
-  handleFeedbackCreated(@Payload() payload: Feedback) {
-    this.feedbackService.saveFeedback(payload);
-  }
 }

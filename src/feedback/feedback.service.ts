@@ -36,30 +36,14 @@ export class FeedbackService implements OnModuleInit {
         try {
             this.logger.debug('Processing feedback submission', { surveyId, responses });
 
-            const cleanResponses: Record<string, FeedbackResponse> = {};
-            const actualResponses = responses.responses || responses;
-
-            Object.entries(actualResponses).forEach(([key, value]) => {
-                if (key === 'responses' || key === 'surveyId' || key === 'submittedAt') {
-                    return;
-                }
-                if (value && typeof value === 'object' && 'componentType' in value && 'value' in value) {
-                    cleanResponses[key] = {
-                        componentType: value.componentType,
-                        value: value.value,
-                        title: value.title || ''
-                    };
-                }
-            });
-
-            const feedback = new this.feedbackModel({
+            // Emit raw feedback data to RabbitMQ
+            await this.client.emit('feedback.created', {
                 surveyId,
-                responses: cleanResponses,
-                isRead: false
-            });
+                responses,
+                submittedAt: new Date()
+            }).toPromise();
 
-            await feedback.save();
-            this.logger.debug('Feedback saved to database', { surveyId, feedbackId: feedback._id });
+            this.logger.debug('Feedback event emitted successfully', { surveyId });
         } catch (error) {
             this.logger.error(
                 'Failed to submit feedback',

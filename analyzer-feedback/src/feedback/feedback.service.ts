@@ -3,6 +3,12 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Feedback, FeedbackDocument } from './feedback.schema';
 
+interface RawFeedbackResponse {
+  componentType: string;
+  value: string | number;
+  title?: string;
+}
+
 @Injectable()
 export class FeedbackService {
   private readonly logger = new Logger(FeedbackService.name);
@@ -15,18 +21,15 @@ export class FeedbackService {
     try {
       this.logger.log(`Processing feedback for survey: ${data.surveyId}`);
       
-      // Transform the feedback data to match our schema
+      // Clean and transform the responses
+      const cleanResponses = this.cleanAndTransformResponses(data.responses);
+
+      // Prepare feedback data for saving
       const feedbackToSave = {
         surveyId: data.surveyId,
-        responses: Object.entries(data.responses).map(([componentId, response]: [string, any]) => ({
-          componentId,
-          value: response.value,
-          componentType: response.componentType,
-          title: response.title || ''
-        })),
-        customerId: data.customerId,
+        responses: cleanResponses,
         metadata: {
-          originalTimestamp: new Date(),
+          originalTimestamp: data.submittedAt || new Date(),
           source: 'paladin-forms-be'
         }
       };
@@ -44,6 +47,34 @@ export class FeedbackService {
       this.logger.error(`Error processing feedback: ${error.message}`, error.stack);
       throw error;
     }
+  }
+
+  private cleanAndTransformResponses(responses: Record<string, any>): any[] {
+    const cleanResponses: Record<string, RawFeedbackResponse> = {};
+    const actualResponses = responses.responses || responses;
+
+    // First, clean the responses
+    Object.entries(actualResponses).forEach(([key, value]) => {
+      if (key === 'responses' || key === 'surveyId' || key === 'submittedAt') {
+        return;
+      }
+      if (value && typeof value === 'object' && 'componentType' in value && 'value' in value) {
+        const typedValue = value as { componentType: string; value: string | number; title?: string };
+        cleanResponses[key] = {
+          componentType: typedValue.componentType,
+          value: typedValue.value,
+          title: typedValue.title || ''
+        };
+      }
+    });
+
+    // Then transform to array format
+    return Object.entries(cleanResponses).map(([componentId, response]) => ({
+      componentId,
+      value: response.value,
+      componentType: response.componentType,
+      title: response.title || ''
+    }));
   }
 
   private async analyzeFeedback(feedback: FeedbackDocument): Promise<void> {
