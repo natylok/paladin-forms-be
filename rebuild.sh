@@ -42,8 +42,8 @@ print_success "Analyzer feedback application built successfully"
 
 # Build and start Docker containers
 print_step "Building and starting Docker containers..."
-docker-compose build
-docker-compose up -d
+docker compose build
+docker compose up -d
 if [ $? -ne 0 ]; then
     print_error "Docker containers failed to start"
     exit 1
@@ -52,6 +52,6 @@ print_success "Docker containers started successfully"
 
 # Show running containers
 print_step "Running containers:"
-docker-compose ps
+docker compose ps
 
 print_success "All done! Your applications are rebuilt and running" 
