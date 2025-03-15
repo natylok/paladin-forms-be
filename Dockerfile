@@ -4,48 +4,55 @@ FROM node:20-slim AS builder
 WORKDIR /usr/src/app
 
 # Install necessary dependencies for Prisma
-RUN apt-get update && \
-    apt-get install -y openssl python3 make g++ && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    openssl \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy package files and prisma
+# Copy package files and install dependencies
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
 RUN npm install
 
-# Generate Prisma Client
+# Generate Prisma client
 RUN npx prisma generate
 
-# Copy the rest of the code
+# Copy source code and build
 COPY . .
-
-# Build the application
 RUN npm run build
 
-# Production image
+# Verify build output
+RUN ls -la dist/ && \
+    cat dist/main.js || echo "main.js not found"
+
+# Production stage
 FROM node:20-slim
 
 WORKDIR /usr/src/app
 
 # Install necessary dependencies for Prisma
-RUN apt-get update && \
-    apt-get install -y openssl python3 make g++ && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    openssl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files and install production dependencies
 COPY package*.json ./
-COPY prisma ./prisma/
-RUN npm install --production
+RUN npm install --only=production
 
-# Copy built application and Prisma generated files
+# Copy Prisma files and generate client
+COPY prisma ./prisma/
+RUN npx prisma generate
+
+# Copy built application
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /usr/src/app/node_modules/@prisma ./node_modules/@prisma
+
+# Verify the dist directory contents
+RUN ls -la dist/
 
 EXPOSE 3333
 
-CMD ["npm", "run", "start:prod"] 
+CMD ["npm", "run", "start:migrate:prod"] 
