@@ -12,36 +12,8 @@ async function bootstrap() {
   const rabbitmqUrl = `amqp://${rabbitmqUser}:${rabbitmqPass}@${rabbitmqHost}:5672`;
   
   try {
-    // First, create the DLX exchange and queue
+    // Create a single microservice instance that handles both queues
     const app = await NestFactory.createMicroservice(AppModule, {
-      transport: Transport.RMQ,
-      options: {
-        urls: [rabbitmqUrl],
-        queue: 'dlx.queue',
-        queueOptions: {
-          durable: true
-        },
-        exchanges: [
-          {
-            name: 'dlx.exchange',
-            type: 'direct'
-          }
-        ],
-        prefetchCount: 1,
-        socketOptions: {
-          heartbeatIntervalInSeconds: 60,
-          reconnectTimeInSeconds: 5
-        },
-        retryAttempts: 5,
-        retryDelay: 5000
-      },
-    });
-
-    await app.listen();
-    logger.log('DLX exchange and queue created');
-
-    // Then create the main queue with DLX configuration
-    const mainApp = await NestFactory.createMicroservice(AppModule, {
       transport: Transport.RMQ,
       options: {
         urls: [rabbitmqUrl],
@@ -53,21 +25,41 @@ async function bootstrap() {
         },
         noAck: false,
         prefetchCount: 1,
+        persistent: true,
         socketOptions: {
           heartbeatIntervalInSeconds: 60,
           reconnectTimeInSeconds: 5
         },
         retryAttempts: 5,
-        retryDelay: 5000
+        retryDelay: 5000,
+        exchanges: [
+          {
+            name: 'dlx.exchange',
+            type: 'direct'
+          }
+        ],
+        // Explicitly define the patterns we want to subscribe to
+        subscribe: {
+          'publication.created': true,
+          'publication.updated': true,
+          'publication.deleted': true,
+          'scheduled.task': true
+        }
       },
     });
 
     logger.log(`Connecting to RabbitMQ at ${rabbitmqHost}:5672`);
     
-    mainApp.enableShutdownHooks();
+    app.enableShutdownHooks();
     
-    await mainApp.listen();
+    await app.listen();
     logger.log('Queue Service Microservice is listening for publication events');
+    logger.log('Subscribed patterns:', [
+      'publication.created',
+      'publication.updated',
+      'publication.deleted',
+      'scheduled.task'
+    ]);
   } catch (error) {
     logger.error('Failed to start microservice', error instanceof Error ? error.stack : undefined);
     process.exit(1);
