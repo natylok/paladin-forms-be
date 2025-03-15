@@ -24,14 +24,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
             queueOptions: {
               durable: true
             },
-            persistent: true,
-            socketOptions: {
-              heartbeatIntervalInSeconds: 60,
-              reconnectTimeInSeconds: 5
-            },
-            retryAttempts: 3,
-            retryDelay: 3000,
-            prefetchCount: 1,
             noAck: true
           },
         }),

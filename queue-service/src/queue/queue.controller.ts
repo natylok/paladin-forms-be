@@ -15,63 +15,18 @@ export class QueueController {
 
   @EventPattern('publication.created')
   async handlePublicationCreated(@Payload() data: PublicationEvent, @Ctx() context: RmqContext) {
-    const channel = context.getChannelRef();
-    const originalMsg = context.getMessage();
-
-    try {
-      this.logger.log('Received publication.created event', { 
-        id: data.id,
-        timeFrame: data.timeFrame,
-        emails: data.emails?.length
-      });
-
-      await this.queueService.handlePublicationEvent({
-        ...data,
-        action: 'create'
-      });
-
-      channel.ack(originalMsg);
-      this.logger.log('Successfully processed publication.created event', { id: data.id });
-    } catch (error) {
-      this.logger.error(
-        'Failed to handle publication.created event',
-        error instanceof Error ? error.stack : undefined,
-        { data }
-      );
-      // Requeue the message if it's a temporary failure
-      channel.nack(originalMsg, false, true);
-    }
+    this.queueService.handlePublicationEvent({
+      ...data,
+      action: 'create'
+    });
   }
 
   @EventPattern('publication.updated')
   async handlePublicationUpdated(@Payload() data: PublicationEvent, @Ctx() context: RmqContext) {
-    const channel = context.getChannelRef();
-    const originalMsg = context.getMessage();
-
-    try {
-      this.logger.log('Received publication.updated event', { 
-        id: data.id,
-        timeFrame: data.timeFrame,
-        emails: data.emails?.length,
-        changes: data.changes
-      });
-
-      await this.queueService.handlePublicationEvent({
-        ...data,
-        action: 'update'
-      });
-
-      channel.ack(originalMsg);
-      this.logger.log('Successfully processed publication.updated event', { id: data.id });
-    } catch (error) {
-      this.logger.error(
-        'Failed to handle publication.updated event',
-        error instanceof Error ? error.stack : undefined,
-        { data }
-      );
-      // Requeue the message if it's a temporary failure
-      channel.nack(originalMsg, false, true);
-    }
+    this.queueService.handlePublicationEvent({
+      ...data,
+      action: 'update'
+    });
   }
 
   @EventPattern('publication.deleted')
