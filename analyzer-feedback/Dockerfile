@@ -1,4 +1,4 @@
-FROM node:18-slim AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /usr/src/app
 
@@ -21,7 +21,7 @@ COPY . .
 RUN npm run build
 
 # Production image
-FROM node:18-slim
+FROM node:20-slim
 
 WORKDIR /usr/src/app
 
@@ -35,9 +35,8 @@ RUN apt-get update && \
 COPY package*.json ./
 RUN npm install --production
 
-# Copy built application and dependencies
+# Copy built application
 COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma || true
 
 EXPOSE 3334
 

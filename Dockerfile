@@ -1,5 +1,5 @@
 # Use node debian instead of alpine for better compatibility
-FROM node:18-slim AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /usr/src/app
 
@@ -26,7 +26,7 @@ COPY . .
 RUN npm run build
 
 # Production image
-FROM node:18-slim
+FROM node:20-slim
 
 WORKDIR /usr/src/app
 
