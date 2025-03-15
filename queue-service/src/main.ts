@@ -6,6 +6,8 @@ import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const logger = new Logger('Main');
+  
+  // First create the app
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
@@ -13,35 +15,44 @@ async function bootstrap() {
   const password = configService.get('RABBITMQ_DEFAULT_PASS', 'guest');
   const host = configService.get('RABBITMQ_HOST', 'localhost');
 
-  const microservice = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
-    transport: Transport.RMQ,
-    options: {
-      urls: [`amqp://${user}:${password}@${host}:5672`],
-      queue: 'publication_queue',
-      queueOptions: {
-        durable: true,
-        prefetchCount: 1
+  // Create the microservice
+  const microservice = await NestFactory.createMicroservice<MicroserviceOptions>(
+    AppModule,
+    {
+      transport: Transport.RMQ,
+      options: {
+        urls: [`amqp://${user}:${password}@${host}:5672`],
+        queue: 'publication_queue',
+        queueOptions: {
+          durable: true,
+          prefetchCount: 1
+        },
+        socketOptions: {
+          heartbeatIntervalInSeconds: 60,
+          reconnectTimeInSeconds: 5
+        },
+        noAck: false,
+        persistent: true
       },
-      socketOptions: {
-        heartbeatIntervalInSeconds: 60,
-        reconnectTimeInSeconds: 5
-      },
-      noAck: false
-    }
-  });
+    },
+  );
 
-  // Start both the HTTP and microservice servers
-  await Promise.all([
-    app.listen(3000),
-    microservice.listen()
-  ]).catch(error => {
-    logger.error('Failed to start servers', error);
+  // Start both HTTP and microservice
+  try {
+    await Promise.all([
+      app.listen(3000),
+      microservice.listen()
+    ]);
+    
+    logger.log(`Queue service is running`);
+    logger.log(`Listening for messages on publication_queue`);
+  } catch (error) {
+    logger.error('Failed to start services', error);
     process.exit(1);
-  });
-
-  logger.log('Queue service is running');
+  }
 }
 
+// Add global error handlers
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });

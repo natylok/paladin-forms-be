@@ -30,8 +30,7 @@ export class QueueController {
         id: data.id,
         timeFrame: data.timeFrame,
         emails: data.emails?.length,
-        pattern: context.getPattern(),
-        content: originalMsg.content.toString()
+        pattern: context.getPattern()
       });
 
       await this.queueService.handlePublicationEvent({
@@ -47,7 +46,8 @@ export class QueueController {
         error instanceof Error ? error.stack : undefined,
         { data }
       );
-      channel.nack(originalMsg);
+      // Nack the message and requeue it
+      channel.nack(originalMsg, false, true);
     }
   }
 
@@ -62,8 +62,7 @@ export class QueueController {
         id: data.id,
         timeFrame: data.timeFrame,
         emails: data.emails?.length,
-        pattern: context.getPattern(),
-        content: originalMsg.content.toString()
+        pattern: context.getPattern()
       });
 
       await this.queueService.handlePublicationEvent({
@@ -79,7 +78,38 @@ export class QueueController {
         error instanceof Error ? error.stack : undefined,
         { data }
       );
-      channel.nack(originalMsg);
+      // Nack the message and requeue it
+      channel.nack(originalMsg, false, true);
+    }
+  }
+
+  @EventPattern('publication.deleted')
+  async handlePublicationDeleted(@Payload() data: PublicationEvent, @Ctx() context: RmqContext) {
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+
+    try {
+      this.logger.debug('Raw publication.deleted event received', { data });
+      this.logger.log('Received publication.deleted event', { 
+        id: data.id,
+        pattern: context.getPattern()
+      });
+
+      await this.queueService.handlePublicationEvent({
+        ...data,
+        action: 'delete'
+      });
+
+      this.logger.log('Successfully handled publication.deleted event', { id: data.id });
+      channel.ack(originalMsg);
+    } catch (error) {
+      this.logger.error(
+        'Failed to handle publication.deleted event',
+        error instanceof Error ? error.stack : undefined,
+        { data }
+      );
+      // Nack the message and requeue it
+      channel.nack(originalMsg, false, true);
     }
   }
 

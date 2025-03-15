@@ -27,8 +27,7 @@ export class PublicationService {
       
       await publication.save();
       
-      // Emit event to queue
-      await lastValueFrom(this.client.emit('publication.created', {
+      const eventData = {
         id: publication.id,
         timeFrame: publication.timeFrame,
         emails: publication.emails,
@@ -37,7 +36,22 @@ export class PublicationService {
         createdAt: new Date(),
         action: 'create',
         actionBy: user.email
-      }));
+      };
+
+      this.logger.log('Emitting publication.created event', eventData);
+      
+      // Emit event to queue
+      try {
+        await lastValueFrom(this.client.emit('publication.created', eventData));
+        this.logger.log('Successfully emitted publication.created event', { id: publication.id });
+      } catch (error) {
+        this.logger.error(
+          'Failed to emit publication.created event',
+          error instanceof Error ? error.stack : undefined,
+          { id: publication.id }
+        );
+        // Don't throw here, as the publication was created successfully
+      }
       
       this.logger.log('Publication created successfully', { 
         id: publication.id,
@@ -126,8 +140,7 @@ export class PublicationService {
         throw new NotFoundException('Publication not found');
       }
 
-      // Emit event to queue
-      await lastValueFrom(this.client.emit('publication.updated', {
+      const eventData = {
         id: publication.id,
         timeFrame: publication.timeFrame,
         emails: publication.emails,
@@ -137,7 +150,22 @@ export class PublicationService {
         action: 'update',
         actionBy: user.email,
         changes: data
-      }));
+      };
+
+      this.logger.log('Emitting publication.updated event', eventData);
+
+      // Emit event to queue
+      try {
+        await lastValueFrom(this.client.emit('publication.updated', eventData));
+        this.logger.log('Successfully emitted publication.updated event', { id: publication.id });
+      } catch (error) {
+        this.logger.error(
+          'Failed to emit publication.updated event',
+          error instanceof Error ? error.stack : undefined,
+          { id: publication.id }
+        );
+        // Don't throw here, as the publication was updated successfully
+      }
       
       this.logger.log('Publication updated successfully', { id, user: user.email });
       

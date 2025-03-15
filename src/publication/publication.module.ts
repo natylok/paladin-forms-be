@@ -22,15 +22,15 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
             urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@${configService.get('RABBITMQ_HOST')}:5672`],
             queue: 'publication_queue',
             queueOptions: {
-              durable: true
+              durable: true,
+              prefetchCount: 1
             },
-            noAck: false,
-            prefetchCount: 1,
-            persistent: true,
             socketOptions: {
               heartbeatIntervalInSeconds: 60,
               reconnectTimeInSeconds: 5
-            }
+            },
+            noAck: false,
+            persistent: true
           },
         }),
         inject: [ConfigService],
