@@ -8,8 +8,6 @@ export class QueueService {
   private readonly logger = new Logger(QueueService.name);
 
   constructor(
-    @Inject('EMAIL_SERVICE') private readonly emailClient: ClientProxy,
-    @Inject('SCHEDULER_SERVICE') private readonly schedulerClient: ClientProxy
   ) {}
 
   async handlePublicationEvent(event: PublicationEvent): Promise<void> {
@@ -36,15 +34,6 @@ export class QueueService {
         triggerAt: new Date(Date.now() + ttl)
       };
 
-      // Schedule the task
-      await lastValueFrom(
-        this.schedulerClient.emit('scheduled.task', {
-          ...emailTrigger,
-          headers: {
-            'x-message-ttl': ttl
-          }
-        })
-      );
 
       this.logger.log('Email task scheduled', {
         publicationId: event.id,
@@ -99,16 +88,8 @@ export class QueueService {
 
       // Format the email content based on the summary
       const emailContent = this.formatEmailContent(data);
-
-      // Emit to email sending queue
-      await lastValueFrom(
-        this.emailClient.emit('email.send', {
-          to: data.emails,
-          subject: `Feedback Summary - ${this.getTimeFrameText(data.timeFrame)}`,
-          content: emailContent
-        })
-      );
-
+      
+      this.logger.log('Email content', { emailContent });
       this.logger.log('Feedback summary email sent', {
         publicationId: data.publicationId,
         emails: data.emails
