@@ -1,17 +1,8 @@
 # Use node debian instead of alpine for better compatibility
 FROM node:18-slim AS builder
-
-WORKDIR /usr/src/app
-
-# Install necessary dependencies
-RUN apt-get update && \
-    apt-get install -y openssl python3 make g++ && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+WORKDIR /home/natylok/paladin-forms-be
 
 # Copy package files and prisma
-COPY package*.json ./
-COPY prisma ./prisma/
 
 # Install dependencies
 RUN npm install
@@ -24,33 +15,10 @@ COPY . .
 
 # Build the application
 RUN npm run build
-RUN ls -la dist/
 
 # Production image
 FROM node:18-slim
 
-WORKDIR /usr/src/app
-
-# Install necessary dependencies for production
-RUN apt-get update && \
-    apt-get install -y openssl python3 make g++ && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copy package files and install production dependencies
-COPY package*.json ./
-COPY tsconfig*.json ./
-RUN npm install --production
-
-# Copy Prisma files and generate client
-COPY prisma ./prisma/
-RUN npx prisma generate
-
-# Copy built application
-COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
-RUN ls -la dist/
-
 EXPOSE 3333
 
-CMD ["node", "dist/main.js"] 
+CMD ["npm", "run", "start:prod"] 
