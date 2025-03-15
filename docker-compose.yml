@@ -38,10 +38,14 @@ services:
     volumes:
       - ./config:/usr/src/app/config:ro  # Mount GCP credentials file as read-only
     depends_on:
-      - dev-db
-      - mongo-db
-      - rabbitmq
-      - redis
+      redis:
+        condition: service_healthy
+      dev-db:
+        condition: service_healthy
+      mongo-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - nati-network
     restart: always
@@ -49,6 +53,7 @@ services:
   # PostgreSQL Development Database
   dev-db:
     image: postgres:13
+    container_name: postgres-db
     ports:
       - 5434:5432
     environment:
@@ -57,10 +62,18 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     networks:
       - nati-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   # MongoDB for NestJS
   mongo-db:
     image: mongo:5.0
+    container_name: mongodb
     restart: always
     ports:
       - 27017:27017
@@ -68,9 +81,14 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
-      - mongo-data:/data/db
+      - mongo_data:/data/db
     networks:
       - nati-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # RabbitMQ Message Broker
   rabbitmq:
@@ -85,6 +103,11 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     networks:
       - nati-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # Redis
   redis:
@@ -97,13 +120,20 @@ services:
       - redis_data:/data
     networks:
       - nati-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     command: redis-server --appendonly yes
 
 networks:
   nati-network:
+    driver: bridge
 
 volumes:
-  mongo-data:
+  postgres_data:
+  mongo_data:
   redis_data:
 
 # Enviro
