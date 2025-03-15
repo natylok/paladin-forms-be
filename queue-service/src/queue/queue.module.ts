@@ -22,19 +22,9 @@ import { QueueService } from './queue.service';
             urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@${configService.get('RABBITMQ_HOST')}:5672`],
             queue: 'publication_queue',
             queueOptions: {
-              durable: true,
-              deadLetterExchange: 'dlx.exchange',
-              deadLetterRoutingKey: 'dlx.queue'
+              durable: true
             },
-            noAck: false,
-            prefetchCount: 1,
-            persistent: true,
-            socketOptions: {
-              heartbeatIntervalInSeconds: 60,
-              reconnectTimeInSeconds: 5
-            },
-            retryAttempts: 5,
-            retryDelay: 5000
+            persistent: true
           },
         }),
         inject: [ConfigService],
@@ -48,47 +38,9 @@ import { QueueService } from './queue.service';
             urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@${configService.get('RABBITMQ_HOST')}:5672`],
             queue: 'publication_queue',
             queueOptions: {
-              durable: true,
-              deadLetterExchange: 'dlx.exchange',
-              deadLetterRoutingKey: 'dlx.queue'
-            },
-            noAck: false,
-            prefetchCount: 1,
-            persistent: true,
-            socketOptions: {
-              heartbeatIntervalInSeconds: 60,
-              reconnectTimeInSeconds: 5
-            },
-            retryAttempts: 5,
-            retryDelay: 5000
-          },
-        }),
-        inject: [ConfigService],
-      },
-      {
-        name: 'DLX_SERVICE',
-        imports: [ConfigModule],
-        useFactory: (configService: ConfigService) => ({
-          transport: Transport.RMQ,
-          options: {
-            urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@${configService.get('RABBITMQ_HOST')}:5672`],
-            queue: 'dlx.queue',
-            queueOptions: {
               durable: true
             },
-            exchanges: [
-              {
-                name: 'dlx.exchange',
-                type: 'direct'
-              }
-            ],
-            prefetchCount: 1,
-            socketOptions: {
-              heartbeatIntervalInSeconds: 60,
-              reconnectTimeInSeconds: 5
-            },
-            retryAttempts: 5,
-            retryDelay: 5000
+            persistent: true
           },
         }),
         inject: [ConfigService],

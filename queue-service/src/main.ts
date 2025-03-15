@@ -12,7 +12,7 @@ async function bootstrap() {
   const rabbitmqUrl = `amqp://${rabbitmqUser}:${rabbitmqPass}@${rabbitmqHost}:5672`;
   
   try {
-    // Create a single microservice instance that handles both queues
+    // Create the microservice instance
     const app = await NestFactory.createMicroservice(AppModule, {
       transport: Transport.RMQ,
       options: {
@@ -26,35 +26,30 @@ async function bootstrap() {
         noAck: false,
         prefetchCount: 1,
         persistent: true,
-        socketOptions: {
-          heartbeatIntervalInSeconds: 60,
-          reconnectTimeInSeconds: 5
-        },
-        retryAttempts: 5,
-        retryDelay: 5000,
         exchanges: [
           {
             name: 'dlx.exchange',
             type: 'direct'
           }
         ],
-        // Explicitly define the patterns we want to subscribe to
-        subscribe: {
-          'publication.created': true,
-          'publication.updated': true,
-          'publication.deleted': true,
-          'scheduled.task': true
-        }
+        socketOptions: {
+          heartbeatIntervalInSeconds: 60,
+          reconnectTimeInSeconds: 5
+        },
+        retryAttempts: 5,
+        retryDelay: 5000
       },
     });
 
     logger.log(`Connecting to RabbitMQ at ${rabbitmqHost}:5672`);
     
+    // Enable graceful shutdown
     app.enableShutdownHooks();
     
+    // Start listening
     await app.listen();
     logger.log('Queue Service Microservice is listening for publication events');
-    logger.log('Subscribed patterns:', [
+    logger.log('Handling patterns:', [
       'publication.created',
       'publication.updated',
       'publication.deleted',
