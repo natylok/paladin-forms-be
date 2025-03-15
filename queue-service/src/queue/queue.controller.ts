@@ -14,8 +14,6 @@ export class QueueController {
 
   constructor(
     private readonly queueService: QueueService,
-    @Inject('EMAIL_SERVICE') private readonly emailClient: ClientProxy,
-    @Inject('SCHEDULER_SERVICE') private readonly schedulerClient: ClientProxy,
     private readonly httpService: HttpService
   ) {
     this.logger.log('Queue controller initialized');
@@ -102,31 +100,10 @@ export class QueueController {
 
       // Get feedback summary from analyzer service
       this.logger.log('Fetching feedback summary', { publicationId: data.publicationId });
-      const summary = await lastValueFrom(
-        this.emailClient.send('feedback.summary', {
-          publicationId: data.publicationId,
-          timeFrame: data.timeFrame
-        }).pipe(
-          timeout(this.REQUEST_TIMEOUT),
-          catchError(error => {
-            if (error.name === 'TimeoutError') {
-              throw new Error(`Feedback summary request timed out after ${this.REQUEST_TIMEOUT}ms`);
-            }
-            throw error;
-          })
-        )
-      );
-
-      if (!summary) {
-        throw new Error('Received empty feedback summary');
-      }
 
       // Format email content
       this.logger.log('Formatting email content', { publicationId: data.publicationId });
-      const emailContent = this.queueService.formatEmailContent({
-        ...data,
-        summary
-      });
+      this.logger.log('Email content', { emailContent: 'test' });
 
       // Send email using internal API
       this.logger.log('Sending email via internal API', {
@@ -141,7 +118,7 @@ export class QueueController {
             {
               to: data.emails,
               subject: `Feedback Summary - ${this.queueService.getTimeFrameText(data.timeFrame)}`,
-              html: emailContent
+              html: `<div>test</div>`
             },
             {
               headers: {
@@ -189,23 +166,11 @@ export class QueueController {
       });
 
       try {
-        await lastValueFrom(
-          this.schedulerClient.emit('scheduled.task', {
-            ...nextTrigger,
-            headers: {
-              'x-message-ttl': ttl,
-              'x-delay': ttl
-            }
-          }).pipe(
-            timeout(this.REQUEST_TIMEOUT),
-            catchError(error => {
-              if (error.name === 'TimeoutError') {
-                throw new Error(`Scheduler request timed out after ${this.REQUEST_TIMEOUT}ms`);
-              }
-              throw error;
-            })
-          )
-        );
+          this.logger.log('Scheduling next email task', {
+        publicationId: data.publicationId,
+        triggerAt: nextTrigger.triggerAt,
+        ttl
+      });
       } catch (error) {
         this.logger.error('Failed to schedule next task', error instanceof Error ? error.stack : undefined);
         throw error;

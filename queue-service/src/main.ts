@@ -5,9 +5,7 @@ import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
   const logger = new Logger('Main');
-  
-  const rabbitmqUser = process.env.RABBITMQ_DEFAULT_USER || 'guest';
-  const rabbitmqPass = process.env.RABBITMQ_DEFAULT_PASS || 'guest';
+
   const rabbitmqHost = process.env.RABBITMQ_HOST || 'rabbitmq';
 
   const app = await NestFactory.create(AppModule);
