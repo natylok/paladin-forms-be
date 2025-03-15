@@ -50,6 +50,26 @@ services:
       - nati-network
     restart: always
 
+  # Feedback Analyzer Service
+  analyzer-feedback:
+    build:
+      context: ./analyzer-feedback
+      dockerfile: Dockerfile
+    container_name: analyzer-feedback
+    environment:
+      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-db:27017/mydatabase?authSource=admin
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+      - NODE_ENV=production
+    depends_on:
+      mongo-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - nati-network
+    restart: always
+
   # PostgreSQL Development Database
   dev-db:
     image: postgres:13
