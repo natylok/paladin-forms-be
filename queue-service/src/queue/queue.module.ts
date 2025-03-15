@@ -32,7 +32,9 @@ import { QueueService } from './queue.service';
             socketOptions: {
               heartbeatIntervalInSeconds: 60,
               reconnectTimeInSeconds: 5
-            }
+            },
+            retryAttempts: 5,
+            retryDelay: 5000
           },
         }),
         inject: [ConfigService],
@@ -56,7 +58,9 @@ import { QueueService } from './queue.service';
             socketOptions: {
               heartbeatIntervalInSeconds: 60,
               reconnectTimeInSeconds: 5
-            }
+            },
+            retryAttempts: 5,
+            retryDelay: 5000
           },
         }),
         inject: [ConfigService],
@@ -82,7 +86,9 @@ import { QueueService } from './queue.service';
             socketOptions: {
               heartbeatIntervalInSeconds: 60,
               reconnectTimeInSeconds: 5
-            }
+            },
+            retryAttempts: 5,
+            retryDelay: 5000
           },
         }),
         inject: [ConfigService],

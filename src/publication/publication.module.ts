@@ -19,11 +19,20 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@rabbitmq:5672`],
+            urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@${configService.get('RABBITMQ_HOST')}:5672`],
             queue: 'publication_queue',
             queueOptions: {
-              durable: true
+              durable: true,
+              deadLetterExchange: 'dlx.exchange',
+              deadLetterRoutingKey: 'dlx.queue'
             },
+            noAck: false,
+            prefetchCount: 1,
+            persistent: true,
+            socketOptions: {
+              heartbeatIntervalInSeconds: 60,
+              reconnectTimeInSeconds: 5
+            }
           },
         }),
         inject: [ConfigService],

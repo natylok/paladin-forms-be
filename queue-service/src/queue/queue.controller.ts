@@ -27,10 +27,13 @@ export class QueueController {
     const originalMsg = context.getMessage();
 
     try {
+      this.logger.debug('Raw publication.created event received', { data });
       this.logger.log('Received publication.created event', { 
         id: data.id,
         timeFrame: data.timeFrame,
-        emails: data.emails?.length
+        emails: data.emails?.length,
+        pattern: context.getPattern(),
+        content: originalMsg.content.toString()
       });
 
       await this.queueService.handlePublicationEvent({
@@ -56,10 +59,13 @@ export class QueueController {
     const originalMsg = context.getMessage();
 
     try {
+      this.logger.debug('Raw publication.updated event received', { data });
       this.logger.log('Received publication.updated event', { 
         id: data.id,
         timeFrame: data.timeFrame,
-        emails: data.emails?.length
+        emails: data.emails?.length,
+        pattern: context.getPattern(),
+        content: originalMsg.content.toString()
       });
 
       await this.queueService.handlePublicationEvent({

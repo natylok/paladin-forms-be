@@ -12,7 +12,36 @@ async function bootstrap() {
   const rabbitmqUrl = `amqp://${rabbitmqUser}:${rabbitmqPass}@${rabbitmqHost}:5672`;
   
   try {
+    // First, create the DLX exchange and queue
     const app = await NestFactory.createMicroservice(AppModule, {
+      transport: Transport.RMQ,
+      options: {
+        urls: [rabbitmqUrl],
+        queue: 'dlx.queue',
+        queueOptions: {
+          durable: true
+        },
+        exchanges: [
+          {
+            name: 'dlx.exchange',
+            type: 'direct'
+          }
+        ],
+        prefetchCount: 1,
+        socketOptions: {
+          heartbeatIntervalInSeconds: 60,
+          reconnectTimeInSeconds: 5
+        },
+        retryAttempts: 5,
+        retryDelay: 5000
+      },
+    });
+
+    await app.listen();
+    logger.log('DLX exchange and queue created');
+
+    // Then create the main queue with DLX configuration
+    const mainApp = await NestFactory.createMicroservice(AppModule, {
       transport: Transport.RMQ,
       options: {
         urls: [rabbitmqUrl],
@@ -28,16 +57,16 @@ async function bootstrap() {
           heartbeatIntervalInSeconds: 60,
           reconnectTimeInSeconds: 5
         },
-        retryAttempts: 3,
-        retryDelay: 3000
+        retryAttempts: 5,
+        retryDelay: 5000
       },
     });
 
     logger.log(`Connecting to RabbitMQ at ${rabbitmqHost}:5672`);
     
-    app.enableShutdownHooks();
+    mainApp.enableShutdownHooks();
     
-    await app.listen();
+    await mainApp.listen();
     logger.log('Queue Service Microservice is listening for publication events');
   } catch (error) {
     logger.error('Failed to start microservice', error instanceof Error ? error.stack : undefined);
