@@ -11,32 +11,47 @@ async function bootstrap() {
   const rabbitmqHost = process.env.RABBITMQ_HOST || 'rabbitmq';
   const rabbitmqUrl = `amqp://${rabbitmqUser}:${rabbitmqPass}@${rabbitmqHost}:5672`;
   
-  const app = await NestFactory.createMicroservice(AppModule, {
-    transport: Transport.RMQ,
-    options: {
-      urls: [rabbitmqUrl],
-      queue: 'publication_queue',
-      queueOptions: {
-        durable: true
+  try {
+    const app = await NestFactory.createMicroservice(AppModule, {
+      transport: Transport.RMQ,
+      options: {
+        urls: [rabbitmqUrl],
+        queue: 'publication_queue',
+        queueOptions: {
+          durable: true,
+          deadLetterExchange: 'dlx.exchange',
+          deadLetterRoutingKey: 'dlx.queue',
+          messageTtl: 30000 // 30 seconds
+        },
+        noAck: false,
+        prefetchCount: 1,
+        socketOptions: {
+          heartbeatIntervalInSeconds: 60,
+          reconnectTimeInSeconds: 5
+        },
+        retryAttempts: 3,
+        retryDelay: 3000
       },
-      noAck: false,
-      prefetchCount: 1,
-      socketOptions: {
-        heartbeatIntervalInSeconds: 60,
-        reconnectTimeInSeconds: 5
-      },
-      patterns: [
-        'publication.created',
-        'publication.updated',
-        'publication.deleted',
-        'scheduled.task'
-      ]
-    },
-  });
+    });
 
-  logger.log(`Connecting to RabbitMQ at ${rabbitmqHost}:5672`);
-  await app.listen();
-  logger.log('Queue Service Microservice is listening for publication events');
+    logger.log(`Connecting to RabbitMQ at ${rabbitmqHost}:5672`);
+    
+    app.enableShutdownHooks();
+    
+    await app.listen();
+    logger.log('Queue Service Microservice is listening for publication events');
+  } catch (error) {
+    logger.error('Failed to start microservice', error instanceof Error ? error.stack : undefined);
+    process.exit(1);
+  }
 }
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
 
 bootstrap();

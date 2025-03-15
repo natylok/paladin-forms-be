@@ -8,7 +8,10 @@ import { QueueService } from './queue.service';
 @Module({
   imports: [
     ConfigModule,
-    HttpModule,
+    HttpModule.register({
+      timeout: 30000,
+      maxRedirects: 5,
+    }),
     ClientsModule.registerAsync([
       {
         name: 'EMAIL_SERVICE',
@@ -19,9 +22,18 @@ import { QueueService } from './queue.service';
             urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@${configService.get('RABBITMQ_HOST')}:5672`],
             queue: 'publication_queue',
             queueOptions: {
-              durable: true
+              durable: true,
+              deadLetterExchange: 'dlx.exchange',
+              deadLetterRoutingKey: 'dlx.queue',
+              messageTtl: 30000 // 30 seconds
             },
-            persistent: true
+            noAck: false,
+            prefetchCount: 1,
+            persistent: true,
+            socketOptions: {
+              heartbeatIntervalInSeconds: 60,
+              reconnectTimeInSeconds: 5
+            }
           },
         }),
         inject: [ConfigService],
@@ -35,15 +47,18 @@ import { QueueService } from './queue.service';
             urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@${configService.get('RABBITMQ_HOST')}:5672`],
             queue: 'publication_queue',
             queueOptions: {
-              durable: true
+              durable: true,
+              deadLetterExchange: 'dlx.exchange',
+              deadLetterRoutingKey: 'dlx.queue',
+              messageTtl: 30000 // 30 seconds
             },
+            noAck: false,
+            prefetchCount: 1,
             persistent: true,
-            patterns: [
-              'publication.created',
-              'publication.updated',
-              'publication.deleted',
-              'scheduled.task'
-            ]
+            socketOptions: {
+              heartbeatIntervalInSeconds: 60,
+              reconnectTimeInSeconds: 5
+            }
           },
         }),
         inject: [ConfigService],
@@ -54,7 +69,7 @@ import { QueueService } from './queue.service';
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@rabbitmq:5672`],
+            urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@${configService.get('RABBITMQ_HOST')}:5672`],
             queue: 'dlx.queue',
             queueOptions: {
               durable: true,
@@ -66,6 +81,10 @@ import { QueueService } from './queue.service';
               },
             ],
             prefetchCount: 1,
+            socketOptions: {
+              heartbeatIntervalInSeconds: 60,
+              reconnectTimeInSeconds: 5
+            }
           },
         }),
         inject: [ConfigService],

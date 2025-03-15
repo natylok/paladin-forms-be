@@ -3,12 +3,14 @@ import { EventPattern, Payload, ClientProxy, Ctx, RmqContext } from '@nestjs/mic
 import { HttpService } from '@nestjs/axios';
 import { QueueService } from './queue.service';
 import { EmailData, EmailTrigger, PublicationEvent } from './types/queue.types';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, timeout, catchError } from 'rxjs';
+import { AxiosError } from 'axios';
 
 @Controller()
 export class QueueController {
   private readonly logger = new Logger(QueueController.name);
   private readonly apiUrl = 'http://localhost:3333/internal/email';
+  private readonly REQUEST_TIMEOUT = 30000; // 30 seconds timeout
 
   constructor(
     private readonly queueService: QueueService,
@@ -98,8 +100,20 @@ export class QueueController {
         this.emailClient.send('feedback.summary', {
           publicationId: data.publicationId,
           timeFrame: data.timeFrame
-        })
+        }).pipe(
+          timeout(this.REQUEST_TIMEOUT),
+          catchError(error => {
+            if (error.name === 'TimeoutError') {
+              throw new Error(`Feedback summary request timed out after ${this.REQUEST_TIMEOUT}ms`);
+            }
+            throw error;
+          })
+        )
       );
+
+      if (!summary) {
+        throw new Error('Received empty feedback summary');
+      }
 
       // Format email content
       this.logger.log('Formatting email content', { publicationId: data.publicationId });
@@ -114,21 +128,38 @@ export class QueueController {
         to: data.emails
       });
 
-      await lastValueFrom(
-        this.httpService.post(
-          `${this.apiUrl}/send`,
-          {
-            to: data.emails,
-            subject: `Feedback Summary - ${this.queueService.getTimeFrameText(data.timeFrame)}`,
-            html: emailContent
-          },
-          {
-            headers: {
-              'x-internal-key': process.env.INTERNAL_API_KEY
+      try {
+        await lastValueFrom(
+          this.httpService.post(
+            `${this.apiUrl}/send`,
+            {
+              to: data.emails,
+              subject: `Feedback Summary - ${this.queueService.getTimeFrameText(data.timeFrame)}`,
+              html: emailContent
+            },
+            {
+              headers: {
+                'x-internal-key': process.env.INTERNAL_API_KEY
+              },
+              timeout: this.REQUEST_TIMEOUT
             }
-          }
-        )
-      );
+          ).pipe(
+            timeout(this.REQUEST_TIMEOUT),
+            catchError(error => {
+              if (error instanceof AxiosError) {
+                throw new Error(`Email API request failed: ${error.message}`);
+              }
+              if (error.name === 'TimeoutError') {
+                throw new Error(`Email API request timed out after ${this.REQUEST_TIMEOUT}ms`);
+              }
+              throw error;
+            })
+          )
+        );
+      } catch (error) {
+        this.logger.error('Failed to send email', error instanceof Error ? error.stack : undefined);
+        throw error;
+      }
 
       this.logger.log('Email sent successfully', {
         publicationId: data.publicationId,
@@ -151,14 +182,27 @@ export class QueueController {
         ttl
       });
 
-      await lastValueFrom(
-        this.schedulerClient.emit('scheduled.task', {
-          ...nextTrigger,
-          headers: {
-            'x-message-ttl': ttl
-          }
-        })
-      );
+      try {
+        await lastValueFrom(
+          this.schedulerClient.emit('scheduled.task', {
+            ...nextTrigger,
+            headers: {
+              'x-message-ttl': ttl
+            }
+          }).pipe(
+            timeout(this.REQUEST_TIMEOUT),
+            catchError(error => {
+              if (error.name === 'TimeoutError') {
+                throw new Error(`Scheduler request timed out after ${this.REQUEST_TIMEOUT}ms`);
+              }
+              throw error;
+            })
+          )
+        );
+      } catch (error) {
+        this.logger.error('Failed to schedule next task', error instanceof Error ? error.stack : undefined);
+        throw error;
+      }
 
       this.logger.log('Next email task scheduled successfully', {
         publicationId: data.publicationId,
