@@ -17,10 +17,20 @@ export class QueueService {
       // Here you can add any specific handling logic for different event types
       switch (event.action) {
         case 'create':
-          this.logger.log('Processing publication creation', { id: event.id });
-          break;
         case 'update':
-          this.logger.log('Processing publication update', { id: event.id });
+          this.logger.log('publication change triggered');
+          fetch('http://localhost:3000/internal/email/send', {
+            method: 'POST',
+            body: JSON.stringify({
+              to: event.emails,
+              subject: 'Publication change',
+              html: 'A publication has been changed'
+            }),
+            headers: {
+              'Authorization': `Bearer ${process.env.INTERNAL_API_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          })
           break;
         case 'delete':
           this.logger.log('Processing publication deletion', { id: event.id });
