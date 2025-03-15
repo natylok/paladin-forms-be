@@ -28,6 +28,7 @@ export class QueueService {
                 html: 'A publication has been changed'
               }),
               headers: {
+                'x-internal-key': process.env.INTERNAL_API_KEY,
                 'Authorization': `Bearer ${process.env.INTERNAL_API_KEY}`,
                 'Content-Type': 'application/json'
               }
