@@ -24,7 +24,9 @@ export class QueueService {
         return;
       }
 
-      const ttl = this.calculateTTL(event.timeFrame);
+      // const ttl = this.calculateTTL(event.timeFrame);
+      //for testing purposes
+      const ttl = Date.now() + 5000;
       
       const emailTrigger: EmailTrigger = {
         publicationId: event.id,
