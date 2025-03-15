@@ -84,11 +84,11 @@ export class FeedbackController {
 
   @UseGuards(JwtGuard, PremiumGuard)
   @Get('summerize')
-  async summerizeFeedbacks(@Req() req: Request) {
+  async summerizeFeedbacks(@Req() req: Request, @Param('timeFrame') timeFrame?: string) {
     try {
       const user = req.user as User;
       this.logger.log('Summarizing feedbacks', { user: user.email });
-      const summary = await this.feedbackService.summerizeAllFeedbacks(user);
+      const summary = await this.feedbackService.summerizeAllFeedbacks(user, timeFrame);
       this.logger.log('Feedbacks summarized successfully', { user: user.email });
       return summary;
     } catch (error) {

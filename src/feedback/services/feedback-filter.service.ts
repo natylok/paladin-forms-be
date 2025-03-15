@@ -16,6 +16,27 @@ export class FeedbackFilterService {
         return Object.values(FilterType);
     }
 
+    getFilterByTimeFrame(timeFrame: string): Record<string, any> {
+        const now = new Date();
+        const timeThreshold = new Date();
+
+        switch (timeFrame) {
+            case 'last_day':
+                timeThreshold.setDate(now.getDate() - 1);
+                break;
+            case 'last_week':
+                timeThreshold.setDate(now.getDate() - 7);
+                break;
+            case 'last_month':
+                timeThreshold.setDate(now.getDate() - 30);
+                break;
+            default:
+                return {};
+        }
+
+        return { createdAt: { $gte: timeThreshold } };
+    }
+    
     getFilterDescription(filterType: FilterType): string {
         const descriptions = {
             [FilterType.POSITIVE]: 'Find feedbacks with positive sentiment and high satisfaction ratings',

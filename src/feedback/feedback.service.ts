@@ -73,7 +73,7 @@ export class FeedbackService implements OnModuleInit {
         }
     }
 
-    async getFeedbacks(user: User, page: number = 1): Promise<{ feedbacks: Feedback[], totalPages: number }> {
+    async getFeedbacks(user: User, page: number = 1, filter?: Record<string, any>): Promise<{ feedbacks: Feedback[], totalPages: number }> {
         try {
             this.logger.debug('Fetching feedbacks for user', { user: user.email, page });
             const itemsPerPage = 100;
@@ -88,11 +88,11 @@ export class FeedbackService implements OnModuleInit {
 
             // Then get feedbacks for those surveys
             const [feedbacks, total] = await Promise.all([
-                this.feedbackModel.find({ surveyId: { $in: surveyIds } })
+                this.feedbackModel.find({ surveyId: { $in: surveyIds }, ...filter })
                     .skip(skip)
                     .limit(itemsPerPage)
                     .exec(),
-                this.feedbackModel.countDocuments({ surveyId: { $in: surveyIds } })
+                this.feedbackModel.countDocuments({ surveyId: { $in: surveyIds }, ...filter })
             ]);
 
             const totalPages = Math.ceil(total / itemsPerPage);
@@ -120,9 +120,13 @@ export class FeedbackService implements OnModuleInit {
         }
     }
 
-    async summerizeAllFeedbacks(user: User): Promise<FeedbackSummary | { message: string }> {
+    async summerizeAllFeedbacks(user: User, timeFrame?: string): Promise<FeedbackSummary | { message: string }> {
         try {
-            const { feedbacks } = await this.getFeedbacks(user);
+            let filter: Record<string, any> = {};
+            if(timeFrame){
+                filter = this.filterService.getFilterByTimeFrame(timeFrame);
+            }
+            const { feedbacks } = await this.getFeedbacks(user, 1, filter);
             if (!feedbacks.length) {
                 return { message: 'No feedbacks found' };
             }
