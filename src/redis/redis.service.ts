@@ -1,34 +1,42 @@
-import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
-import { createClient, RedisClientType } from 'redis';
+// src/redis/redis.service.ts
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createClient } from 'redis';
 
 @Injectable()
-export class RedisService implements OnModuleDestroy {
-    private readonly logger = new Logger(RedisService.name);
-    private readonly client: RedisClientType;
+export class RedisService implements OnModuleInit {
+  private readonly logger = new Logger(RedisService.name);
+  private client;
+  private retryAttempts = 5;
+  private retryDelay = 5000; // 5 seconds
 
-    constructor() {
-        this.client = createClient({
-            url: 'redis://localhost:6379'
-        });
+  constructor(private configService: ConfigService) {
+    this.client = createClient({
+      url: `redis://${this.configService.get('REDIS_HOST')}:${this.configService.get('REDIS_PORT')}`,
+    });
 
-        this.client.connect().catch(err => {
-            this.logger.error('Failed to connect to Redis', err);
-        });
+    this.client.on('error', (err) => this.logger.error('Redis Client Error', err));
+    this.client.on('connect', () => this.logger.log('Successfully connected to Redis'));
+  }
 
-        this.client.on('error', (err) => {
-            this.logger.error('Redis client error', err);
-        });
-
-        this.client.on('connect', () => {
-            this.logger.log('Connected to Redis');
-        });
+  async onModuleInit() {
+    let currentAttempt = 0;
+    while (currentAttempt < this.retryAttempts) {
+      try {
+        await this.client.connect();
+        this.logger.log('Redis connection established');
+        break;
+      } catch (error) {
+        currentAttempt++;
+        this.logger.error(
+          `Failed to connect to Redis. Attempt ${currentAttempt} of ${this.retryAttempts}`,
+          error
+        );
+        if (currentAttempt === this.retryAttempts) {
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, this.retryDelay));
+      }
     }
-
-    getClient(): RedisClientType {
-        return this.client;
-    }
-
-    async onModuleDestroy() {
-        await this.client.quit();
-    }
-} 
+  }
+}
