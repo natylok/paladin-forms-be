@@ -13,6 +13,11 @@ print_error() {
     echo -e "\033[1;31m❌ $1\033[0m"
 }
 
+# Remove all unused Docker resources before starting
+print_step "Cleaning up unused Docker resources..."
+docker system prune -a --volumes -f
+print_success "Unused Docker resources removed"
+
 # Stop specific containers
 print_step "Stopping application containers..."
 docker compose stop app analyzer-feedback
@@ -41,4 +46,4 @@ print_success "All done! Your applications are rebuilt and running"
 
 # Show logs
 print_step "Showing logs (press Ctrl+C to exit)..."
-docker compose logs -f app analyzer-feedback 
+docker compose logs -f app analyzer-feedback
