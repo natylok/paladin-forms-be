@@ -4,7 +4,8 @@ import { Model } from 'mongoose';
 import { Publication, PublicationDocument } from './publication.schema';
 import { User } from '@prisma/client';
 import { ClientProxy } from '@nestjs/microservices';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, timeout, catchError } from 'rxjs';
+import { TimeoutError } from 'rxjs';
 
 @Injectable()
 export class PublicationService {
@@ -14,6 +15,33 @@ export class PublicationService {
     @InjectModel(Publication.name) private publicationModel: Model<PublicationDocument>,
     @Inject('PUBLICATION_SERVICE') private readonly client: ClientProxy
   ) {}
+
+  private async emitEvent(pattern: string, data: any, id: string): Promise<void> {
+    try {
+      this.logger.log(`Emitting ${pattern} event`, data);
+      
+      await lastValueFrom(
+        this.client.emit(pattern, data).pipe(
+          timeout(5000),
+          catchError(error => {
+            if (error instanceof TimeoutError) {
+              throw new Error(`Event emission timed out after 5000ms`);
+            }
+            throw error;
+          })
+        )
+      );
+      
+      this.logger.log(`Successfully emitted ${pattern} event`, { id });
+    } catch (error) {
+      this.logger.error(
+        `Failed to emit ${pattern} event`,
+        error instanceof Error ? error.stack : undefined,
+        { id, error: error instanceof Error ? error.message : 'Unknown error' }
+      );
+      // Don't throw here, as the operation was successful
+    }
+  }
 
   async create(user: User, data: Partial<Publication>): Promise<Publication> {
     try {
@@ -38,20 +66,7 @@ export class PublicationService {
         actionBy: user.email
       };
 
-      this.logger.log('Emitting publication.created event', eventData);
-      
-      // Emit event to queue
-      try {
-        await lastValueFrom(this.client.emit('publication.created', eventData));
-        this.logger.log('Successfully emitted publication.created event', { id: publication.id });
-      } catch (error) {
-        this.logger.error(
-          'Failed to emit publication.created event',
-          error instanceof Error ? error.stack : undefined,
-          { id: publication.id }
-        );
-        // Don't throw here, as the publication was created successfully
-      }
+      await this.emitEvent('publication.created', eventData, publication.id);
       
       this.logger.log('Publication created successfully', { 
         id: publication.id,
@@ -152,20 +167,7 @@ export class PublicationService {
         changes: data
       };
 
-      this.logger.log('Emitting publication.updated event', eventData);
-
-      // Emit event to queue
-      try {
-        await lastValueFrom(this.client.emit('publication.updated', eventData));
-        this.logger.log('Successfully emitted publication.updated event', { id: publication.id });
-      } catch (error) {
-        this.logger.error(
-          'Failed to emit publication.updated event',
-          error instanceof Error ? error.stack : undefined,
-          { id: publication.id }
-        );
-        // Don't throw here, as the publication was updated successfully
-      }
+      await this.emitEvent('publication.updated', eventData, publication.id);
       
       this.logger.log('Publication updated successfully', { id, user: user.email });
       
@@ -196,8 +198,7 @@ export class PublicationService {
 
       await this.publicationModel.deleteOne(query).exec();
 
-      // Emit event to queue
-      await lastValueFrom(this.client.emit('publication.deleted', {
+      const eventData = {
         id: publication.id,
         timeFrame: publication.timeFrame,
         emails: publication.emails,
@@ -206,7 +207,9 @@ export class PublicationService {
         deletedAt: new Date(),
         action: 'delete',
         actionBy: user.email
-      }));
+      };
+
+      await this.emitEvent('publication.deleted', eventData, publication.id);
       
       this.logger.log('Publication deleted successfully', { id, user: user.email });
     } catch (error) {
