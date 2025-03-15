@@ -18,19 +18,34 @@ export class QueueService {
       switch (event.action) {
         case 'create':
         case 'update':
-          this.logger.log('publication change triggered');
-          fetch('http://paladin-forms-be:3333/internal/email/send', {
-            method: 'POST',
-            body: JSON.stringify({
-              to: event.emails,
-              subject: 'Publication change',
-              html: 'A publication has been changed'
-            }),
-            headers: {
-              'Authorization': `Bearer ${process.env.INTERNAL_API_KEY}`,
-              'Content-Type': 'application/json'
+          this.logger.log('Publication change triggered, sending email notification');
+          try {
+            const response = await fetch('http://paladin-forms-be:3333/internal/email/send', {
+              method: 'POST',
+              body: JSON.stringify({
+                to: event.emails,
+                subject: 'Publication change',
+                html: 'A publication has been changed'
+              }),
+              headers: {
+                'Authorization': `Bearer ${process.env.INTERNAL_API_KEY}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
             }
-          })
+
+            this.logger.log('Email notification sent successfully', { id: event.id });
+          } catch (emailError) {
+            this.logger.error(
+              'Failed to send email notification',
+              emailError instanceof Error ? emailError.stack : undefined,
+              { id: event.id }
+            );
+          }
           break;
         case 'delete':
           this.logger.log('Processing publication deletion', { id: event.id });

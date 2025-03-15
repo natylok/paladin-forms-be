@@ -3,10 +3,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { QueueController } from './queue.controller';
 import { QueueService } from './queue.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
     ConfigModule,
+    HttpModule,
     ClientsModule.registerAsync([
       {
         name: 'PUBLICATION_SERVICE',
