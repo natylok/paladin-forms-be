@@ -25,7 +25,8 @@ export class QueueService {
               body: JSON.stringify({
                 to: event.emails,
                 subject: 'Publication change',
-                html: 'A publication has been changed'
+                html: 'A publication has been changed',
+                creatorEmail: event.creatorEmail,
               }),
               headers: {
                 'x-internal-key': process.env.INTERNAL_API_KEY,

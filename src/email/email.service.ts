@@ -1,10 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import { FeedbackService } from 'src/feedback/feedback.service';
 
 interface SendEmailDto {
   to: string[];
   subject: string;
   html: string;
+  creatorEmail?: string;
 }
 
 @Injectable()
@@ -12,7 +14,7 @@ export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private readonly transporter: nodemailer.Transporter;
 
-  constructor() {
+  constructor(private readonly feedbackService: FeedbackService) {
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587'),
@@ -26,6 +28,12 @@ export class EmailService {
 
   async sendEmail(emailData: SendEmailDto): Promise<void> {
     try {
+      let html = emailData.html;
+      if (emailData.creatorEmail) {
+        const summary = await this.feedbackService.summerizeAllFeedbacks({ email: emailData.creatorEmail } as any);
+        html = `${html}\n\nFeedback Summary:\n${JSON.stringify(summary, null, 2)}`;
+      }
+
       this.logger.log('Sending email', {
         to: emailData.to,
         subject: emailData.subject
@@ -33,7 +41,8 @@ export class EmailService {
 
       await this.transporter.sendMail({
         from: process.env.SMTP_FROM,
-        ...emailData
+        ...emailData,
+        html
       });
 
       this.logger.log('Email sent successfully', {

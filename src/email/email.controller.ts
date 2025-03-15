@@ -6,6 +6,8 @@ interface SendEmailDto {
   to: string[];
   subject: string;
   html: string;
+  emailCreator: string;
+  customerId: string;
 }
 
 @Controller('internal/email')
