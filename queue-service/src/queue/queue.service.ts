@@ -8,6 +8,8 @@ export class QueueService {
   private readonly logger = new Logger(QueueService.name);
 
   constructor(
+    @Inject('EMAIL_SERVICE') private readonly emailClient: ClientProxy,
+    @Inject('SCHEDULER_SERVICE') private readonly schedulerClient: ClientProxy
   ) {}
 
   async handlePublicationEvent(event: PublicationEvent): Promise<void> {
@@ -22,9 +24,7 @@ export class QueueService {
         return;
       }
 
-      // const ttl = this.calculateTTL(event.timeFrame);
-      //for testing purposes
-      const ttl = Date.now() + 5000;
+      const ttl = this.calculateTTL(event.timeFrame);
       
       const emailTrigger: EmailTrigger = {
         publicationId: event.id,
@@ -34,6 +34,15 @@ export class QueueService {
         triggerAt: new Date(Date.now() + ttl)
       };
 
+      // Schedule the task
+      await lastValueFrom(
+        this.schedulerClient.emit('scheduled.task', {
+          ...emailTrigger,
+          headers: {
+            'x-message-ttl': ttl
+          }
+        })
+      );
 
       this.logger.log('Email task scheduled', {
         publicationId: event.id,
@@ -88,8 +97,16 @@ export class QueueService {
 
       // Format the email content based on the summary
       const emailContent = this.formatEmailContent(data);
-      
-      this.logger.log('Email content', { emailContent });
+
+      // Emit to email sending queue
+      await lastValueFrom(
+        this.emailClient.emit('email.send', {
+          to: data.emails,
+          subject: `Feedback Summary - ${this.getTimeFrameText(data.timeFrame)}`,
+          content: emailContent
+        })
+      );
+
       this.logger.log('Feedback summary email sent', {
         publicationId: data.publicationId,
         emails: data.emails
@@ -110,51 +127,7 @@ export class QueueService {
 
     return `
       <h1>Feedback Summary - ${period}</h1>
-
-      <h2>Overview</h2>
-      <ul>
-        <li>Total Feedbacks: ${summary.statistics.totalFeedbacks}</li>
-        <li>Text Responses: ${summary.statistics.textResponseCount}</li>
-        <li>Average Sentiment: ${summary.statistics.averageSentiment.toFixed(2)}</li>
-      </ul>
-
-      <h2>Sentiment Distribution</h2>
-      <ul>
-        <li>Positive: ${summary.sentimentDistribution.positive}</li>
-        <li>Neutral: ${summary.sentimentDistribution.neutral}</li>
-        <li>Negative: ${summary.sentimentDistribution.negative}</li>
-      </ul>
-
-      <h2>Key Insights</h2>
-      <h3>Top Strengths</h3>
-      <ul>
-        ${summary.textAnalysis.topStrengths.map(s => `<li>${s}</li>`).join('')}
-      </ul>
-
-      <h3>Top Concerns</h3>
-      <ul>
-        ${summary.textAnalysis.topConcerns.map(c => `<li>${c}</li>`).join('')}
-      </ul>
-
-      <h3>Suggestions</h3>
-      <ul>
-        ${summary.textAnalysis.suggestions.map(s => `<li>${s}</li>`).join('')}
-      </ul>
-
-      ${summary.textAnalysis.urgentIssues.length > 0 ? `
-        <h3>Urgent Issues</h3>
-        <ul>
-          ${summary.textAnalysis.urgentIssues.map(i => `<li>${i}</li>`).join('')}
-        </ul>
-      ` : ''}
-
-      <h2>Rating Statistics</h2>
-      <p>Average Rating: ${summary.statistics.ratingStats.average.toFixed(2)} out of 5</p>
-      <p>Total Ratings: ${summary.statistics.ratingStats.total}</p>
-
-      <h2>1-10 Scale Statistics</h2>
-      <p>Average Score: ${summary.statistics["1to10"].average.toFixed(2)} out of 10</p>
-      <p>Total Responses: ${summary.statistics["1to10"].total}</p>
+      <p>Test email content for ${period}</p>
     `;
   }
 

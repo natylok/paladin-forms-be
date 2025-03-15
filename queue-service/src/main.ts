@@ -1,45 +1,45 @@
 import { NestFactory } from '@nestjs/core';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const logger = new Logger('Main');
-
-  const rabbitmqHost = process.env.RABBITMQ_HOST || 'rabbitmq';
-
   const app = await NestFactory.create(AppModule);
-  try {
-    app.connectMicroservice<MicroserviceOptions>({
-      transport: Transport.RMQ,
-      options: {
-        urls: [`amqp://${process.env.RABBITMQ_DEFAULT_USER}:${process.env.RABBITMQ_DEFAULT_PASS}@rabbitmq:5672`],
-        queue: 'publication_queue',
-        queueOptions: {
-          durable: true
-        },
+  const configService = app.get(ConfigService);
+
+  const user = configService.get('RABBITMQ_USER', 'guest');
+  const password = configService.get('RABBITMQ_PASSWORD', 'guest');
+  const host = configService.get('RABBITMQ_HOST', 'localhost');
+
+  const microservice = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
+    transport: Transport.RMQ,
+    options: {
+      urls: [`amqp://${user}:${password}@${host}`],
+      queue: 'publication_queue',
+      queueOptions: {
+        durable: true,
         prefetchCount: 1
       },
-    });
+      socketOptions: {
+        heartbeatIntervalInSeconds: 60,
+        reconnectTimeInSeconds: 5
+      },
+      noAck: false
+    }
+  });
 
-    logger.log(`Connecting to RabbitMQ at ${rabbitmqHost}:5672`);
-    
-    // Enable graceful shutdown
-    app.enableShutdownHooks();
-    
-    // Start listening
-    await app.listen(3335);
-    logger.log('Queue Service Microservice is listening for publication events');
-    logger.log('Handling patterns:', [
-      'publication.created',
-      'publication.updated',
-      'publication.deleted',
-      'scheduled.task'
-    ]);
-  } catch (error) {
-    logger.error('Failed to start microservice', error instanceof Error ? error.stack : undefined);
+  // Start both the HTTP and microservice servers
+  await Promise.all([
+    app.listen(3000),
+    microservice.listen()
+  ]).catch(error => {
+    logger.error('Failed to start servers', error);
     process.exit(1);
-  }
+  });
+
+  logger.log('Queue service is running');
 }
 
 process.on('unhandledRejection', (reason, promise) => {
