@@ -24,23 +24,23 @@ else
     print_success "Using cached Node.js image"
 fi
 
-# Remove all unused Docker resources before starting
-print_step "Cleaning up unused Docker resources..."
-docker system prune -a --volumes -f
-print_success "Unused Docker resources removed"
+# Remove only **dangling** images (not all)
+print_step "Cleaning up dangling Docker images..."
+docker image prune -f
+print_success "Dangling images removed"
 
-# Stop specific containers
-print_step "Stopping application containers..."
+# Remove **only unused** build cache (not all images)
+print_step "Cleaning up Docker build cache..."
+docker builder prune -f
+print_success "Docker build cache cleaned"
+
+# Stop and remove only the application containers (not everything)
+print_step "Stopping and removing application containers..."
 docker compose stop app analyzer-feedback
 docker compose rm -f app analyzer-feedback
-print_success "Containers stopped"
+print_success "Application containers stopped and removed"
 
-# Remove existing images
-print_step "Removing existing Docker images..."
-docker rmi paladin-forms-be-app paladin-forms-be-analyzer-feedback || true
-print_success "Docker images removed"
-
-# Build and start containers
+# Rebuild without forcing a full cache clear
 print_step "Building and starting containers..."
 docker compose up -d --build app analyzer-feedback
 if [ $? -ne 0 ]; then
