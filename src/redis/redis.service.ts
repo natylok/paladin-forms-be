@@ -39,4 +39,8 @@ export class RedisService implements OnModuleInit {
       }
     }
   }
+
+  getClient() {
+    return this.client;
+  }
 }
