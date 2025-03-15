@@ -1,5 +1,5 @@
-# Use node debian instead of alpine for better compatibility
-FROM node:20-slim AS builder
+# Use locally tagged node image
+FROM local/node:20-slim AS builder
 
 WORKDIR /usr/src/app
 
@@ -11,13 +11,19 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy configuration files first
+# Copy only package files first to leverage Docker cache
 COPY package*.json ./
-COPY tsconfig*.json ./
-COPY nest-cli.json ./
+COPY yarn.lock ./
 
 # Install ALL dependencies (including devDependencies)
-RUN npm install
+# Use cache mount to speed up installations
+RUN --mount=type=cache,target=/usr/src/app/.npm \
+    npm set cache /usr/src/app/.npm && \
+    npm install
+
+# Copy configuration files
+COPY tsconfig*.json ./
+COPY nest-cli.json ./
 
 # Copy Prisma files and generate client
 COPY prisma ./prisma/
@@ -26,12 +32,6 @@ RUN npx prisma generate
 # Copy source code and other necessary files
 COPY . .
 
-# Debug: Show contents before build
-RUN echo "=== Contents before build ===" && \
-    ls -la && \
-    echo "=== Source directory ===" && \
-    ls -la src/
-
 # Clean and build
 RUN npm run prebuild && \
     npm run build
@@ -39,13 +39,11 @@ RUN npm run prebuild && \
 # Debug: Show build output
 RUN echo "=== Build output ===" && \
     ls -la dist/ && \
-    echo "=== Main file contents ===" && \
-    cat dist/main.js || echo "main.js not found" && \
     echo "=== Directory structure ===" && \
     find . -type f -name "main.js"
 
 # Production stage
-FROM node:20-slim
+FROM local/node:20-slim
 
 WORKDIR /usr/src/app
 
@@ -54,19 +52,31 @@ RUN apt-get update && apt-get install -y \
     openssl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy ALL files from builder
-COPY --from=builder /usr/src/app .
+# Copy only package files first to leverage Docker cache
+COPY package*.json ./
+COPY yarn.lock ./
 
-# Install only production dependencies
-RUN npm ci --only=production
+# Install only production dependencies with cache
+RUN --mount=type=cache,target=/usr/src/app/.npm \
+    npm set cache /usr/src/app/.npm && \
+    npm ci --only=production
+
+# Copy configuration files
+COPY tsconfig*.json ./
+COPY nest-cli.json ./
+
+# Copy Prisma files and generate client
+COPY prisma ./prisma/
+RUN npx prisma generate
+
+# Copy built application from builder
+COPY --from=builder /usr/src/app/dist ./dist
 
 # Debug: Show production contents
 RUN echo "=== Production dist contents ===" && \
     ls -la dist/ && \
     echo "=== Production main.js location ===" && \
-    find . -type f -name "main.js" && \
-    echo "=== Production main.js contents ===" && \
-    cat dist/main.js || echo "main.js not found"
+    find . -type f -name "main.js"
 
 EXPOSE 3333
 

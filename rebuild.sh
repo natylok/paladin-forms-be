@@ -1,4 +1,5 @@
 #!/bin/bash
+export DOCKER_BUILDKIT=1
 
 # Print colored output
 print_step() {
@@ -12,6 +13,16 @@ print_success() {
 print_error() {
     echo -e "\033[1;31m❌ $1\033[0m"
 }
+
+# Pull and tag Node.js image locally if not exists
+print_step "Checking Node.js base image..."
+if ! docker images | grep -q "local/node.*20-slim"; then
+    docker pull node:20-slim
+    docker tag node:20-slim local/node:20-slim
+    print_success "Node.js image pulled and tagged locally"
+else
+    print_success "Using cached Node.js image"
+fi
 
 # Remove all unused Docker resources before starting
 print_step "Cleaning up unused Docker resources..."
