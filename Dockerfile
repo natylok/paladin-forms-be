@@ -29,18 +29,15 @@ COPY nest-cli.json ./
 COPY prisma ./prisma/
 RUN npx prisma generate
 
-# Copy source code and other necessary files
-COPY . .
+# Copy source code
+COPY src ./src/
 
 # Clean and build
 RUN npm run prebuild && \
-    npm run build
-
-# Debug: Show build output
-RUN echo "=== Build output ===" && \
+    npm run build && \
     ls -la dist/ && \
-    echo "=== Directory structure ===" && \
-    find . -type f -name "main.js"
+    echo "=== Contents of dist directory ===" && \
+    find dist/ -type f
 
 # Production stage
 FROM local/node:20-slim
@@ -52,11 +49,9 @@ RUN apt-get update && apt-get install -y \
     openssl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only package files first to leverage Docker cache
+# Copy package files and install production dependencies
 COPY package*.json ./
 COPY yarn.lock ./
-
-# Install only production dependencies with cache
 RUN --mount=type=cache,target=/usr/src/app/.npm \
     npm set cache /usr/src/app/.npm && \
     npm ci --only=production
@@ -69,16 +64,16 @@ COPY nest-cli.json ./
 COPY prisma ./prisma/
 RUN npx prisma generate
 
-# Copy built application from builder
+# Copy built application and necessary files
 COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/node_modules/.prisma/client ./node_modules/.prisma/client
 
-# Debug: Show production contents
-RUN echo "=== Production dist contents ===" && \
-    ls -la dist/ && \
-    echo "=== Production main.js location ===" && \
-    find . -type f -name "main.js"
+# Verify the dist directory contents
+RUN ls -la dist/ && \
+    echo "=== Contents of dist directory ===" && \
+    find dist/ -type f
 
 EXPOSE 3333
 
-# Use direct path to ensure we're running the right file
-CMD ["node", "dist/main.js"] 
+# Start the application with the correct path
+CMD ["node", "dist/main"] 
