@@ -43,3 +43,10 @@ config
 ./analyzer-feedback/.gitignore
 ./analyzer-feedback/package-lock.json
 ./analyzer-feedback/tsconfig.json
+./queue-service/node_modules
+./queue-service/dist
+./queue-service/.env
+./queue-service/config
+./queue-service/.gitignore
+./queue-service/package-lock.json
+./queue-service/tsconfig.json
