@@ -9,14 +9,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  const user = configService.get('RABBITMQ_USER', 'guest');
-  const password = configService.get('RABBITMQ_PASSWORD', 'guest');
+  const user = configService.get('RABBITMQ_DEFAULT_USER', 'guest');
+  const password = configService.get('RABBITMQ_DEFAULT_PASS', 'guest');
   const host = configService.get('RABBITMQ_HOST', 'localhost');
 
   const microservice = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
     transport: Transport.RMQ,
     options: {
-      urls: [`amqp://${user}:${password}@${host}`],
+      urls: [`amqp://${user}:${password}@${host}:5672`],
       queue: 'publication_queue',
       queueOptions: {
         durable: true,
