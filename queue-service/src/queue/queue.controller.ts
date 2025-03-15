@@ -187,7 +187,8 @@ export class QueueController {
           this.schedulerClient.emit('scheduled.task', {
             ...nextTrigger,
             headers: {
-              'x-message-ttl': ttl
+              'x-message-ttl': ttl,
+              'x-delay': ttl
             }
           }).pipe(
             timeout(this.REQUEST_TIMEOUT),

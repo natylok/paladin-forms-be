@@ -20,8 +20,7 @@ async function bootstrap() {
         queueOptions: {
           durable: true,
           deadLetterExchange: 'dlx.exchange',
-          deadLetterRoutingKey: 'dlx.queue',
-          messageTtl: 30000 // 30 seconds
+          deadLetterRoutingKey: 'dlx.queue'
         },
         noAck: false,
         prefetchCount: 1,

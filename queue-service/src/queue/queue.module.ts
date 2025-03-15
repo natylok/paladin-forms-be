@@ -24,8 +24,7 @@ import { QueueService } from './queue.service';
             queueOptions: {
               durable: true,
               deadLetterExchange: 'dlx.exchange',
-              deadLetterRoutingKey: 'dlx.queue',
-              messageTtl: 30000 // 30 seconds
+              deadLetterRoutingKey: 'dlx.queue'
             },
             noAck: false,
             prefetchCount: 1,
@@ -49,8 +48,7 @@ import { QueueService } from './queue.service';
             queueOptions: {
               durable: true,
               deadLetterExchange: 'dlx.exchange',
-              deadLetterRoutingKey: 'dlx.queue',
-              messageTtl: 30000 // 30 seconds
+              deadLetterRoutingKey: 'dlx.queue'
             },
             noAck: false,
             prefetchCount: 1,
@@ -72,13 +70,13 @@ import { QueueService } from './queue.service';
             urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@${configService.get('RABBITMQ_HOST')}:5672`],
             queue: 'dlx.queue',
             queueOptions: {
-              durable: true,
+              durable: true
             },
             exchanges: [
               {
                 name: 'dlx.exchange',
-                type: 'direct',
-              },
+                type: 'direct'
+              }
             ],
             prefetchCount: 1,
             socketOptions: {
@@ -88,7 +86,7 @@ import { QueueService } from './queue.service';
           },
         }),
         inject: [ConfigService],
-      },
+      }
     ]),
   ],
   controllers: [QueueController],
