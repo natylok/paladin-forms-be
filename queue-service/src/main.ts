@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { Transport } from '@nestjs/microservices';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
 
@@ -9,27 +9,18 @@ async function bootstrap() {
   const rabbitmqUser = process.env.RABBITMQ_DEFAULT_USER || 'guest';
   const rabbitmqPass = process.env.RABBITMQ_DEFAULT_PASS || 'guest';
   const rabbitmqHost = process.env.RABBITMQ_HOST || 'rabbitmq';
-  const rabbitmqUrl = `amqp://${rabbitmqUser}:${rabbitmqPass}@${rabbitmqHost}:5672`;
-  
+
+  const app = await NestFactory.create(AppModule);
   try {
-    // Create the microservice instance
-    const app = await NestFactory.createMicroservice(AppModule, {
+    app.connectMicroservice<MicroserviceOptions>({
       transport: Transport.RMQ,
       options: {
-        urls: [rabbitmqUrl],
+        urls: [`amqp://${process.env.RABBITMQ_DEFAULT_USER}:${process.env.RABBITMQ_DEFAULT_PASS}@rabbitmq:5672`],
         queue: 'publication_queue',
         queueOptions: {
           durable: true
         },
-        noAck: false,
-        prefetchCount: 1,
-        persistent: true,
-        socketOptions: {
-          heartbeatIntervalInSeconds: 60,
-          reconnectTimeInSeconds: 5
-        },
-        retryAttempts: 5,
-        retryDelay: 5000
+        prefetchCount: 1
       },
     });
 
@@ -39,7 +30,7 @@ async function bootstrap() {
     app.enableShutdownHooks();
     
     // Start listening
-    await app.listen();
+    await app.listen(3335);
     logger.log('Queue Service Microservice is listening for publication events');
     logger.log('Handling patterns:', [
       'publication.created',
