@@ -15,15 +15,22 @@ async function bootstrap() {
     transport: Transport.RMQ,
     options: {
       urls: [rabbitmqUrl],
-      queue: 'queue_service_queue',
+      queue: 'publication_queue',
       queueOptions: {
-        durable: true,
+        durable: true
       },
+      noAck: false,
+      prefetchCount: 1,
+      socketOptions: {
+        heartbeatIntervalInSeconds: 60,
+        reconnectTimeInSeconds: 5
+      }
     },
   });
 
+  logger.log(`Connecting to RabbitMQ at ${rabbitmqHost}:5672`);
   await app.listen();
-  logger.log('Queue Service Microservice is listening');
+  logger.log('Queue Service Microservice is listening for publication events');
 }
 
 bootstrap();

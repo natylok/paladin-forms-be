@@ -16,11 +16,12 @@ import { QueueService } from './queue.service';
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@rabbitmq:5672`],
+            urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@${configService.get('RABBITMQ_HOST')}:5672`],
             queue: 'email_queue',
             queueOptions: {
               durable: true
             },
+            persistent: true
           },
         }),
         inject: [ConfigService],
@@ -31,13 +32,14 @@ import { QueueService } from './queue.service';
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@rabbitmq:5672`],
+            urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@${configService.get('RABBITMQ_HOST')}:5672`],
             queue: 'scheduled_tasks_queue',
             queueOptions: {
               durable: true,
               deadLetterExchange: 'dlx.exchange',
-              deadLetterRoutingKey: 'dlx.trigger',
+              deadLetterRoutingKey: 'dlx.trigger'
             },
+            persistent: true
           },
         }),
         inject: [ConfigService],

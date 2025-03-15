@@ -1,5 +1,5 @@
 import { Controller, Logger, Inject } from '@nestjs/common';
-import { EventPattern, Payload, ClientProxy } from '@nestjs/microservices';
+import { EventPattern, Payload, ClientProxy, Ctx, RmqContext } from '@nestjs/microservices';
 import { HttpService } from '@nestjs/axios';
 import { QueueService } from './queue.service';
 import { EmailData, EmailTrigger, PublicationEvent } from './types/queue.types';
@@ -18,41 +18,57 @@ export class QueueController {
   ) {}
 
   @EventPattern('publication.created')
-  async handlePublicationCreated(@Payload() data: PublicationEvent) {
+  async handlePublicationCreated(@Payload() data: PublicationEvent, @Ctx() context: RmqContext) {
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+
     try {
       this.logger.log('Received publication.created event', { id: data.id });
       await this.queueService.handlePublicationEvent({
         ...data,
         action: 'create'
       });
+      channel.ack(originalMsg);
     } catch (error) {
       this.logger.error(
         'Failed to handle publication.created event',
         error instanceof Error ? error.stack : undefined,
         { data }
       );
+      channel.nack(originalMsg);
     }
   }
 
   @EventPattern('publication.updated')
-  async handlePublicationUpdated(@Payload() data: PublicationEvent) {
+  async handlePublicationUpdated(@Payload() data: PublicationEvent, @Ctx() context: RmqContext) {
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+
     try {
       this.logger.log('Received publication.updated event', { id: data.id });
       await this.queueService.handlePublicationEvent({
         ...data,
         action: 'update'
       });
+      channel.ack(originalMsg);
     } catch (error) {
       this.logger.error(
         'Failed to handle publication.updated event',
         error instanceof Error ? error.stack : undefined,
         { data }
       );
+      channel.nack(originalMsg);
     }
   }
 
   @EventPattern('scheduled.task')
-  async handleScheduledTask(@Payload() data: EmailTrigger & { headers: { 'x-message-ttl': number } }) {
+  async handleScheduledTask(
+    @Payload() data: EmailTrigger & { headers: { 'x-message-ttl': number } },
+    @Ctx() context: RmqContext
+  ) {
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+
     try {
       this.logger.log('Processing scheduled task', {
         publicationId: data.publicationId,
@@ -121,12 +137,14 @@ export class QueueController {
         ttl
       });
 
+      channel.ack(originalMsg);
     } catch (error) {
       this.logger.error(
         'Failed to process scheduled task',
         error instanceof Error ? error.stack : undefined,
         { data }
       );
+      channel.nack(originalMsg);
     }
   }
 } 
