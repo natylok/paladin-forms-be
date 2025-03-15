@@ -90,6 +90,10 @@ export class QueueController {
         summary
       });
 
+      this.logger.log('Sending email', {
+        publicationId: data.publicationId,
+        to: data.emails
+      });
       // Send email using internal API
       await lastValueFrom(
         this.httpService.post(
