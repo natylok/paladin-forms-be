@@ -10,7 +10,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { LoggerModule } from './logger/logger.module';
 import { ReportModule } from './report/report.module';
 import { RedisModule } from './redis/redis.module';
-
+import { PublicationModule } from './publication/publication.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -22,7 +22,8 @@ import { RedisModule } from './redis/redis.module';
     SurveyModule,
     FeedbackModule,
     LoggerModule,
-    ReportModule
+    ReportModule,
+    PublicationModule
   ]
 })
 export class AppModule { }
