@@ -13,7 +13,6 @@ RUN apt-get update && apt-get install -y \
 
 # Copy only package files first to leverage Docker cache
 COPY package*.json ./
-COPY yarn.lock ./
 
 # Install ALL dependencies (including devDependencies)
 # Use cache mount to speed up installations
@@ -51,7 +50,6 @@ RUN apt-get update && apt-get install -y \
 
 # Copy package files and install production dependencies
 COPY package*.json ./
-COPY yarn.lock ./
 RUN --mount=type=cache,target=/usr/src/app/.npm \
     npm set cache /usr/src/app/.npm && \
     npm ci --only=production
