@@ -20,13 +20,17 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "start:migrate:prod": "prisma migrate deploy && npm run start:prod",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "pretest:e2e": "yarn db:test:restart",
-    "test:e2e": "dotenv -e .env.test -- jest --watch --no-cache --config ./test/jest-e2e.json"
+    "test:e2e": "dotenv -e .env.test -- jest --watch --no-cache --config ./test/jest-e2e.json",
+    "docker:app:rebuild": "docker stop paladin-forms-be && docker rm paladin-forms-be && docker-compose up --build -d app",
+    "docker:app:logs": "docker-compose logs -f app",
+    "docker:app:restart": "docker-compose restart app"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.15.2",
