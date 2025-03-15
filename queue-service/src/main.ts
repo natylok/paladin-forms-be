@@ -37,7 +37,16 @@ async function bootstrap() {
           reconnectTimeInSeconds: 5
         },
         retryAttempts: 5,
-        retryDelay: 5000
+        retryDelay: 5000,
+        // Add message patterns to listen for
+        listen: {
+          patterns: [
+            'publication.created',
+            'publication.updated',
+            'publication.deleted',
+            'scheduled.task'
+          ]
+        }
       },
     });
 

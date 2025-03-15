@@ -20,7 +20,7 @@ import { QueueService } from './queue.service';
           transport: Transport.RMQ,
           options: {
             urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@${configService.get('RABBITMQ_HOST')}:5672`],
-            queue: 'publication_queue',
+            queue: 'email_queue',
             queueOptions: {
               durable: true
             },
@@ -36,7 +36,7 @@ import { QueueService } from './queue.service';
           transport: Transport.RMQ,
           options: {
             urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@${configService.get('RABBITMQ_HOST')}:5672`],
-            queue: 'publication_queue',
+            queue: 'scheduled_tasks_queue',
             queueOptions: {
               durable: true
             },
