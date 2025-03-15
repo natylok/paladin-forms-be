@@ -25,7 +25,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
               durable: true
             },
             persistent: true,
-            noAck: true
+            socketOptions: {
+              heartbeatIntervalInSeconds: 60,
+              reconnectTimeInSeconds: 5
+            },
+            retryAttempts: 3,
+            retryDelay: 3000
           },
         }),
         inject: [ConfigService],

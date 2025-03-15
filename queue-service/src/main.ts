@@ -26,13 +26,12 @@ async function bootstrap() {
         queueOptions: {
           durable: true
         },
+        noAck: false,
         prefetchCount: 1,
-        isGlobalPrefetchCount: false,
         socketOptions: {
           heartbeatIntervalInSeconds: 60,
           reconnectTimeInSeconds: 5
         },
-        noAck: false,
         persistent: true
       },
     },

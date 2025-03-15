@@ -22,10 +22,10 @@ export class PublicationService {
       
       await lastValueFrom(
         this.client.emit(pattern, data).pipe(
-          timeout(5000),
+          timeout(10000),
           catchError(error => {
             if (error instanceof TimeoutError) {
-              throw new Error(`Event emission timed out after 5000ms`);
+              throw new Error(`Event emission timed out after 10000ms`);
             }
             throw error;
           })
