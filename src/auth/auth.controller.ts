@@ -64,7 +64,7 @@ export class AuthController {
       // Redirect to the dashboard with the access token as a query parameter
       // This allows the frontend to store it for Bearer token usage
       return res.redirect(`${process.env.NODE_ENV === 'production' 
-        ? 'https://app.paladin-forms.com' 
+        ? `http://localhost:3000` 
         : 'http://localhost:3000'}/dashboard?access_token=${accessToken}`);
     } catch (error) {
       this.logger.error(
