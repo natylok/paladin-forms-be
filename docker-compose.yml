@@ -10,13 +10,33 @@ services:
     ports:
       - "3333:3333"
     environment:
-      - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@dev-db:5432/${POSTGRES_DB}?schema=public
-      - MONGODB_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-db:27017/paladin-forms?authSource=admin
+      - JWT_SECRET=${JWT_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_CALLBACK=${GOOGLE_CALLBACK}
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
-      - RABBITMQ_HOST=rabbitmq
+      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-db:27017/mydatabase?authSource=admin
+      - HUGGING_FACE_ACCESS_TOKEN=${HUGGING_FACE_ACCESS_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_APPLICATION_CREDENTIALS=/usr/src/app/config/paladin-forms-c114a81ff498.json
+      - GCP_BUCKET_NAME=${GCP_BUCKET_NAME}
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - GCP_STORAGE_URL=${GCP_STORAGE_URL}
       - REDIS_HOST=redis
+      - HOST=${HOST}
+      - HUGGING_FACE_API_KEY=${HUGGING_FACE_API_KEY}
+      - REDIS_PORT=6379
+      - NODE_ENV=production
+    volumes:
+      - ./config:/usr/src/app/config:ro  # Mount GCP credentials file as read-only
     depends_on:
       - dev-db
       - mongo-db
