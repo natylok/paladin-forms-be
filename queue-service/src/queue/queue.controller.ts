@@ -15,7 +15,9 @@ export class QueueController {
     @Inject('EMAIL_SERVICE') private readonly emailClient: ClientProxy,
     @Inject('SCHEDULER_SERVICE') private readonly schedulerClient: ClientProxy,
     private readonly httpService: HttpService
-  ) {}
+  ) {
+    this.logger.log('Queue controller initialized');
+  }
 
   @EventPattern('publication.created')
   async handlePublicationCreated(@Payload() data: PublicationEvent, @Ctx() context: RmqContext) {
@@ -23,11 +25,18 @@ export class QueueController {
     const originalMsg = context.getMessage();
 
     try {
-      this.logger.log('Received publication.created event', { id: data.id });
+      this.logger.log('Received publication.created event', { 
+        id: data.id,
+        timeFrame: data.timeFrame,
+        emails: data.emails?.length
+      });
+
       await this.queueService.handlePublicationEvent({
         ...data,
         action: 'create'
       });
+
+      this.logger.log('Successfully handled publication.created event', { id: data.id });
       channel.ack(originalMsg);
     } catch (error) {
       this.logger.error(
@@ -45,11 +54,18 @@ export class QueueController {
     const originalMsg = context.getMessage();
 
     try {
-      this.logger.log('Received publication.updated event', { id: data.id });
+      this.logger.log('Received publication.updated event', { 
+        id: data.id,
+        timeFrame: data.timeFrame,
+        emails: data.emails?.length
+      });
+
       await this.queueService.handlePublicationEvent({
         ...data,
         action: 'update'
       });
+
+      this.logger.log('Successfully handled publication.updated event', { id: data.id });
       channel.ack(originalMsg);
     } catch (error) {
       this.logger.error(
@@ -77,6 +93,7 @@ export class QueueController {
       });
 
       // Get feedback summary from analyzer service
+      this.logger.log('Fetching feedback summary', { publicationId: data.publicationId });
       const summary = await lastValueFrom(
         this.emailClient.send('feedback.summary', {
           publicationId: data.publicationId,
@@ -85,16 +102,18 @@ export class QueueController {
       );
 
       // Format email content
+      this.logger.log('Formatting email content', { publicationId: data.publicationId });
       const emailContent = this.queueService.formatEmailContent({
         ...data,
         summary
       });
 
-      this.logger.log('Sending to last value from', {
+      // Send email using internal API
+      this.logger.log('Sending email via internal API', {
         publicationId: data.publicationId,
         to: data.emails
       });
-      // Send email using internal API
+
       await lastValueFrom(
         this.httpService.post(
           `${this.apiUrl}/send`,
@@ -126,6 +145,12 @@ export class QueueController {
         triggerAt: new Date(Date.now() + ttl)
       };
 
+      this.logger.log('Scheduling next email task', {
+        publicationId: data.publicationId,
+        triggerAt: nextTrigger.triggerAt,
+        ttl
+      });
+
       await lastValueFrom(
         this.schedulerClient.emit('scheduled.task', {
           ...nextTrigger,
@@ -135,10 +160,9 @@ export class QueueController {
         })
       );
 
-      this.logger.log('Next email task scheduled', {
+      this.logger.log('Next email task scheduled successfully', {
         publicationId: data.publicationId,
-        triggerAt: nextTrigger.triggerAt,
-        ttl
+        triggerAt: nextTrigger.triggerAt
       });
 
       channel.ack(originalMsg);

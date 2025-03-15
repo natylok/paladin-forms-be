@@ -37,7 +37,13 @@ import { QueueService } from './queue.service';
             queueOptions: {
               durable: true
             },
-            persistent: true
+            persistent: true,
+            patterns: [
+              'publication.created',
+              'publication.updated',
+              'publication.deleted',
+              'scheduled.task'
+            ]
           },
         }),
         inject: [ConfigService],
