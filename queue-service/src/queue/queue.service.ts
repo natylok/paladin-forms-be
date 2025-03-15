@@ -1,6 +1,7 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { EmailData, EmailTrigger, PublicationEvent, TimeFrame } from './types/queue.types';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class QueueService {
@@ -8,8 +9,7 @@ export class QueueService {
 
   constructor(
     @Inject('EMAIL_SERVICE') private readonly emailClient: ClientProxy,
-    @Inject('SCHEDULER_SERVICE') private readonly schedulerClient: ClientProxy,
-    @Inject('DLX_SERVICE') private readonly dlxClient: ClientProxy
+    @Inject('SCHEDULER_SERVICE') private readonly schedulerClient: ClientProxy
   ) {}
 
   async handlePublicationEvent(event: PublicationEvent): Promise<void> {
@@ -34,13 +34,17 @@ export class QueueService {
         triggerAt: new Date(Date.now() + ttl)
       };
 
-      // Schedule the email trigger using DLX pattern
-      await this.schedulerClient.emit('schedule.email', {
-        ...emailTrigger,
-        expiration: ttl.toString()
-      }).toPromise();
+      // Schedule the task
+      await lastValueFrom(
+        this.schedulerClient.emit('scheduled.task', {
+          ...emailTrigger,
+          headers: {
+            'x-message-ttl': ttl
+          }
+        })
+      );
 
-      this.logger.log('Email trigger scheduled with DLX', {
+      this.logger.log('Email task scheduled', {
         publicationId: event.id,
         triggerAt: emailTrigger.triggerAt,
         ttl
@@ -66,11 +70,13 @@ export class QueueService {
       const emailContent = this.formatEmailContent(data);
 
       // Emit to email sending queue
-      await this.emailClient.emit('email.send', {
-        to: data.emails,
-        subject: `Feedback Summary - ${this.getTimeFrameText(data.timeFrame)}`,
-        content: emailContent
-      }).toPromise();
+      await lastValueFrom(
+        this.emailClient.emit('email.send', {
+          to: data.emails,
+          subject: `Feedback Summary - ${this.getTimeFrameText(data.timeFrame)}`,
+          content: emailContent
+        })
+      );
 
       this.logger.log('Feedback summary email sent', {
         publicationId: data.publicationId,
@@ -115,7 +121,7 @@ export class QueueService {
     return targetDate.getTime() - now.getTime();
   }
 
-  private formatEmailContent(data: EmailData): string {
+  formatEmailContent(data: EmailData): string {
     const { summary, timeFrame } = data;
     const period = this.getTimeFrameText(timeFrame);
 
@@ -169,7 +175,7 @@ export class QueueService {
     `;
   }
 
-  private getTimeFrameText(timeFrame: TimeFrame): string {
+  getTimeFrameText(timeFrame: TimeFrame): string {
     switch (timeFrame) {
       case 'day':
         return 'Daily Report';
@@ -181,4 +187,4 @@ export class QueueService {
         return 'Report';
     }
   }
-} 
+}

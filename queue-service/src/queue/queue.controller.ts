@@ -3,15 +3,28 @@ import { EventPattern, Payload, ClientProxy } from '@nestjs/microservices';
 import { QueueService } from './queue.service';
 import { EmailData, EmailTrigger, PublicationEvent } from './types/queue.types';
 import { lastValueFrom } from 'rxjs';
+import * as nodemailer from 'nodemailer';
 
 @Controller()
 export class QueueController {
   private readonly logger = new Logger(QueueController.name);
+  private readonly transporter: nodemailer.Transporter;
 
   constructor(
     private readonly queueService: QueueService,
     @Inject('EMAIL_SERVICE') private readonly emailClient: ClientProxy
-  ) {}
+  ) {
+    // Initialize nodemailer transporter
+    this.transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      }
+    });
+  }
 
   @EventPattern('publication.created')
   async handlePublicationCreated(@Payload() data: PublicationEvent) {
@@ -47,12 +60,13 @@ export class QueueController {
     }
   }
 
-  @EventPattern('dlx.trigger')
-  async handleDLXTrigger(@Payload() data: EmailTrigger) {
+  @EventPattern('scheduled.task')
+  async handleScheduledTask(@Payload() data: EmailTrigger & { headers: { 'x-message-ttl': number } }) {
     try {
-      this.logger.log('Processing DLX trigger for scheduled email', { 
+      this.logger.log('Processing scheduled task', {
         publicationId: data.publicationId,
-        triggerAt: data.triggerAt
+        triggerAt: data.triggerAt,
+        ttl: data.headers['x-message-ttl']
       });
 
       // Get feedback summary from analyzer service
@@ -63,20 +77,27 @@ export class QueueController {
         })
       );
 
-      // Send email with feedback summary
-      const emailData: EmailData = {
+      // Format email content
+      const emailContent = this.queueService.formatEmailContent({
         ...data,
         summary
-      };
+      });
 
-      await this.queueService.sendFeedbackSummaryEmail(emailData);
+      // Send email directly using nodemailer
+      await this.transporter.sendMail({
+        from: process.env.SMTP_FROM,
+        to: data.emails,
+        subject: `Feedback Summary - ${this.queueService.getTimeFrameText(data.timeFrame)}`,
+        html: emailContent
+      });
 
-      this.logger.log('DLX trigger processed successfully', {
-        publicationId: data.publicationId
+      this.logger.log('Email sent successfully', {
+        publicationId: data.publicationId,
+        to: data.emails
       });
     } catch (error) {
       this.logger.error(
-        'Failed to process DLX trigger',
+        'Failed to process scheduled task',
         error instanceof Error ? error.stack : undefined,
         { data }
       );
