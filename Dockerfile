@@ -41,9 +41,6 @@ COPY --from=builder /usr/src/app/node_modules ./node_modules
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/prisma ./prisma
 
-# Generate Prisma Client in production environment
-RUN npx prisma generate
-
 EXPOSE 3333
 
 CMD ["npm", "run", "start:migrate:prod"] 
