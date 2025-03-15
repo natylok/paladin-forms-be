@@ -13,9 +13,10 @@ print_error() {
     echo -e "\033[1;31m❌ $1\033[0m"
 }
 
-# Stop running containers
-print_step "Stopping running containers..."
-docker-compose down
+# Stop specific containers
+print_step "Stopping application containers..."
+docker compose stop app analyzer-feedback
+docker compose rm -f app analyzer-feedback
 print_success "Containers stopped"
 
 # Clean up previous builds
@@ -26,31 +27,30 @@ print_success "Clean up completed"
 
 # Remove existing images to force rebuild
 print_step "Removing existing Docker images..."
-docker-compose rm -f
 docker rmi paladin-forms-be-app paladin-forms-be-analyzer-feedback || true
 print_success "Docker images removed"
 
-# Build and start Docker containers with rebuild
-print_step "Building and starting Docker containers..."
-docker-compose build --no-cache
+# Build and start specific containers with rebuild
+print_step "Building and starting application containers..."
+docker compose build --no-cache app analyzer-feedback
 if [ $? -ne 0 ]; then
     print_error "Docker build failed"
     exit 1
 fi
 
-docker-compose up -d
+docker compose up -d app analyzer-feedback
 if [ $? -ne 0 ]; then
     print_error "Docker containers failed to start"
     exit 1
 fi
-print_success "Docker containers started successfully"
+print_success "Application containers started successfully"
 
 # Show running containers
 print_step "Running containers:"
-docker-compose ps
+docker compose ps app analyzer-feedback
 
 print_success "All done! Your applications are rebuilt and running"
 
-# Show logs
-print_step "Showing logs (press Ctrl+C to exit)..."
-docker-compose logs -f 
+# Show logs for specific containers
+print_step "Showing application logs (press Ctrl+C to exit)..."
+docker compose logs -f app analyzer-feedback 
