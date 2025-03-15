@@ -32,14 +32,20 @@ WORKDIR /usr/src/app
 
 # Install necessary dependencies for production
 RUN apt-get update && \
-    apt-get install -y openssl && \
+    apt-get install -y openssl python3 make g++ && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+# Copy package files and install production dependencies
 COPY package*.json ./
-COPY --from=builder /usr/src/app/node_modules ./node_modules
+RUN npm install --production
+
+# Copy Prisma files and generate client
+COPY prisma ./prisma/
+RUN npx prisma generate
+
+# Copy built application
 COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/prisma ./prisma
 
 EXPOSE 3333
 

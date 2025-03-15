@@ -18,32 +18,27 @@ print_step "Stopping running containers..."
 docker-compose down
 print_success "Containers stopped"
 
-# Build main application
-print_step "Building main application (paladin-forms-be)..."
-npm install
-npm run build
-if [ $? -ne 0 ]; then
-    print_error "Main application build failed"
-    exit 1
-fi
-print_success "Main application built successfully"
+# Clean up previous builds
+print_step "Cleaning up previous builds..."
+rm -rf dist node_modules
+cd analyzer-feedback && rm -rf dist node_modules && cd ..
+print_success "Clean up completed"
 
-# Build analyzer feedback application
-print_step "Building analyzer feedback application..."
-cd analyzer-feedback
-npm install
-npm run build
-if [ $? -ne 0 ]; then
-    print_error "Analyzer feedback application build failed"
-    exit 1
-fi
-cd ..
-print_success "Analyzer feedback application built successfully"
+# Remove existing images to force rebuild
+print_step "Removing existing Docker images..."
+docker-compose rm -f
+docker rmi paladin-forms-be-app paladin-forms-be-analyzer-feedback || true
+print_success "Docker images removed"
 
-# Build and start Docker containers
+# Build and start Docker containers with rebuild
 print_step "Building and starting Docker containers..."
-docker compose build
-docker compose up -d
+docker-compose build --no-cache
+if [ $? -ne 0 ]; then
+    print_error "Docker build failed"
+    exit 1
+fi
+
+docker-compose up -d
 if [ $? -ne 0 ]; then
     print_error "Docker containers failed to start"
     exit 1
@@ -52,6 +47,10 @@ print_success "Docker containers started successfully"
 
 # Show running containers
 print_step "Running containers:"
-docker compose ps
+docker-compose ps
 
-print_success "All done! Your applications are rebuilt and running" 
+print_success "All done! Your applications are rebuilt and running"
+
+# Show logs
+print_step "Showing logs (press Ctrl+C to exit)..."
+docker-compose logs -f 
