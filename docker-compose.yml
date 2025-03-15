@@ -81,6 +81,7 @@ services:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
       - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - RABBITMQ_HOST=rabbitmq
       - NODE_ENV=production
     depends_on:
       app:
