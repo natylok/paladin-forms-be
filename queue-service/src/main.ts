@@ -19,40 +19,17 @@ async function bootstrap() {
         urls: [rabbitmqUrl],
         queue: 'publication_queue',
         queueOptions: {
-          durable: true,
-          deadLetterExchange: 'dlx.exchange',
-          deadLetterRoutingKey: 'dlx.queue',
-          arguments: {
-            'x-message-ttl': 1800000 // 30 minutes
-          }
+          durable: true
         },
         noAck: false,
         prefetchCount: 1,
         persistent: true,
-        exchanges: [
-          {
-            name: 'publication_exchange',
-            type: 'topic'
-          },
-          {
-            name: 'dlx.exchange',
-            type: 'direct'
-          }
-        ],
         socketOptions: {
           heartbeatIntervalInSeconds: 60,
           reconnectTimeInSeconds: 5
         },
         retryAttempts: 5,
-        retryDelay: 5000,
-        // Configure exchange bindings
-        bindings: [
-          {
-            exchange: 'publication_exchange',
-            routingKey: 'publication.*',
-            queue: 'publication_queue'
-          }
-        ]
+        retryDelay: 5000
       },
     });
 
