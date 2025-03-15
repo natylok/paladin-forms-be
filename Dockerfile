@@ -3,6 +3,12 @@ FROM node:18-slim AS builder
 
 WORKDIR /usr/src/app
 
+# Install necessary dependencies for Prisma
+RUN apt-get update && \
+    apt-get install -y openssl python3 make g++ && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # Copy package files and prisma
 COPY package*.json ./
 COPY prisma ./prisma/
@@ -24,17 +30,21 @@ FROM node:18-slim
 
 WORKDIR /usr/src/app
 
+# Install necessary dependencies for Prisma
+RUN apt-get update && \
+    apt-get install -y openssl python3 make g++ && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # Copy package files and install production dependencies
 COPY package*.json ./
+COPY prisma ./prisma/
 RUN npm install --production
 
-# Copy Prisma files and generate client
-COPY prisma ./prisma/
-RUN npx prisma generate
-
-# Copy built application
+# Copy built application and Prisma generated files
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /usr/src/app/node_modules/@prisma ./node_modules/@prisma
 
 EXPOSE 3333
 
