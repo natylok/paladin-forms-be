@@ -36,6 +36,12 @@ services:
       - HUGGING_FACE_API_KEY=${HUGGING_FACE_API_KEY}
       - REDIS_PORT=6379
       - NODE_ENV=production
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_SECURE=false
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
     volumes:
       - ./config:/usr/src/app/config:ro  # Mount GCP credentials file as read-only
     depends_on:
