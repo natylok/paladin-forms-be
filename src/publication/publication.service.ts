@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { Publication, PublicationDocument } from './publication.schema';
 import { User } from '@prisma/client';
 import { ClientProxy } from '@nestjs/microservices';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class PublicationService {
@@ -27,7 +28,7 @@ export class PublicationService {
       await publication.save();
       
       // Emit event to queue
-      await this.client.emit('publication.created', {
+      await lastValueFrom(this.client.emit('publication.created', {
         id: publication.id,
         timeFrame: publication.timeFrame,
         emails: publication.emails,
@@ -36,7 +37,7 @@ export class PublicationService {
         createdAt: new Date(),
         action: 'create',
         actionBy: user.email
-      }).toPromise();
+      }));
       
       this.logger.log('Publication created successfully', { 
         id: publication.id,
@@ -126,7 +127,7 @@ export class PublicationService {
       }
 
       // Emit event to queue
-      await this.client.emit('publication.updated', {
+      await lastValueFrom(this.client.emit('publication.updated', {
         id: publication.id,
         timeFrame: publication.timeFrame,
         emails: publication.emails,
@@ -136,7 +137,7 @@ export class PublicationService {
         action: 'update',
         actionBy: user.email,
         changes: data
-      }).toPromise();
+      }));
       
       this.logger.log('Publication updated successfully', { id, user: user.email });
       
@@ -168,7 +169,7 @@ export class PublicationService {
       await this.publicationModel.deleteOne(query).exec();
 
       // Emit event to queue
-      await this.client.emit('publication.deleted', {
+      await lastValueFrom(this.client.emit('publication.deleted', {
         id: publication.id,
         timeFrame: publication.timeFrame,
         emails: publication.emails,
@@ -177,7 +178,7 @@ export class PublicationService {
         deletedAt: new Date(),
         action: 'delete',
         actionBy: user.email
-      }).toPromise();
+      }));
       
       this.logger.log('Publication deleted successfully', { id, user: user.email });
     } catch (error) {
