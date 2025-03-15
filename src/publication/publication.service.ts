@@ -20,6 +20,12 @@ export class PublicationService {
     try {
       this.logger.log(`Emitting ${pattern} event`, data);
       
+      // First check if client is connected
+      if (!this.client || !this.client['connected']) {
+        this.logger.warn('RabbitMQ client is not connected, attempting to connect...');
+        await this.client.connect();
+      }
+
       await lastValueFrom(
         this.client.emit(pattern, data).pipe(
           timeout(10000),
@@ -27,6 +33,14 @@ export class PublicationService {
             if (error instanceof TimeoutError) {
               throw new Error(`Event emission timed out after 10000ms`);
             }
+            // Log the full error details
+            this.logger.error('Error in event emission pipe', {
+              error: error instanceof Error ? error.message : error,
+              stack: error instanceof Error ? error.stack : undefined,
+              code: error['code'],
+              errno: error['errno'],
+              syscall: error['syscall']
+            });
             throw error;
           })
         )
@@ -34,12 +48,35 @@ export class PublicationService {
       
       this.logger.log(`Successfully emitted ${pattern} event`, { id });
     } catch (error) {
+      // Enhanced error logging
+      const errorDetails = {
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        code: error['code'],
+        errno: error['errno'],
+        syscall: error['syscall'],
+        connectionState: this.client['connected'] ? 'connected' : 'disconnected'
+      };
+
       this.logger.error(
         `Failed to emit ${pattern} event`,
         error instanceof Error ? error.stack : undefined,
-        { id, error: error instanceof Error ? error.message : 'Unknown error' }
+        errorDetails
       );
-      // Don't throw here, as the operation was successful
+
+      // Try to reconnect if it seems to be a connection issue
+      if (!this.client['connected']) {
+        this.logger.warn('Attempting to reconnect to RabbitMQ...');
+        try {
+          await this.client.connect();
+        } catch (reconnectError) {
+          this.logger.error(
+            'Failed to reconnect to RabbitMQ',
+            reconnectError instanceof Error ? reconnectError.stack : undefined
+          );
+        }
+      }
     }
   }
 

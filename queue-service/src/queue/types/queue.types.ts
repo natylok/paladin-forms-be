@@ -8,6 +8,12 @@ export interface PublicationEvent {
   customerId: string;
   action: 'create' | 'update' | 'delete';
   actionBy: string;
+  changes?: Partial<{
+    timeFrame: TimeFrame;
+    emails: string[];
+    creatorEmail: string;
+    customerId: string;
+  }>;
 }
 
 export interface FeedbackSummary {

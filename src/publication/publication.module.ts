@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { PublicationService } from './publication.service';
@@ -30,7 +30,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
               reconnectTimeInSeconds: 5
             },
             retryAttempts: 3,
-            retryDelay: 3000
+            retryDelay: 3000,
+            prefetchCount: 1,
+            noAck: true
           },
         }),
         inject: [ConfigService],

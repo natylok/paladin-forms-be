@@ -31,12 +31,14 @@ export class QueueController {
       });
 
       channel.ack(originalMsg);
+      this.logger.log('Successfully processed publication.created event', { id: data.id });
     } catch (error) {
       this.logger.error(
         'Failed to handle publication.created event',
         error instanceof Error ? error.stack : undefined,
         { data }
       );
+      // Requeue the message if it's a temporary failure
       channel.nack(originalMsg, false, true);
     }
   }
@@ -50,7 +52,8 @@ export class QueueController {
       this.logger.log('Received publication.updated event', { 
         id: data.id,
         timeFrame: data.timeFrame,
-        emails: data.emails?.length
+        emails: data.emails?.length,
+        changes: data.changes
       });
 
       await this.queueService.handlePublicationEvent({
@@ -59,12 +62,14 @@ export class QueueController {
       });
 
       channel.ack(originalMsg);
+      this.logger.log('Successfully processed publication.updated event', { id: data.id });
     } catch (error) {
       this.logger.error(
         'Failed to handle publication.updated event',
         error instanceof Error ? error.stack : undefined,
         { data }
       );
+      // Requeue the message if it's a temporary failure
       channel.nack(originalMsg, false, true);
     }
   }
@@ -76,7 +81,9 @@ export class QueueController {
 
     try {
       this.logger.log('Received publication.deleted event', { 
-        id: data.id
+        id: data.id,
+        timeFrame: data.timeFrame,
+        emails: data.emails?.length
       });
 
       await this.queueService.handlePublicationEvent({
@@ -85,12 +92,14 @@ export class QueueController {
       });
 
       channel.ack(originalMsg);
+      this.logger.log('Successfully processed publication.deleted event', { id: data.id });
     } catch (error) {
       this.logger.error(
         'Failed to handle publication.deleted event',
         error instanceof Error ? error.stack : undefined,
         { data }
       );
+      // Requeue the message if it's a temporary failure
       channel.nack(originalMsg, false, true);
     }
   }
