@@ -14,7 +14,7 @@ export class Feedback {
   @Prop()
   customerId?: string;
 
-  @Prop()
+  @Prop({ type: Object })
   metadata?: Record<string, any>;
 
   @Prop({ default: false })
