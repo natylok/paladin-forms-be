@@ -15,7 +15,7 @@ async function bootstrap() {
   const password = configService.get('RABBITMQ_DEFAULT_PASS', 'guest');
   const host = configService.get('RABBITMQ_HOST', 'localhost');
 
-  // Create the microservice
+  // Create the microservice for consuming publication events
   const microservice = await NestFactory.createMicroservice<MicroserviceOptions>(
     AppModule,
     {
@@ -24,9 +24,10 @@ async function bootstrap() {
         urls: [`amqp://${user}:${password}@${host}:5672`],
         queue: 'publication_queue',
         queueOptions: {
-          durable: true,
-          prefetchCount: 1
+          durable: true
         },
+        prefetchCount: 1,
+        isGlobalPrefetchCount: false,
         socketOptions: {
           heartbeatIntervalInSeconds: 60,
           reconnectTimeInSeconds: 5
@@ -44,7 +45,7 @@ async function bootstrap() {
       microservice.listen()
     ]);
     
-    logger.log(`Queue service is running`);
+    logger.log(`Queue service is running on port 3000`);
     logger.log(`Listening for messages on publication_queue`);
   } catch (error) {
     logger.error('Failed to start services', error);

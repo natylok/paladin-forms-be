@@ -1,5 +1,15 @@
 export type TimeFrame = 'day' | 'week' | 'month';
 
+export interface PublicationEvent {
+  id: string;
+  timeFrame: TimeFrame;
+  emails: string[];
+  creatorEmail: string;
+  customerId: string;
+  action: 'create' | 'update' | 'delete';
+  actionBy: string;
+}
+
 export interface FeedbackSummary {
   textAnalysis: {
     topStrengths: string[];
@@ -42,16 +52,6 @@ export interface TimelineTrend {
   labels: string[];
   positive: number[];
   negative: number[];
-}
-
-export interface PublicationEvent {
-  id: string;
-  timeFrame: TimeFrame;
-  emails: string[];
-  creatorEmail: string;
-  customerId: string;
-  action: 'create' | 'update' | 'delete';
-  actionBy: string;
 }
 
 export interface EmailTrigger {
