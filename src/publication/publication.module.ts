@@ -24,15 +24,25 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
             queueOptions: {
               durable: true,
               deadLetterExchange: 'dlx.exchange',
-              deadLetterRoutingKey: 'dlx.queue'
+              deadLetterRoutingKey: 'dlx.queue',
+              arguments: {
+                'x-message-ttl': 1800000 // 30 minutes
+              }
             },
             noAck: false,
             prefetchCount: 1,
             persistent: true,
+            exchanges: [
+              {
+                name: 'publication_exchange',
+                type: 'topic'
+              }
+            ],
             socketOptions: {
               heartbeatIntervalInSeconds: 60,
               reconnectTimeInSeconds: 5
-            }
+            },
+            routingKey: 'publication.*'
           },
         }),
         inject: [ConfigService],

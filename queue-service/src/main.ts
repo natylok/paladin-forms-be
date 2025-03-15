@@ -21,12 +21,19 @@ async function bootstrap() {
         queueOptions: {
           durable: true,
           deadLetterExchange: 'dlx.exchange',
-          deadLetterRoutingKey: 'dlx.queue'
+          deadLetterRoutingKey: 'dlx.queue',
+          arguments: {
+            'x-message-ttl': 1800000 // 30 minutes
+          }
         },
         noAck: false,
         prefetchCount: 1,
         persistent: true,
         exchanges: [
+          {
+            name: 'publication_exchange',
+            type: 'topic'
+          },
           {
             name: 'dlx.exchange',
             type: 'direct'
@@ -38,15 +45,14 @@ async function bootstrap() {
         },
         retryAttempts: 5,
         retryDelay: 5000,
-        // Add message patterns to listen for
-        listen: {
-          patterns: [
-            'publication.created',
-            'publication.updated',
-            'publication.deleted',
-            'scheduled.task'
-          ]
-        }
+        // Configure exchange bindings
+        bindings: [
+          {
+            exchange: 'publication_exchange',
+            routingKey: 'publication.*',
+            queue: 'publication_queue'
+          }
+        ]
       },
     });
 
