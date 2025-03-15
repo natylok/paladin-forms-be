@@ -19,8 +19,8 @@ export class Publication {
   @Prop({ required: true })
   creatorEmail: string;
 
-  @Prop({ required: true })
-  customerId: string;
+  @Prop({ required: false })
+  customerId?: string;
 }
 
 export const PublicationSchema = SchemaFactory.createForClass(Publication); 
