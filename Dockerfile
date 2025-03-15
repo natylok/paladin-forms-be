@@ -1,5 +1,5 @@
 # Use locally tagged node image
-FROM local/node:20-slim AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /usr/src/app
 
@@ -40,7 +40,7 @@ RUN npm run prebuild && \
     find dist/ -type f
 
 # Production stage
-FROM local/node:20-slim
+FROM node:20-slim
 
 WORKDIR /usr/src/app
 
