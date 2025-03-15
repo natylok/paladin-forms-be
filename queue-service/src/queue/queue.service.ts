@@ -19,7 +19,7 @@ export class QueueService {
         case 'create':
         case 'update':
           this.logger.log('publication change triggered');
-          fetch('http://localhost:3000/internal/email/send', {
+          fetch('http://paladin-forms-be:3333/internal/email/send', {
             method: 'POST',
             body: JSON.stringify({
               to: event.emails,
