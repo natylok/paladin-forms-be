@@ -24,13 +24,19 @@ async function bootstrap() {
       socketOptions: {
         heartbeatIntervalInSeconds: 60,
         reconnectTimeInSeconds: 5
-      }
+      },
+      patterns: [
+        'publication.created',
+        'publication.updated',
+        'publication.deleted',
+        'scheduled.task'
+      ]
     },
   });
 
   logger.log(`Connecting to RabbitMQ at ${rabbitmqHost}:5672`);
   await app.listen();
-  logger.log('Queue Service Microservice is listening');
+  logger.log('Queue Service Microservice is listening for publication events');
 }
 
 bootstrap();

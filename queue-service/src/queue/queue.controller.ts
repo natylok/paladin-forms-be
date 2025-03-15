@@ -90,7 +90,7 @@ export class QueueController {
         summary
       });
 
-      this.logger.log('Sending email', {
+      this.logger.log('Sending to last value from', {
         publicationId: data.publicationId,
         to: data.emails
       });

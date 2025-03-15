@@ -1,6 +1,6 @@
 import { Controller, Post, Body, UseGuards, Logger } from '@nestjs/common';
 import { InternalGuard } from '../guards/internal.guard';
-import * as nodemailer from 'nodemailer';
+import { EmailService } from './email.service';
 
 interface SendEmailDto {
   to: string[];
@@ -12,36 +12,18 @@ interface SendEmailDto {
 @UseGuards(InternalGuard)
 export class EmailController {
   private readonly logger = new Logger(EmailController.name);
-  private readonly transporter: nodemailer.Transporter;
 
-  constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
-    });
-  }
+  constructor(private readonly emailService: EmailService) {}
 
   @Post('send')
   async sendEmail(@Body() emailData: SendEmailDto) {
     try {
-      this.logger.log('Sending email', {
+      this.logger.log('Received email request', {
         to: emailData.to,
         subject: emailData.subject
       });
 
-      await this.transporter.sendMail({
-        from: process.env.SMTP_FROM,
-        ...emailData
-      });
-
-      this.logger.log('Email sent successfully', {
-        to: emailData.to
-      });
+      await this.emailService.sendEmail(emailData);
 
       return { success: true };
     } catch (error) {

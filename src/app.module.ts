@@ -11,6 +11,8 @@ import { LoggerModule } from './logger/logger.module';
 import { ReportModule } from './report/report.module';
 import { RedisModule } from './redis/redis.module';
 import { PublicationModule } from './publication/publication.module';
+import { EmailModule } from './email/email.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -23,7 +25,8 @@ import { PublicationModule } from './publication/publication.module';
     FeedbackModule,
     LoggerModule,
     ReportModule,
-    PublicationModule
+    PublicationModule,
+    EmailModule
   ]
 })
 export class AppModule { }
