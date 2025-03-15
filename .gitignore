@@ -35,3 +35,11 @@ lerna-debug.log*
 !.vscode/extensions.json
 .env
 config
+
+./analyzer-feedback/node_modules
+./analyzer-feedback/dist
+./analyzer-feedback/.env
+./analyzer-feedback/config
+./analyzer-feedback/.gitignore
+./analyzer-feedback/package-lock.json
+./analyzer-feedback/tsconfig.json
