@@ -24,6 +24,7 @@ COPY . .
 
 # Build the application
 RUN npm run build
+RUN ls -la dist/
 
 # Production image
 FROM node:18-slim
@@ -38,6 +39,7 @@ RUN apt-get update && \
 
 # Copy package files and install production dependencies
 COPY package*.json ./
+COPY tsconfig*.json ./
 RUN npm install --production
 
 # Copy Prisma files and generate client
@@ -46,7 +48,9 @@ RUN npx prisma generate
 
 # Copy built application
 COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
+RUN ls -la dist/
 
 EXPOSE 3333
 
-CMD ["npm", "run", "start:migrate:prod"] 
+CMD ["node", "dist/main.js"] 

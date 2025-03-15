@@ -30,19 +30,36 @@ print_step "Removing existing Docker images..."
 docker rmi paladin-forms-be-app paladin-forms-be-analyzer-feedback || true
 print_success "Docker images removed"
 
-# Build and start specific containers with rebuild
-print_step "Building and starting application containers..."
-docker compose build --no-cache app analyzer-feedback
+# Build main application first
+print_step "Building main application..."
+docker compose build app
 if [ $? -ne 0 ]; then
-    print_error "Docker build failed"
+    print_error "Main application build failed"
     exit 1
 fi
 
-docker compose up -d app analyzer-feedback
+# Verify main application build
+docker compose up app -d
 if [ $? -ne 0 ]; then
-    print_error "Docker containers failed to start"
+    print_error "Main application failed to start"
     exit 1
 fi
+
+# Build analyzer feedback
+print_step "Building analyzer feedback..."
+docker compose build analyzer-feedback
+if [ $? -ne 0 ]; then
+    print_error "Analyzer feedback build failed"
+    exit 1
+fi
+
+# Start analyzer feedback
+docker compose up -d analyzer-feedback
+if [ $? -ne 0 ]; then
+    print_error "Analyzer feedback failed to start"
+    exit 1
+fi
+
 print_success "Application containers started successfully"
 
 # Show running containers
