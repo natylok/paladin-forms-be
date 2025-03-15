@@ -1,30 +1,21 @@
 import { Controller, Logger, Inject } from '@nestjs/common';
 import { EventPattern, Payload, ClientProxy } from '@nestjs/microservices';
+import { HttpService } from '@nestjs/axios';
 import { QueueService } from './queue.service';
 import { EmailData, EmailTrigger, PublicationEvent } from './types/queue.types';
 import { lastValueFrom } from 'rxjs';
-import * as nodemailer from 'nodemailer';
 
 @Controller()
 export class QueueController {
   private readonly logger = new Logger(QueueController.name);
-  private readonly transporter: nodemailer.Transporter;
+  private readonly apiUrl = 'http://localhost:3333/internal/email';
 
   constructor(
     private readonly queueService: QueueService,
-    @Inject('EMAIL_SERVICE') private readonly emailClient: ClientProxy
-  ) {
-    // Initialize nodemailer transporter
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
-    });
-  }
+    @Inject('EMAIL_SERVICE') private readonly emailClient: ClientProxy,
+    @Inject('SCHEDULER_SERVICE') private readonly schedulerClient: ClientProxy,
+    private readonly httpService: HttpService
+  ) {}
 
   @EventPattern('publication.created')
   async handlePublicationCreated(@Payload() data: PublicationEvent) {
@@ -83,18 +74,53 @@ export class QueueController {
         summary
       });
 
-      // Send email directly using nodemailer
-      await this.transporter.sendMail({
-        from: process.env.SMTP_FROM,
-        to: data.emails,
-        subject: `Feedback Summary - ${this.queueService.getTimeFrameText(data.timeFrame)}`,
-        html: emailContent
-      });
+      // Send email using internal API
+      await lastValueFrom(
+        this.httpService.post(
+          `${this.apiUrl}/send`,
+          {
+            to: data.emails,
+            subject: `Feedback Summary - ${this.queueService.getTimeFrameText(data.timeFrame)}`,
+            html: emailContent
+          },
+          {
+            headers: {
+              'x-internal-key': process.env.INTERNAL_API_KEY
+            }
+          }
+        )
+      );
 
       this.logger.log('Email sent successfully', {
         publicationId: data.publicationId,
         to: data.emails
       });
+
+      // Schedule the next email
+      const ttl = this.queueService.calculateTTL(data.timeFrame);
+      const nextTrigger: EmailTrigger = {
+        publicationId: data.publicationId,
+        timeFrame: data.timeFrame,
+        emails: data.emails,
+        customerId: data.customerId,
+        triggerAt: new Date(Date.now() + ttl)
+      };
+
+      await lastValueFrom(
+        this.schedulerClient.emit('scheduled.task', {
+          ...nextTrigger,
+          headers: {
+            'x-message-ttl': ttl
+          }
+        })
+      );
+
+      this.logger.log('Next email task scheduled', {
+        publicationId: data.publicationId,
+        triggerAt: nextTrigger.triggerAt,
+        ttl
+      });
+
     } catch (error) {
       this.logger.error(
         'Failed to process scheduled task',

@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
-import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { QueueService } from './queue.service';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+import { HttpModule } from '@nestjs/axios';
 import { QueueController } from './queue.controller';
+import { QueueService } from './queue.service';
 
 @Module({
   imports: [
     ConfigModule,
+    HttpModule,
     ClientsModule.registerAsync([
       {
         name: 'EMAIL_SERVICE',

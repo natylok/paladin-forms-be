@@ -59,6 +59,35 @@ export class QueueService {
     }
   }
 
+  calculateTTL(timeFrame: TimeFrame): number {
+    const now = new Date();
+    const targetDate = new Date(now);
+
+    switch (timeFrame) {
+      case 'day': {
+        // Set to end of current day (23:59:59)
+        targetDate.setHours(23, 59, 59, 999);
+        break;
+      }
+      case 'week': {
+        // Set to end of current week (Sunday 23:59:59)
+        const daysUntilSunday = 7 - now.getDay();
+        targetDate.setDate(now.getDate() + daysUntilSunday);
+        targetDate.setHours(23, 59, 59, 999);
+        break;
+      }
+      case 'month': {
+        // Set to end of current month (last day 23:59:59)
+        targetDate.setMonth(targetDate.getMonth() + 1, 0);
+        targetDate.setHours(23, 59, 59, 999);
+        break;
+      }
+    }
+
+    // Calculate TTL in milliseconds
+    return targetDate.getTime() - now.getTime();
+  }
+
   async sendFeedbackSummaryEmail(data: EmailData): Promise<void> {
     try {
       this.logger.log('Sending feedback summary email', {
@@ -90,35 +119,6 @@ export class QueueService {
       );
       throw error;
     }
-  }
-
-  private calculateTTL(timeFrame: TimeFrame): number {
-    const now = new Date();
-    const targetDate = new Date(now);
-
-    switch (timeFrame) {
-      case 'day': {
-        // Set to end of current day (23:59:59)
-        targetDate.setHours(23, 59, 59, 999);
-        break;
-      }
-      case 'week': {
-        // Set to end of current week (Sunday 23:59:59)
-        const daysUntilSunday = 7 - now.getDay();
-        targetDate.setDate(now.getDate() + daysUntilSunday);
-        targetDate.setHours(23, 59, 59, 999);
-        break;
-      }
-      case 'month': {
-        // Set to end of current month (last day 23:59:59)
-        targetDate.setMonth(targetDate.getMonth() + 1, 0);
-        targetDate.setHours(23, 59, 59, 999);
-        break;
-      }
-    }
-
-    // Calculate TTL in milliseconds
-    return targetDate.getTime() - now.getTime();
   }
 
   formatEmailContent(data: EmailData): string {

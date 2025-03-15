@@ -30,6 +30,7 @@ services:
       - GCP_BUCKET_NAME=${GCP_BUCKET_NAME}
       - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - GCP_STORAGE_URL=${GCP_STORAGE_URL}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
       - REDIS_HOST=redis
       - HOST=${HOST}
       - HUGGING_FACE_API_KEY=${HUGGING_FACE_API_KEY}
@@ -68,6 +69,28 @@ services:
         condition: service_healthy
     networks:
       - nati-network
+    restart: always
+
+  # Queue Service
+  queue-service:
+    build:
+      context: ./queue-service
+      dockerfile: Dockerfile
+    container_name: queue-service
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - NODE_ENV=production
+    depends_on:
+      app:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - nati-network
+    links:
+      - app:localhost
     restart: always
 
   # PostgreSQL Development Database
