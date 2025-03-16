@@ -154,16 +154,17 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-guest}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-guest}
-      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit log_levels [{connection,error}]
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit log_levels [{connection,debug},{channel,debug}]
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_plugins:/opt/rabbitmq/plugins
     networks:
       - nati-network
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 10s
-      retries: 3
+      test: rabbitmq-diagnostics check_running && rabbitmq-diagnostics check_local_alarms
+      interval: 30s
+      timeout: 20s
+      retries: 5
       start_period: 40s
 
   # Redis
@@ -193,5 +194,6 @@ volumes:
   mongo_data:
   redis_data:
   rabbitmq_data:
+  rabbitmq_plugins:
 
 # Enviro
