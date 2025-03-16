@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Req, Logger } from '@nestjs/common';
 import { SurveyService } from './survey.service';
 import { CreateSurveyDto } from './dto/create-survey.dto';
 import { JwtGuard } from 'src/auth/guards';
@@ -15,7 +15,9 @@ import { LoggerService } from 'src/logger/logger.service';
 @Controller('surveys')
 export class SurveyController {
     openai: OpenAI;
-    constructor(private readonly surveyService: SurveyService, private configService: ConfigService, private logger: LoggerService) {
+    private readonly logger = new Logger(SurveyController.name);
+
+    constructor(private readonly surveyService: SurveyService, private configService: ConfigService, private loggerService: LoggerService) {
         this.openai = new OpenAI({ apiKey: configService.get('OPEN_AI_KEY') });
     }
 
@@ -70,27 +72,27 @@ export class SurveyController {
     }
 
     @EventPattern('survey_changed')
-    async handleSurveyCreated(
-        @Payload() user: User,
-        @Ctx() context: RmqContext
-    ) {
-        this.logger.log('Received survey_changed event', { 
-            user: user.email, 
-            customerId: user.customerId
-        });
+    async handleSurveyCreated(@Payload() user: User, @Ctx() context: RmqContext) {
+        const channel = context.getChannelRef();
+        const originalMsg = context.getMessage();
+
         try {
+            this.logger.log(`Processing survey_changed event for user: ${user.email}, customerId: ${user.customerId}`);
+            
             await this.surveyService.generateJavascriptCode(user);
-            this.logger.log('Successfully processed survey_changed event', { user: user.email });
-            // Use the built-in acknowledgment pattern
-            context.getChannelRef().ack(context.getMessage());
+            
+            // Acknowledge the message after successful processing
+            await channel.ack(originalMsg);
+            
+            this.logger.log(`Successfully processed survey_changed event for user: ${user.email}`);
         } catch (error) {
             this.logger.error(
-                'Failed to process survey_changed event',
-                error instanceof Error ? error.stack : undefined,
-                { user: user.email, customerId: user.customerId }
+                `Failed to process survey_changed event for user: ${user.email}`,
+                error instanceof Error ? error.stack : undefined
             );
-            // Reject the message without requeuing
-            context.getChannelRef().reject(context.getMessage(), false);
+            
+            // Reject the message and requeue it in case of error
+            await channel.nack(originalMsg, false, true);
         }
     }
 }

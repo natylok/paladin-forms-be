@@ -208,12 +208,7 @@ export class SurveyService {
             throw new NotFoundException(`Survey with ID ${id} not found`);
         }
         this.logger.log(`Updating survey ${id} for user ${user.email}`);
-        await this.client.emit('survey_changed', {
-            pattern: 'survey_changed',
-            data: user,
-            exchange: 'survey_exchange',
-            routingKey: 'survey_queue'
-        }).toPromise();
+        await this.client.emit('survey_changed', user).toPromise();
 
         // Get and clean the update data
         const surveyData = updateData;

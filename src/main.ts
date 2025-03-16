@@ -25,17 +25,20 @@ async function bootstrap() {
       queueOptions: {
         durable: true,
         noAck: false,
-        autoDelete: false
       },
+      noAck: false,
       persistent: true,
       prefetchCount: 1,
-      isGlobalPrefetchCount: false
+      socketOptions: {
+        heartbeatIntervalInSeconds: 60,
+        reconnectTimeInSeconds: 5
+      }
     },
   };
 
   try {
     // Connect microservice
-    app.connectMicroservice(rabbitMQConfig);
+    const microservice = app.connectMicroservice(rabbitMQConfig, { inheritAppConfig: true });
     
     // Start all microservices
     await app.startAllMicroservices();
