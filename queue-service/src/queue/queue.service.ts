@@ -2,7 +2,7 @@ import { Injectable, Logger, Inject, OnModuleInit } from '@nestjs/common';
 import { PublicationEvent, TimeFrame } from './types/queue.types';
 import { ClientProxy } from '@nestjs/microservices';
 import * as amqp from 'amqplib';
-import { delay } from 'rxjs';
+import { async, delay } from 'rxjs';
 
 @Injectable()
 export class QueueService implements OnModuleInit {
@@ -66,6 +66,67 @@ export class QueueService implements OnModuleInit {
     }
   }
 
+  private async addEventToQueue(event: PublicationEvent): Promise<void> {
+    this.logger.log('Adding event to queue for the next time', {
+      id: event.id,
+      timeFrame: event.timeFrame,
+      emails: event.emails?.length
+    });
+
+    const delay = this.calculateDelayBasedOnTimeFrame(event.timeFrame);
+    const message = {
+      pattern: this.ROUTING_KEY,
+      data: event
+    };
+
+    await this.channel.publish(
+      this.EXCHANGE_NAME,
+      this.ROUTING_KEY,
+      Buffer.from(JSON.stringify(message)),
+      {
+        headers: {
+          'x-delay': delay
+        },
+        persistent: true
+      }
+    );
+
+    this.logger.log('Added event to queue for the next time', {
+      id: event.id,
+      delay,
+      scheduledFor: new Date(Date.now() + delay).toISOString()
+    });
+  }
+
+  async sendEmail(event: PublicationEvent): Promise<void> {
+    try {
+      const response = await fetch('http://paladin-forms-be:3333/internal/email/send', {
+        method: 'POST',
+        body: JSON.stringify(event),
+        headers: {
+          'x-internal-key': process.env.INTERNAL_API_KEY,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to send email: ${response.status} - ${response.statusText}`);
+      }
+
+      this.logger.log('Email sent successfully', {
+        id: event.id,
+        to: event.emails,
+      });
+
+      await this.addEventToQueue(event);
+      
+    } catch (error) {
+      this.logger.error('Failed to send email', error);
+      await this.addEventToQueue(event);
+      throw error;
+    }
+  }
+
   async handlePublicationEvent(event: PublicationEvent): Promise<void> {
     try {
       this.logger.log('Processing publication event', {
@@ -82,23 +143,7 @@ export class QueueService implements OnModuleInit {
         case 'update':
           this.logger.log('Publication change triggered, scheduling delayed notification');
           try {
-            const message = {
-              pattern: this.ROUTING_KEY,
-              data: event
-            };
-
-            await this.channel.publish(
-              this.EXCHANGE_NAME,
-              this.ROUTING_KEY,
-              Buffer.from(JSON.stringify(message)),
-              {
-                headers: {
-                  'x-delay': delay
-                },
-                persistent: true
-              }
-            );
-
+            await this.addEventToQueue(event);
             this.logger.log('Publication notification scheduled successfully', {
               id: event.id,
               delay,
