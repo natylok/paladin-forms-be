@@ -2,9 +2,9 @@
   "rabbit_version": "3.12.0",
   "users": [
     {
-      "name": "guest",
-      "password": "guest",
-      "tags": ["administrator"]
+      "name": "user",
+      "password": "password",
+      "tags": "administrator"
     }
   ],
   "vhosts": [
@@ -14,7 +14,7 @@
   ],
   "permissions": [
     {
-      "user": "guest",
+      "user": "user",
       "vhost": "/",
       "configure": ".*",
       "write": ".*",
