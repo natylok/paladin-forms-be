@@ -1,13 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SentimentResult } from '../types/feedback.types';
-import { env, pipeline } from '@xenova/transformers';
+import { pipeline } from '@xenova/transformers';
 
 @Injectable()
 export class SentimentService {
     private readonly logger = new Logger(SentimentService.name);
     private classifier: any;
     private isInitialized: boolean = false;
-    private readonly MODEL_NAME = 'siebert/sentiment-roberta-large-english';
+    private readonly MODEL_NAME = 'Xenova/distilbert-base-uncased-finetuned-sst-2-english';
 
     constructor() {
         this.initializeModel();
@@ -16,13 +16,7 @@ export class SentimentService {
     private async initializeModel() {
         try {
             // Initialize the pipeline with Xenova's model
-            this.classifier = await pipeline('sentiment-analysis', this.MODEL_NAME, {
-                config: {
-                    headers: {
-                        Authorization: `${process.env.HUGGING_FACE_ACCESS_TOKEN}`
-                    }
-                }
-            });
+            this.classifier = await pipeline('sentiment-analysis', this.MODEL_NAME);
             
             this.isInitialized = true;
             this.logger.log('Sentiment analysis model loaded successfully', {
@@ -48,12 +42,11 @@ export class SentimentService {
             
             // Convert label to our format (positive, negative, neutral)
             let normalizedLabel: string;
-            if (result[0].label.includes('POSITIVE')) {
+            // This model uses POSITIVE/NEGATIVE labels
+            if (result[0].label === 'POSITIVE') {
                 normalizedLabel = 'positive';
-            } else if (result[0].label.includes('NEGATIVE')) {
-                normalizedLabel = 'negative';
             } else {
-                normalizedLabel = 'neutral';
+                normalizedLabel = 'negative';
             }
 
             return { 
