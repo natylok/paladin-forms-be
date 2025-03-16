@@ -255,9 +255,6 @@ export class QueueService implements OnModuleInit {
           } catch (error) {
             this.logger.error('Failed to remove scheduled messages for deleted publication', error);
           }
-
-          // Emit the deletion event
-          await this.client.emit('publication.deleted', event).toPromise();
           break;
         default:
           this.logger.warn('Unknown publication event action', { action: event.action });
