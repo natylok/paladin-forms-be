@@ -142,7 +142,7 @@ services:
 
   # RabbitMQ Message Broker
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3.12-management
     container_name: rabbitmq
     restart: always
     ports:
@@ -162,8 +162,10 @@ services:
       retries: 5
     command: >
       sh -c "
-      rabbitmq-plugins enable rabbitmq_management;
-      rabbitmq-plugins enable rabbitmq_delayed_message_exchange;
+      apt-get update &&
+      apt-get install -y curl &&
+      curl -L https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/v3.12.0/rabbitmq_delayed_message_exchange-3.12.0.ez > /opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange-3.12.0.ez &&
+      rabbitmq-plugins enable rabbitmq_delayed_message_exchange &&
       rabbitmq-server"
 
   # Redis

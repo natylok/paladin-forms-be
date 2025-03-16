@@ -17,29 +17,12 @@ import { HttpModule } from '@nestjs/axios';
           transport: Transport.RMQ,
           options: {
             urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@rabbitmq:5672`],
-            queue: 'delayed.queue',
+            queue: 'publication_queue',
             queueOptions: {
-              durable: true,
-              deadLetterExchange: 'delayed.exchange',
-              deadLetterRoutingKey: 'delayed'
-            },
-            exchange: 'delayed.exchange',
-            exchangeType: 'x-delayed-message',
-            routingKey: 'delayed',
-            exchangeOptions: {
-              durable: true,
-              type: 'x-delayed-message',
-              arguments: {
-                'x-delayed-type': 'direct'
-              }
-            },
-            socketOptions: {
-              heartbeatIntervalInSeconds: 60,
-              reconnectTimeInSeconds: 5
+              durable: true
             },
             prefetchCount: 1,
-            persistent: true,
-            noAck: false
+            persistent: true
           },
         }),
         inject: [ConfigService],

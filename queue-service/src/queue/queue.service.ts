@@ -7,6 +7,8 @@ import * as amqp from 'amqplib';
 export class QueueService implements OnModuleInit {
   private readonly logger = new Logger(QueueService.name);
   private channel: amqp.Channel;
+  private readonly EXCHANGE_NAME = 'delayed.exchange';
+  private readonly QUEUE_NAME = 'publication_queue';
 
   constructor(
     @Inject('PUBLICATION_SERVICE') private readonly client: ClientProxy
@@ -17,21 +19,21 @@ export class QueueService implements OnModuleInit {
       const connection = await amqp.connect(`amqp://${process.env.RABBITMQ_DEFAULT_USER}:${process.env.RABBITMQ_DEFAULT_PASS}@rabbitmq:5672`);
       this.channel = await connection.createChannel();
 
-      // Ensure the delayed message exchange exists
-      await this.channel.assertExchange('delayed.exchange', 'x-delayed-message', {
+      // Declare the delayed message exchange
+      await this.channel.assertExchange(this.EXCHANGE_NAME, 'x-delayed-message', {
         durable: true,
         arguments: {
           'x-delayed-type': 'direct'
         }
       });
 
-      // Ensure the queue exists
-      await this.channel.assertQueue('delayed.queue', {
+      // Declare the queue
+      await this.channel.assertQueue(this.QUEUE_NAME, {
         durable: true
       });
 
       // Bind the queue to the exchange
-      await this.channel.bindQueue('delayed.queue', 'delayed.exchange', 'delayed');
+      await this.channel.bindQueue(this.QUEUE_NAME, this.EXCHANGE_NAME, this.QUEUE_NAME);
 
       this.logger.log('Successfully initialized RabbitMQ delayed message setup');
     } catch (error) {
@@ -56,10 +58,9 @@ export class QueueService implements OnModuleInit {
         case 'update':
           this.logger.log('Publication change triggered, scheduling delayed notification');
           try {
-            // Publish message with delay
             await this.channel.publish(
-              'delayed.exchange',
-              'delayed',
+              this.EXCHANGE_NAME,
+              this.QUEUE_NAME,
               Buffer.from(JSON.stringify(event)),
               {
                 headers: {
