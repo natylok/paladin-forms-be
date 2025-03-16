@@ -10,11 +10,6 @@ export class QueueService {
     @Inject('PUBLICATION_SERVICE') private readonly client: ClientProxy
   ) {}
 
-  private calculateTTL(): number {
-    // For testing, using 5 seconds
-    return 5000; // 5 seconds in milliseconds
-  }
-
   async handlePublicationEvent(event: PublicationEvent): Promise<void> {
     try {
       this.logger.log('Processing publication event', {
@@ -24,38 +19,38 @@ export class QueueService {
         emails: event.emails?.length
       });
 
-      // Here you can add any specific handling logic for different event types
+      // Add a 5-second delay for testing
+      const delay = 5000;
+      const headers = { 'x-delay': delay };
+
       switch (event.action) {
         case 'create':
         case 'update':
-          this.logger.log('Publication change triggered, scheduling email notification');
+          this.logger.log('Publication change triggered, scheduling delayed notification');
           try {
-            const ttl = this.calculateTTL();
-            
-            // Schedule the email sending with TTL
-            await this.client.emit('send_email', {
-              to: event.emails,
-              subject: 'Publication Summary',
-              creatorEmail: event.creatorEmail,
-              html: 'Your publication summary is ready.',
-              ttl
+            await this.client.emit('publication_events', {
+              pattern: event.action === 'create' ? 'publication.created' : 'publication.updated',
+              data: event,
+              headers
             }).toPromise();
 
-            this.logger.log('Email notification scheduled successfully', { 
+            this.logger.log('Publication notification scheduled successfully', { 
               id: event.id,
-              ttl,
-              scheduledFor: new Date(Date.now() + ttl).toISOString()
+              delay,
+              scheduledFor: new Date(Date.now() + delay).toISOString()
             });
-          } catch (emailError) {
+          } catch (error) {
             this.logger.error(
-              'Failed to schedule email notification',
-              emailError instanceof Error ? emailError.stack : undefined,
+              'Failed to schedule publication notification',
+              error instanceof Error ? error.stack : undefined,
               { id: event.id }
             );
           }
           break;
         case 'delete':
           this.logger.log('Processing publication deletion', { id: event.id });
+          // For delete events, process immediately without delay
+          await this.client.emit('publication.deleted', event).toPromise();
           break;
         default:
           this.logger.warn('Unknown publication event action', { action: event.action });

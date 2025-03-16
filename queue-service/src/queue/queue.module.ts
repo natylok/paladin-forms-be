@@ -21,6 +21,14 @@ import { HttpModule } from '@nestjs/axios';
             queueOptions: {
               durable: true
             },
+            exchange: 'delayed.publication',
+            exchangeType: 'x-delayed-message',
+            exchangeOptions: {
+              durable: true,
+              arguments: {
+                'x-delayed-type': 'direct'
+              }
+            }
           },
         }),
         inject: [ConfigService],

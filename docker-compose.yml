@@ -142,7 +142,9 @@ services:
 
   # RabbitMQ Message Broker
   rabbitmq:
-    image: rabbitmq:3-management
+    build:
+      context: ./rabbitmq
+      dockerfile: Dockerfile
     container_name: rabbitmq
     restart: always
     ports:
@@ -151,6 +153,8 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     networks:
       - nati-network
     healthcheck:
@@ -185,5 +189,6 @@ volumes:
   postgres_data:
   mongo_data:
   redis_data:
+  rabbitmq_data:
 
 # Enviro
