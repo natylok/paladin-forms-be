@@ -4,17 +4,14 @@ FROM rabbitmq:3.12-management
 RUN apt-get update && apt-get install -y curl jq
 
 # Download and install the delayed message exchange plugin
-RUN curl -L https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/v3.12.0/rabbitmq_delayed_message_exchange-3.12.0.ez > /opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange-3.12.0.ez \
-    && chown rabbitmq:rabbitmq /opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange-3.12.0.ez \
-    && chmod 644 /opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange-3.12.0.ez \
-    && rabbitmq-plugins enable --offline rabbitmq_delayed_message_exchange
+RUN curl -L https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/3.12.0/rabbitmq_delayed_message_exchange-3.12.0.ez > /plugins/rabbitmq_delayed_message_exchange-3.12.0.ez \
+    && chown rabbitmq:rabbitmq /plugins/rabbitmq_delayed_message_exchange-3.12.0.ez \
+    && chmod 644 /plugins/rabbitmq_delayed_message_exchange-3.12.0.ez \
+    && apt-get purge -y curl && apt-get autoremove -y && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Enable management plugin
 RUN rabbitmq-plugins enable --offline rabbitmq_management
-
-# Clean up
-RUN apt-get purge -y curl && apt-get autoremove -y && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
 
 # Copy configuration files
 COPY --chown=rabbitmq:rabbitmq rabbitmq.conf /etc/rabbitmq/
@@ -28,8 +25,11 @@ RUN export $(cat /etc/rabbitmq/.env | xargs) && \
 # Validate `definitions.json` to ensure it is correct
 RUN cat /etc/rabbitmq/definitions.json | jq . > /dev/null
 
-# Set proper permissions for RabbitMQ plugins
-RUN chown -R rabbitmq:rabbitmq /opt/rabbitmq/plugins && chmod -R 644 /opt/rabbitmq/plugins/*.ez
+# Enable plugins
+RUN rabbitmq-plugins enable rabbitmq_delayed_message_exchange
+
+# Set proper permissions
+RUN chown -R rabbitmq:rabbitmq /etc/rabbitmq
 
 # Clear RabbitMQ persistent storage (prevents startup failures)
 RUN rm -rf /var/lib/rabbitmq/mnesia
