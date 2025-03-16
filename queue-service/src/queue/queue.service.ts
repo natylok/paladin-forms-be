@@ -20,7 +20,7 @@ export class QueueService {
       });
 
       // Add a 5-second delay for testing
-      const delay = 5000;
+      const delay = 15000;
       const headers = { 'x-delay': delay };
 
       switch (event.action) {
