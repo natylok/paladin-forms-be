@@ -28,7 +28,6 @@ export class QueueController {
         error instanceof Error ? error.stack : undefined,
         { data }
       );
-      channel.nack(originalMsg, false, true);
     }
   }
 
