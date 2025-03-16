@@ -140,28 +140,24 @@ services:
       timeout: 5s
       retries: 5
 
-  # RabbitMQ Message Broker
-  rabbitmq:
-    image: rabbitmq:3.12-management
+ rabbitmq:
+    image: rabbitmq:3-management
     container_name: rabbitmq
-    hostname: rabbitmq
     restart: always
     ports:
       - "5672:5672"   # RabbitMQ main connection
       - "15672:15672" # RabbitMQ management UI
     environment:
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+
     networks:
       - nati-network
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
-      interval: 30s
-      timeout: 20s
+      interval: 5s
+      timeout: 5s
       retries: 5
-      start_period: 40s
 
   # Redis
   redis:
