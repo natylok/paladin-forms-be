@@ -23,7 +23,6 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
               durable: true,
               noAck: false,
               arguments: {
-                'x-message-ttl': 60000, // 1 minute TTL
                 'x-dead-letter-exchange': 'survey_dlx',
                 'x-dead-letter-routing-key': 'survey_dlq'
               }
