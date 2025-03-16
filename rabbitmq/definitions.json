@@ -2,8 +2,8 @@
   "rabbit_version": "3.12.0",
   "users": [
     {
-      "name": "user",
-      "password": "password",
+      "name": "guest",
+      "password": "guest",
       "tags": "administrator"
     }
   ],
@@ -14,7 +14,7 @@
   ],
   "permissions": [
     {
-      "user": "user",
+      "user": "guest",
       "vhost": "/",
       "configure": ".*",
       "write": ".*",
@@ -30,7 +30,7 @@
       "auto_delete": false,
       "internal": false,
       "arguments": {
-        "x-delayed-type": "direct"
+        "x-delayed-type": "topic"
       }
     }
   ],

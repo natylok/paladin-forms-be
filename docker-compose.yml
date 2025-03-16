@@ -152,14 +152,14 @@ services:
       - "5672:5672"   # RabbitMQ main connection
       - "15672:15672" # RabbitMQ management UI
     environment:
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
       - nati-network
     healthcheck:
-      test: rabbitmq-diagnostics check_running && rabbitmq-diagnostics check_local_alarms
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 30s
       timeout: 20s
       retries: 5
