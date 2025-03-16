@@ -183,7 +183,6 @@ export class QueueService implements OnModuleInit {
 
       switch (event.action) {
         case 'create':
-        case 'update':
           this.logger.log('Publication change triggered, scheduling delayed notification');
           try {
             await this.addEventToQueue(event);
@@ -200,6 +199,9 @@ export class QueueService implements OnModuleInit {
             );
             throw error;
           }
+          break;
+        case 'update':
+          this.logger.log('Publication changed triggered, update events', { id: event.id });
           break;
         case 'delete':
           this.logger.log('Processing publication deletion', { id: event.id });
