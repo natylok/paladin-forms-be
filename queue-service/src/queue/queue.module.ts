@@ -20,14 +20,8 @@ import { HttpModule } from '@nestjs/axios';
             queue: 'publication_queue',
             queueOptions: {
               durable: true,
-              autoDelete: false
-            },
-            exchange: 'delayed.exchange',
-            exchangeType: 'x-delayed-message',
-            exchangeOptions: {
-              durable: true,
               arguments: {
-                'x-delayed-type': 'direct'
+                'x-queue-type': 'classic'
               }
             },
             socketOptions: {
@@ -35,8 +29,8 @@ import { HttpModule } from '@nestjs/axios';
               reconnectTimeInSeconds: 5
             },
             prefetchCount: 1,
-            persistent: true,
-            noAck: false
+            noAck: true,
+            persistent: true
           },
         }),
         inject: [ConfigService],
