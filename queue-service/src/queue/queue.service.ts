@@ -46,6 +46,7 @@ export class QueueService implements OnModuleInit {
 
   private calculateDelayBasedOnTimeFrame(timeFrame: TimeFrame): number {
     this.logger.log('Calculating delay based on time frame', { timeFrame });
+    return 10000;
     switch (timeFrame) {
       case 'day':
         const endOfTheDay = new Date();
