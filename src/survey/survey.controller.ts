@@ -71,20 +71,25 @@ export class SurveyController {
 
     @EventPattern('survey_changed')
     async handleSurveyCreated(
-        @Payload() user: User,
+        @Payload() message: { pattern: string; data: User; exchange: string; routingKey: string },
         @Ctx() context: RmqContext
     ) {
-        this.logger.log('Received survey_changed event', { user: user.email, customerId: user.customerId });
+        this.logger.log('Received survey_changed event', { 
+            user: message.data.email, 
+            customerId: message.data.customerId,
+            exchange: message.exchange,
+            routingKey: message.routingKey
+        });
         try {
-            await this.surveyService.generateJavascriptCode(user);
-            this.logger.log('Successfully processed survey_changed event', { user: user.email });
+            await this.surveyService.generateJavascriptCode(message.data);
+            this.logger.log('Successfully processed survey_changed event', { user: message.data.email });
             // Use the built-in acknowledgment pattern
             context.getChannelRef().ack(context.getMessage());
         } catch (error) {
             this.logger.error(
                 'Failed to process survey_changed event',
                 error instanceof Error ? error.stack : undefined,
-                { user: user.email, customerId: user.customerId }
+                { user: message.data.email, customerId: message.data.customerId }
             );
             // Reject the message without requeuing
             context.getChannelRef().reject(context.getMessage(), false);

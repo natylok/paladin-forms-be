@@ -21,11 +21,26 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
             queue: 'survey_queue',
             queueOptions: {
               durable: true,
-              noAck: false
+              noAck: false,
+              arguments: {
+                'x-message-ttl': 60000, // 1 minute TTL
+                'x-dead-letter-exchange': 'survey_dlx',
+                'x-dead-letter-routing-key': 'survey_dlq'
+              }
             },
             persistent: true,
             prefetchCount: 1,
-            isGlobalPrefetchCount: false
+            isGlobalPrefetchCount: false,
+            exchanges: [
+              {
+                name: 'survey_exchange',
+                type: 'direct'
+              }
+            ],
+            socketOptions: {
+              heartbeatIntervalInSeconds: 60,
+              reconnectTimeInSeconds: 5
+            }
           },
         }),
         inject: [ConfigService],
