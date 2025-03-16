@@ -6,19 +6,9 @@ WORKDIR /usr/src/app
 # Install necessary dependencies for Prisma and build
 RUN apt-get update && apt-get install -y \
     openssl \
-    python3-full \
-    python3-pip \
-    python3-venv \
     make \
     g++ \
-    git \
     && rm -rf /var/lib/apt/lists/*
-
-# Set up Python virtual environment and install huggingface_hub
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-ENV HF_HOME="/usr/src/app/.cache/huggingface"
-RUN pip3 install --no-cache-dir huggingface_hub transformers torch
 
 # Copy only package files first to leverage Docker cache
 COPY package*.json ./
@@ -28,13 +18,6 @@ COPY package*.json ./
 RUN --mount=type=cache,target=/usr/src/app/.npm \
     npm set cache /usr/src/app/.npm && \
     npm install
-
-# Download the model during build using Python's transformers library
-RUN mkdir -p /usr/src/app/models && \
-    python3 -c "from transformers import AutoTokenizer, AutoModelForSequenceClassification; \
-    model_name='siebert/sentiment-roberta-large-english'; \
-    tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir='/usr/src/app/models'); \
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, cache_dir='/usr/src/app/models')"
 
 # Copy configuration files
 COPY tsconfig*.json ./
@@ -81,13 +64,6 @@ RUN npx prisma generate
 # Copy built application and necessary files
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/node_modules/.prisma/client ./node_modules/.prisma/client
-# Copy the downloaded model
-COPY --from=builder /usr/src/app/models ./models
-
-# Verify the dist directory contents
-RUN ls -la dist/ && \
-    echo "=== Contents of dist directory ===" && \
-    find dist/ -type f
 
 EXPOSE 3333
 
