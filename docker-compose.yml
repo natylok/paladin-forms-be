@@ -151,6 +151,11 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_PLUGINS_DIR: "/plugins"
+      RABBITMQ_ENABLED_PLUGINS_FILE: "/etc/rabbitmq/enabled_plugins"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_plugins:/plugins
     networks:
       - nati-network
     healthcheck:
@@ -158,7 +163,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-      
+    command: >
+      sh -c "
+      rabbitmq-plugins enable --offline rabbitmq_delayed_message_exchange;
+      rabbitmq-server"
+
   # Redis
   redis:
     image: redis:alpine
