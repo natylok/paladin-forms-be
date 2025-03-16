@@ -9,6 +9,7 @@ export class QueueService implements OnModuleInit {
   private channel: amqp.Channel;
   private readonly EXCHANGE_NAME = 'delayed.exchange';
   private readonly QUEUE_NAME = 'publication_queue';
+  private readonly ROUTING_KEY = 'send_email';
 
   constructor(
     @Inject('PUBLICATION_SERVICE') private readonly client: ClientProxy
@@ -32,8 +33,8 @@ export class QueueService implements OnModuleInit {
         durable: true
       });
 
-      // Bind the queue to the exchange
-      await this.channel.bindQueue(this.QUEUE_NAME, this.EXCHANGE_NAME, this.QUEUE_NAME);
+      // Bind the queue to the exchange with the routing key
+      await this.channel.bindQueue(this.QUEUE_NAME, this.EXCHANGE_NAME, this.ROUTING_KEY);
 
       this.logger.log('Successfully initialized RabbitMQ delayed message setup');
     } catch (error) {
@@ -58,10 +59,15 @@ export class QueueService implements OnModuleInit {
         case 'update':
           this.logger.log('Publication change triggered, scheduling delayed notification');
           try {
+            const message = {
+              pattern: this.ROUTING_KEY,
+              data: event
+            };
+
             await this.channel.publish(
               this.EXCHANGE_NAME,
-              this.QUEUE_NAME,
-              Buffer.from(JSON.stringify(event)),
+              this.ROUTING_KEY,
+              Buffer.from(JSON.stringify(message)),
               {
                 headers: {
                   'x-delay': delay
