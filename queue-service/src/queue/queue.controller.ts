@@ -25,8 +25,6 @@ export class QueueController {
     } catch (error) {
       this.logger.error(
         'Failed to process send_email event',
-        error instanceof Error ? error.stack : undefined,
-        { data }
       );
     }
   }
