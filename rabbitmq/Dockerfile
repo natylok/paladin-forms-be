@@ -6,6 +6,3 @@ RUN apt-get update && apt-get install -y curl && \
     rabbitmq-plugins enable --offline rabbitmq_delayed_message_exchange && \
     apt-get purge -y curl && apt-get autoremove -y && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-
-# Use default RabbitMQ entrypoint
-CMD ["rabbitmq-server"]
