@@ -45,7 +45,6 @@ export class QueueService implements OnModuleInit {
   }
 
   private calculateDelayBasedOnTimeFrame(timeFrame: TimeFrame): number {
-    return 10000;
     switch (timeFrame) {
       case 'day':
         const endOfTheDay = new Date();
@@ -101,18 +100,18 @@ export class QueueService implements OnModuleInit {
 
   async sendEmail(event: PublicationEvent): Promise<void> {
     try {
-      // const response = await fetch('http://paladin-forms-be:3333/internal/email/send', {
-      //   method: 'POST',
-      //   body: JSON.stringify(event),
-      //   headers: {
-      //     'x-internal-key': process.env.INTERNAL_API_KEY,
-      //     'Content-Type': 'application/json'
-      //   }
-      // });
+      const response = await fetch('http://paladin-forms-be:3333/internal/email/send', {
+        method: 'POST',
+        body: JSON.stringify(event),
+        headers: {
+          'x-internal-key': process.env.INTERNAL_API_KEY,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      // if (!response.ok) {
-      //   throw new Error(`Failed to send email: ${response.status} - ${response.statusText}`);
-      // }
+      if (!response.ok) {
+        throw new Error(`Failed to send email: ${response.status} - ${response.statusText}`);
+      }
 
       this.logger.log('Email sent successfully', {
         id: event.id,
