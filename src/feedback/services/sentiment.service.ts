@@ -18,6 +18,7 @@ export class SentimentService {
         try {
             // Initialize the pipeline with local model
             this.classifier = await pipeline('sentiment-analysis', this.MODEL_PATH);
+            
             this.isInitialized = true;
             this.logger.log('Sentiment analysis model loaded successfully from local path', {
                 modelPath: this.MODEL_PATH
@@ -27,6 +28,7 @@ export class SentimentService {
                 error: error instanceof Error ? error.message : 'Unknown error',
                 modelPath: this.MODEL_PATH
             });
+            throw error; // Rethrow to prevent the service from starting with a broken model
         }
     }
 
@@ -59,7 +61,7 @@ export class SentimentService {
                 text,
                 modelPath: this.MODEL_PATH
             });
-            return { label: 'neutral', score: 0.5 };
+            throw error; // Rethrow the error to handle it at a higher level
         }
     }
 } 

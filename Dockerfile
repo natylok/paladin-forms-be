@@ -7,10 +7,14 @@ WORKDIR /usr/src/app
 RUN apt-get update && apt-get install -y \
     openssl \
     python3 \
+    python3-pip \
     make \
     g++ \
     git \
     && rm -rf /var/lib/apt/lists/*
+
+# Install huggingface_hub
+RUN pip3 install --no-cache-dir huggingface_hub
 
 # Copy only package files first to leverage Docker cache
 COPY package*.json ./
@@ -22,8 +26,8 @@ RUN --mount=type=cache,target=/usr/src/app/.npm \
     npm install
 
 # Download the model during build
-RUN mkdir -p /usr/src/app/models && \
-    git clone https://huggingface.co/siebert/sentiment-roberta-large-english /usr/src/app/models/sentiment-roberta-large-english
+RUN mkdir -p /usr/src/app/models/sentiment-roberta-large-english && \
+    huggingface-cli download --resume-download siebert/sentiment-roberta-large-english --local-dir /usr/src/app/models/sentiment-roberta-large-english
 
 # Copy configuration files
 COPY tsconfig*.json ./
