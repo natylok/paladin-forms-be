@@ -27,15 +27,15 @@ export class QueueService {
         case 'update':
           this.logger.log('Publication change triggered, scheduling delayed notification');
           try {
-            // Use the x-delay header for delayed message exchange
-            const message = {
-              ...event,
-              headers: {
-                'x-delay': delay
+            await this.client.emit('send_email', {
+              pattern: 'send_email',
+              data: event,
+              options: {
+                headers: {
+                  'x-delay': delay
+                }
               }
-            };
-
-            await this.client.emit('send_email', message).toPromise();
+            }).toPromise();
 
             this.logger.log('Publication notification scheduled successfully', { 
               id: event.id,

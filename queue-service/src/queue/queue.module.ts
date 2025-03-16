@@ -21,11 +21,10 @@ import { HttpModule } from '@nestjs/axios';
             queueOptions: {
               durable: true,
               arguments: {
-                'x-dead-letter-exchange': 'delayed.publication',
-                'x-dead-letter-routing-key': 'publication_queue'
+                'x-delayed-type': 'direct'
               }
             },
-            exchange: 'delayed.publication',
+            exchange: 'publication.delayed',
             exchangeType: 'x-delayed-message',
             exchangeOptions: {
               durable: true,
