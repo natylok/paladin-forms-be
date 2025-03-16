@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy only package files first to leverage Docker cache
@@ -19,6 +20,10 @@ COPY package*.json ./
 RUN --mount=type=cache,target=/usr/src/app/.npm \
     npm set cache /usr/src/app/.npm && \
     npm install
+
+# Download the model during build
+RUN mkdir -p /usr/src/app/models && \
+    git clone https://huggingface.co/siebert/sentiment-roberta-large-english /usr/src/app/models/sentiment-roberta-large-english
 
 # Copy configuration files
 COPY tsconfig*.json ./
@@ -65,6 +70,8 @@ RUN npx prisma generate
 # Copy built application and necessary files
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/node_modules/.prisma/client ./node_modules/.prisma/client
+# Copy the downloaded model
+COPY --from=builder /usr/src/app/models ./models
 
 # Verify the dist directory contents
 RUN ls -la dist/ && \

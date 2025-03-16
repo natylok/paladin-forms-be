@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SentimentResult } from '../types/feedback.types';
-import { pipeline } from '@xenova/transformers'
+import { pipeline } from '@huggingface/transformers';
 import * as path from 'path';
 
 @Injectable()
@@ -8,7 +8,7 @@ export class SentimentService {
     private readonly logger = new Logger(SentimentService.name);
     private classifier: any;
     private isInitialized: boolean = false;
-    private readonly MODEL_NAME = 'Xenova/sentiment-roberta-large-english';
+    private readonly MODEL_PATH = path.join(process.cwd(), 'models', 'sentiment-roberta-large-english');
 
     constructor() {
         this.initializeModel();
@@ -16,14 +16,16 @@ export class SentimentService {
 
     private async initializeModel() {
         try {
-            // Initialize the pipeline with local caching
-            this.classifier = await pipeline('sentiment-analysis', this.MODEL_NAME);
-
+            // Initialize the pipeline with local model
+            this.classifier = await pipeline('sentiment-analysis', this.MODEL_PATH);
             this.isInitialized = true;
-            this.logger.log('Sentiment analysis model loaded successfully');
+            this.logger.log('Sentiment analysis model loaded successfully from local path', {
+                modelPath: this.MODEL_PATH
+            });
         } catch (error) {
             this.logger.error('Failed to load sentiment analysis model', {
-                error: error instanceof Error ? error.message : 'Unknown error'
+                error: error instanceof Error ? error.message : 'Unknown error',
+                modelPath: this.MODEL_PATH
             });
         }
     }
@@ -54,7 +56,8 @@ export class SentimentService {
         } catch (error) {
             this.logger.error('Error in sentiment analysis', {
                 error: error instanceof Error ? error.message : 'Unknown error',
-                text
+                text,
+                modelPath: this.MODEL_PATH
             });
             return { label: 'neutral', score: 0.5 };
         }
