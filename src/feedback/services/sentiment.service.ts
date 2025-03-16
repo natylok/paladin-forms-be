@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SentimentResult } from '../types/feedback.types';
-import { pipeline } from '@huggingface/transformers';
+import { pipeline } from '@xenova/transformers'
 import * as path from 'path';
 
 @Injectable()
@@ -9,7 +9,6 @@ export class SentimentService {
     private classifier: any;
     private isInitialized: boolean = false;
     private readonly MODEL_NAME = 'siebert/sentiment-roberta-large-english';
-    private readonly MODEL_CACHE_DIR = path.join(process.cwd(), 'models');
 
     constructor() {
         this.initializeModel();
