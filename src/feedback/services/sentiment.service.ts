@@ -1,23 +1,35 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SentimentResult } from '../types/feedback.types';
-import * as transformers from '@huggingface/transformers';
+import { pipeline } from '@huggingface/transformers';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class SentimentService {
     private readonly logger = new Logger(SentimentService.name);
-    private model: any;
-    private tokenizer: any;
+    private classifier: any;
     private isInitialized: boolean = false;
+    private readonly MODEL_NAME = 'siebert/sentiment-roberta-large-english';
+    private readonly MODEL_CACHE_DIR = path.join(process.cwd(), 'models');
 
     constructor() {
+        // Ensure cache directory exists
+        if (!fs.existsSync(this.MODEL_CACHE_DIR)) {
+            fs.mkdirSync(this.MODEL_CACHE_DIR, { recursive: true });
+        }
         this.initializeModel();
     }
 
     private async initializeModel() {
         try {
-            // Initialize the tokenizer and model
-            this.tokenizer = await transformers.AutoTokenizer.from_pretrained('siebert/sentiment-roberta-large-english');
-            this.model = await transformers.AutoModelForSequenceClassification.from_pretrained('siebert/sentiment-roberta-large-english');
+            // Set cache directory for model files
+            process.env.TRANSFORMERS_CACHE = this.MODEL_CACHE_DIR;
+            
+            // Initialize the pipeline with local caching
+            this.classifier = await pipeline('text-classification', this.MODEL_NAME, {
+                cache_dir: this.MODEL_CACHE_DIR
+            });
+
             this.isInitialized = true;
             this.logger.log('Sentiment analysis model loaded successfully');
         } catch (error) {
@@ -34,31 +46,21 @@ export class SentimentService {
                 await this.initializeModel();
             }
 
-            // Tokenize and get predictions
-            const inputs = await this.tokenizer(text, { return_tensors: 'pt' });
-            const outputs = await this.model(inputs);
-            const scores = outputs.logits[0].softmax();
+            const result = await this.classifier(text);
             
-            // Get the predicted class and its probability
-            const prediction = await scores.argmax().item();
-            const score = await scores[prediction].item();
-
-            // Convert prediction to label (0 = negative, 1 = neutral, 2 = positive)
-            let label: string;
-            switch (prediction) {
-                case 2:
-                    label = 'positive';
-                    break;
-                case 0:
-                    label = 'negative';
-                    break;
-                default:
-                    label = 'neutral';
+            // Convert label to our format (positive, negative, neutral)
+            let normalizedLabel: string;
+            if (result[0].label.includes('POSITIVE')) {
+                normalizedLabel = 'positive';
+            } else if (result[0].label.includes('NEGATIVE')) {
+                normalizedLabel = 'negative';
+            } else {
+                normalizedLabel = 'neutral';
             }
 
             return { 
-                label, 
-                score 
+                label: normalizedLabel, 
+                score: result[0].score 
             };
         } catch (error) {
             this.logger.error('Error in sentiment analysis', {

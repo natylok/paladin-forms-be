@@ -31,6 +31,9 @@ RUN npx prisma generate
 # Copy source code
 COPY src ./src/
 
+# Create models directory
+RUN mkdir -p models && chown -R node:node models
+
 # Clean and build
 RUN npm run prebuild && \
     npm run build && \
@@ -62,9 +65,13 @@ COPY nest-cli.json ./
 COPY prisma ./prisma/
 RUN npx prisma generate
 
+# Create and set up models directory
+RUN mkdir -p models && chown -R node:node models
+
 # Copy built application and necessary files
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/node_modules/.prisma/client ./node_modules/.prisma/client
+COPY --from=builder /usr/src/app/models ./models
 
 # Verify the dist directory contents
 RUN ls -la dist/ && \
