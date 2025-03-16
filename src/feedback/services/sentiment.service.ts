@@ -7,7 +7,7 @@ export class SentimentService {
     private readonly logger = new Logger(SentimentService.name);
     private classifier: any;
     private isInitialized: boolean = false;
-    private readonly MODEL_NAME = 'Xenova/sentiment-roberta-large-english';
+    private readonly MODEL_NAME = 'siebert/sentiment-roberta-large-english';
 
     constructor() {
         this.initializeModel();
