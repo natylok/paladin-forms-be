@@ -19,7 +19,11 @@ import { HttpModule } from '@nestjs/axios';
             urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@rabbitmq:5672`],
             queue: 'publication_queue',
             queueOptions: {
-              durable: true
+              durable: true,
+              arguments: {
+                'x-dead-letter-exchange': 'delayed.publication',
+                'x-dead-letter-routing-key': 'publication_queue'
+              }
             },
             exchange: 'delayed.publication',
             exchangeType: 'x-delayed-message',
@@ -28,7 +32,10 @@ import { HttpModule } from '@nestjs/axios';
               arguments: {
                 'x-delayed-type': 'direct'
               }
-            }
+            },
+            prefetchCount: 1,
+            persistent: true,
+            noAck: false
           },
         }),
         inject: [ConfigService],
