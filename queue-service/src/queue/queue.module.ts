@@ -20,17 +20,19 @@ import { HttpModule } from '@nestjs/axios';
             queue: 'publication_queue',
             queueOptions: {
               durable: true,
-              arguments: {
-                'x-delayed-type': 'direct'
-              }
+              autoDelete: false
             },
-            exchange: 'publication.delayed',
+            exchange: 'delayed.exchange',
             exchangeType: 'x-delayed-message',
             exchangeOptions: {
               durable: true,
               arguments: {
                 'x-delayed-type': 'direct'
               }
+            },
+            socketOptions: {
+              heartbeatIntervalInSeconds: 60,
+              reconnectTimeInSeconds: 5
             },
             prefetchCount: 1,
             persistent: true,

@@ -19,8 +19,7 @@ export class QueueService {
         emails: event.emails?.length
       });
 
-      // Add a 15-second delay for testing
-      const delay = 15000;
+      const delay = 15000; // 15 seconds delay
 
       switch (event.action) {
         case 'create':
@@ -28,7 +27,6 @@ export class QueueService {
           this.logger.log('Publication change triggered, scheduling delayed notification');
           try {
             await this.client.emit('send_email', {
-              pattern: 'send_email',
               data: event,
               options: {
                 headers: {
@@ -52,7 +50,6 @@ export class QueueService {
           break;
         case 'delete':
           this.logger.log('Processing publication deletion', { id: event.id });
-          // For delete events, process immediately without delay
           await this.client.emit('publication.deleted', event).toPromise();
           break;
         default:
