@@ -45,6 +45,7 @@ export class QueueService implements OnModuleInit {
   }
 
   private calculateDelayBasedOnTimeFrame(timeFrame: TimeFrame): number {
+    return 10000;
     switch (timeFrame) {
       case 'day':
         const endOfTheDay = new Date();
