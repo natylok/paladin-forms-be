@@ -5,36 +5,10 @@ import { ClientProxy } from '@nestjs/microservices';
 @Injectable()
 export class QueueService {
   private readonly logger = new Logger(QueueService.name);
-  private readonly DELAYED_EXCHANGE = 'delayed.exchange';
-  private readonly DELAYED_QUEUE = 'delayed.queue';
 
   constructor(
     @Inject('PUBLICATION_SERVICE') private readonly client: ClientProxy
-  ) {
-    this.setupDelayedExchange();
-  }
-
-  private async setupDelayedExchange(): Promise<void> {
-    try {
-      const channel = await (this.client as any).createChannel();
-      
-      // Declare the delayed message exchange
-      await channel.assertExchange(this.DELAYED_EXCHANGE, 'x-delayed-message', {
-        durable: true,
-        arguments: { 'x-delayed-type': 'direct' }
-      });
-
-      // Declare the queue
-      await channel.assertQueue(this.DELAYED_QUEUE, {
-        durable: true
-      });
-
-      // Bind the queue to the exchange
-      await channel.bindQueue(this.DELAYED_QUEUE, this.DELAYED_EXCHANGE, '');
-    } catch (error) {
-      this.logger.error('Failed to setup delayed exchange', error);
-    }
-  }
+  ) {}
 
   async handlePublicationEvent(event: PublicationEvent): Promise<void> {
     try {
@@ -52,19 +26,14 @@ export class QueueService {
         case 'update':
           this.logger.log('Publication change triggered, scheduling delayed notification');
           try {
-            const channel = await (this.client as any).createChannel();
-            
-            await channel.publish(
-              this.DELAYED_EXCHANGE,
-              '',
-              Buffer.from(JSON.stringify(event)),
-              {
-                headers: {
-                  'x-delay': delay
-                },
+            await this.client.emit('send_email', {
+              pattern: 'send_email',
+              data: event,
+              options: {
+                expiration: delay.toString(),
                 persistent: true
               }
-            );
+            }).toPromise();
 
             this.logger.log('Publication notification scheduled successfully', { 
               id: event.id,

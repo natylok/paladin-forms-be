@@ -19,17 +19,17 @@ import { HttpModule } from '@nestjs/axios';
             urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@rabbitmq:5672`],
             queue: 'publication_queue',
             queueOptions: {
-              durable: true,
-              arguments: {
-                'x-queue-type': 'classic'
-              }
+              durable: true
+            },
+            exchange: 'amq.direct',
+            exchangeOptions: {
+              durable: true
             },
             socketOptions: {
               heartbeatIntervalInSeconds: 60,
               reconnectTimeInSeconds: 5
             },
             prefetchCount: 1,
-            noAck: true,
             persistent: true
           },
         }),
