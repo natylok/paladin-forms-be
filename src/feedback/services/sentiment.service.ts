@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SentimentResult } from '../types/feedback.types';
-import { pipeline } from '@xenova/transformers';
+import { env, pipeline } from '@xenova/transformers';
 
 @Injectable()
 export class SentimentService {
@@ -16,7 +16,13 @@ export class SentimentService {
     private async initializeModel() {
         try {
             // Initialize the pipeline with Xenova's model
-            this.classifier = await pipeline('sentiment-analysis', this.MODEL_NAME);
+            this.classifier = await pipeline('sentiment-analysis', this.MODEL_NAME, {
+                config: {
+                    headers: {
+                        Authorization: `${process.env.HUGGING_FACE_ACCESS_TOKEN}`
+                    }
+                }
+            });
             
             this.isInitialized = true;
             this.logger.log('Sentiment analysis model loaded successfully', {
