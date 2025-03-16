@@ -54,7 +54,6 @@ export class EmailService {
         error instanceof Error ? error.stack : undefined,
         { emailData }
       );
-      throw error;
     }
   }
 } 
