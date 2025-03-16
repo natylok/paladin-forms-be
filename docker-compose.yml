@@ -156,7 +156,6 @@ services:
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
-      - ./rabbitmq/plugins:/plugins
     networks:
       - nati-network
     healthcheck:
