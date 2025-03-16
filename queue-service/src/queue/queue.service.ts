@@ -205,6 +205,58 @@ export class QueueService implements OnModuleInit {
           break;
         case 'delete':
           this.logger.log('Processing publication deletion', { id: event.id });
+          
+          try {
+            // Create a temporary queue to receive messages
+            const { queue: tempQueue } = await this.channel.assertQueue('', { exclusive: true });
+            
+            // Bind it to the exchange
+            await this.channel.bindQueue(tempQueue, this.EXCHANGE_NAME, this.ROUTING_KEY);
+            
+            // Get all messages from the queue
+            const messages = await this.channel.consume(tempQueue, async (msg) => {
+              if (msg) {
+                try {
+                  this.logger.log('Processing message', { messageId: msg.properties.messageId });
+                  const content = JSON.parse(msg.content.toString());
+                  // If the message is not for the deleted publication, requeue it
+                  if (content.data.id !== event.id) {
+                    this.logger.log('Requeueing message', { messageId: msg.properties.messageId });
+                    await this.channel.publish(
+                      this.EXCHANGE_NAME,
+                      this.ROUTING_KEY,
+                      msg.content,
+                      {
+                        headers: msg.properties.headers
+                      }
+                    );
+                  } else {
+                    this.logger.log('Removed scheduled message for deleted publication', {
+                      id: event.id,
+                      messageId: msg.properties.messageId
+                    });
+                  }
+                  // Acknowledge the message
+                  this.channel.ack(msg);
+                } catch (error) {
+                  this.logger.error('Error processing message during deletion', error);
+                  this.channel.nack(msg, false, false);
+                }
+              }
+            }, { noAck: false });
+
+            // Delete the temporary queue
+            await this.channel.unbindQueue(tempQueue, this.EXCHANGE_NAME, this.ROUTING_KEY);
+            await this.channel.deleteQueue(tempQueue);
+
+            this.logger.log('Successfully removed scheduled messages for deleted publication', {
+              id: event.id
+            });
+          } catch (error) {
+            this.logger.error('Failed to remove scheduled messages for deleted publication', error);
+          }
+
+          // Emit the deletion event
           await this.client.emit('publication.deleted', event).toPromise();
           break;
         default:
