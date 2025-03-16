@@ -28,8 +28,7 @@ export class QueueService {
         case 'update':
           this.logger.log('Publication change triggered, scheduling delayed notification');
           try {
-            const pattern = event.action === 'create' ? 'publication.created' : 'publication.updated';
-            await this.client.emit(pattern, {
+            await this.client.emit('send_email', {
               ...event,
               headers
             }).toPromise();
