@@ -6,14 +6,17 @@ WORKDIR /usr/src/app
 # Install necessary dependencies for Prisma and build
 RUN apt-get update && apt-get install -y \
     openssl \
-    python3 \
+    python3-full \
     python3-pip \
+    python3-venv \
     make \
     g++ \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install huggingface_hub
+# Set up Python virtual environment and install huggingface_hub
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 RUN pip3 install --no-cache-dir huggingface_hub
 
 # Copy only package files first to leverage Docker cache
