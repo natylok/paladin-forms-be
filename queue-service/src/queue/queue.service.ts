@@ -118,12 +118,9 @@ export class QueueService implements OnModuleInit {
         id: event.id,
         to: event.emails,
       });
-
-      await this.addEventToQueue(event);
       
     } catch (error) {
       this.logger.error('Failed to send email', error);
-      await this.addEventToQueue(event);
       throw error;
     }
   }
