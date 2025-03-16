@@ -13,7 +13,6 @@ RUN chmod 644 /opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange-3.12.0.ez
 # Copy configuration files
 COPY --chown=rabbitmq:rabbitmq rabbitmq.conf /etc/rabbitmq/
 COPY --chown=rabbitmq:rabbitmq definitions.json /etc/rabbitmq/
-COPY .env /etc/rabbitmq/.env
 
 # Replace placeholders in `definitions.json` with environment variables
 RUN export $(cat /etc/rabbitmq/.env | xargs) && \
