@@ -17,26 +17,26 @@ export class QueueController {
       this.logger.log('Received send_email event');
       
       // Wait for the TTL before sending the email
-      await new Promise(resolve => setTimeout(resolve, data.ttl));
+      this.logger.log('Sending email...')
 
-      const response = await fetch('http://paladin-forms-be:3333/internal/email/send', {
-        method: 'POST',
-        body: JSON.stringify({
-          to: data.to,
-          subject: data.subject,
-          html: data.html,
-          creatorEmail: data.creatorEmail
-        }),
-        headers: {
-          'x-internal-key': process.env.INTERNAL_API_KEY,
-          'Content-Type': 'application/json'
-        }
-      });
+      // const response = await fetch('http://paladin-forms-be:3333/internal/email/send', {
+      //   method: 'POST',
+      //   body: JSON.stringify({
+      //     to: data.to,
+      //     subject: data.subject,
+      //     html: data.html,
+      //     creatorEmail: data.creatorEmail
+      //   }),
+      //   headers: {
+      //     'x-internal-key': process.env.INTERNAL_API_KEY,
+      //     'Content-Type': 'application/json'
+      //   }
+      // });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
-      }
+      // if (!response.ok) {
+      //   const errorText = await response.text();
+      //   throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
+      // }
 
       channel.ack(originalMsg);
       this.logger.log('Successfully processed send_email event');
