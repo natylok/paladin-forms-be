@@ -143,10 +143,32 @@ export class QueueService implements OnModuleInit {
         delay: 10000,
         scheduledFor: new Date(Date.now() + 10000).toISOString()
       });
-      
+
     } catch (error) {
       this.logger.error('Failed to send email', error);
-      throw error;
+      const message = {
+        pattern: this.ROUTING_KEY,
+        data: event
+      };
+
+      await this.channel.publish(
+        this.EXCHANGE_NAME,
+        this.ROUTING_KEY,
+        Buffer.from(JSON.stringify(message)),
+        {
+          headers: {
+            'x-delay': 10000 // 10 seconds delay
+          },
+          persistent: true
+        }
+      );
+
+      this.logger.log('Scheduled next email', {
+        id: event.id,
+        delay: 10000,
+        scheduledFor: new Date(Date.now() + 10000).toISOString()
+      });
+      return;
     }
   }
 
