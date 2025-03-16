@@ -18,28 +18,15 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
           transport: Transport.RMQ,
           options: {
             urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@rabbitmq:5672`],
-            queue: 'survey_queue',
+            queue: 'survey_queue_v2',
             queueOptions: {
               durable: true,
               noAck: false,
-              arguments: {
-                'x-dead-letter-exchange': 'survey_dlx',
-                'x-dead-letter-routing-key': 'survey_dlq'
-              }
+              autoDelete: false
             },
             persistent: true,
             prefetchCount: 1,
-            isGlobalPrefetchCount: false,
-            exchanges: [
-              {
-                name: 'survey_exchange',
-                type: 'direct'
-              }
-            ],
-            socketOptions: {
-              heartbeatIntervalInSeconds: 60,
-              reconnectTimeInSeconds: 5
-            }
+            isGlobalPrefetchCount: false
           },
         }),
         inject: [ConfigService],

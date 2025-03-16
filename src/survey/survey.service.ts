@@ -32,12 +32,7 @@ export class SurveyService {
             createSurveyDto.customerId = user.customerId;
         }
         try {
-            await this.client.emit('survey_changed', {
-                pattern: 'survey_changed',
-                data: user,
-                exchange: 'survey_exchange',
-                routingKey: 'survey_queue'
-            }).toPromise();
+            await this.client.emit('survey_changed', user).toPromise();
             this.logger.debug('Successfully emitted survey_changed event', { user: user.email });
         } catch (error) {
             this.logger.error('Failed to emit survey_changed event', error instanceof Error ? error.stack : undefined, { user: user.email });
