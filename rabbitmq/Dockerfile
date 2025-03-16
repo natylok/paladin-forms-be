@@ -7,10 +7,5 @@ RUN apt-get update && apt-get install -y curl && \
     apt-get purge -y curl && apt-get autoremove -y && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy and set up the startup script
-COPY docker-entrypoint-custom.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint-custom.sh && \
-    chown rabbitmq:rabbitmq /usr/local/bin/docker-entrypoint-custom.sh
-
-USER rabbitmq
-ENTRYPOINT ["docker-entrypoint-custom.sh"]
+# Use default RabbitMQ entrypoint
+CMD ["rabbitmq-server"]
