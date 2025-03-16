@@ -45,6 +45,7 @@ export class QueueService implements OnModuleInit {
   }
 
   private calculateDelayBasedOnTimeFrame(timeFrame: TimeFrame): number {
+    this.logger.log('Calculating delay based on time frame', { timeFrame });
     switch (timeFrame) {
       case 'day':
         const endOfTheDay = new Date();
@@ -62,7 +63,7 @@ export class QueueService implements OnModuleInit {
         endOfTheMonth.setHours(23, 59, 59, 999);
         return endOfTheMonth.getTime() - new Date().getTime();
       default:
-        return Infinity; // 15 seconds delay
+        return Number.MAX_SAFE_INTEGER;
     }
   }
 
