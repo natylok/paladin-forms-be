@@ -1,14 +1,20 @@
-FROM rabbitmq:3-management
+FROM rabbitmq:3.12-management
 
 # Install dependencies
 RUN apt-get update && apt-get install -y curl jq
 
-# Download and install RabbitMQ Delayed Message Plugin
-RUN curl -L https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/v3.12.0/rabbitmq_delayed_message_exchange-3.12.0.ez \
-    -o /opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange-3.12.0.ez
+# Download and install the delayed message exchange plugin
+RUN curl -L https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/v3.12.0/rabbitmq_delayed_message_exchange-3.12.0.ez > /opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange-3.12.0.ez \
+    && chown rabbitmq:rabbitmq /opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange-3.12.0.ez \
+    && chmod 644 /opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange-3.12.0.ez \
+    && rabbitmq-plugins enable --offline rabbitmq_delayed_message_exchange
 
-# Set permissions for the plugin
-RUN chmod 644 /opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange-3.12.0.ez
+# Enable management plugin
+RUN rabbitmq-plugins enable --offline rabbitmq_management
+
+# Clean up
+RUN apt-get purge -y curl && apt-get autoremove -y && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy configuration files
 COPY --chown=rabbitmq:rabbitmq rabbitmq.conf /etc/rabbitmq/
