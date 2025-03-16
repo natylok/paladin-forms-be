@@ -8,7 +8,8 @@ export class SentimentService {
     private readonly logger = new Logger(SentimentService.name);
     private classifier: any;
     private isInitialized: boolean = false;
-    private readonly MODEL_PATH = path.join(process.cwd(), 'models', 'sentiment-roberta-large-english');
+    private readonly MODEL_NAME = 'siebert/sentiment-roberta-large-english';
+    private readonly CACHE_DIR = path.join(process.cwd(), 'models');
 
     constructor() {
         this.initializeModel();
@@ -16,19 +17,23 @@ export class SentimentService {
 
     private async initializeModel() {
         try {
-            // Initialize the pipeline with local model
-            this.classifier = await pipeline('sentiment-analysis', this.MODEL_PATH);
+            // Initialize the pipeline with the model name and cache directory
+            this.classifier = await pipeline('sentiment-analysis', this.MODEL_NAME, {
+                cache_dir: this.CACHE_DIR
+            });
             
             this.isInitialized = true;
-            this.logger.log('Sentiment analysis model loaded successfully from local path', {
-                modelPath: this.MODEL_PATH
+            this.logger.log('Sentiment analysis model loaded successfully', {
+                modelName: this.MODEL_NAME,
+                cacheDir: this.CACHE_DIR
             });
         } catch (error) {
             this.logger.error('Failed to load sentiment analysis model', {
                 error: error instanceof Error ? error.message : 'Unknown error',
-                modelPath: this.MODEL_PATH
+                modelName: this.MODEL_NAME,
+                cacheDir: this.CACHE_DIR
             });
-            throw error; // Rethrow to prevent the service from starting with a broken model
+            throw error;
         }
     }
 
@@ -59,9 +64,10 @@ export class SentimentService {
             this.logger.error('Error in sentiment analysis', {
                 error: error instanceof Error ? error.message : 'Unknown error',
                 text,
-                modelPath: this.MODEL_PATH
+                modelName: this.MODEL_NAME,
+                cacheDir: this.CACHE_DIR
             });
-            throw error; // Rethrow the error to handle it at a higher level
+            throw error;
         }
     }
 } 

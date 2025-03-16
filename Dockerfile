@@ -17,7 +17,8 @@ RUN apt-get update && apt-get install -y \
 # Set up Python virtual environment and install huggingface_hub
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-RUN pip3 install --no-cache-dir huggingface_hub
+ENV HF_HOME="/usr/src/app/.cache/huggingface"
+RUN pip3 install --no-cache-dir huggingface_hub transformers torch
 
 # Copy only package files first to leverage Docker cache
 COPY package*.json ./
@@ -28,9 +29,12 @@ RUN --mount=type=cache,target=/usr/src/app/.npm \
     npm set cache /usr/src/app/.npm && \
     npm install
 
-# Download the model during build
-RUN mkdir -p /usr/src/app/models/sentiment-roberta-large-english && \
-    huggingface-cli download --resume-download siebert/sentiment-roberta-large-english --local-dir /usr/src/app/models/sentiment-roberta-large-english
+# Download the model during build using Python's transformers library
+RUN mkdir -p /usr/src/app/models && \
+    python3 -c "from transformers import AutoTokenizer, AutoModelForSequenceClassification; \
+    model_name='siebert/sentiment-roberta-large-english'; \
+    tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir='/usr/src/app/models'); \
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, cache_dir='/usr/src/app/models')"
 
 # Copy configuration files
 COPY tsconfig*.json ./
