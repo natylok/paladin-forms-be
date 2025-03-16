@@ -46,7 +46,6 @@ export class QueueService implements OnModuleInit {
 
   private calculateDelayBasedOnTimeFrame(timeFrame: TimeFrame): number {
     this.logger.log('Calculating delay based on time frame', { timeFrame });
-    return 10000;
     switch (timeFrame) {
       case 'day':
         const endOfTheDay = new Date();
@@ -132,7 +131,7 @@ export class QueueService implements OnModuleInit {
         Buffer.from(JSON.stringify(message)),
         {
           headers: {
-            'x-delay': 10000 // 10 seconds delay
+            'x-delay': delay // 10 seconds delay
           },
           persistent: true
         }
@@ -140,7 +139,7 @@ export class QueueService implements OnModuleInit {
 
       this.logger.log('Scheduled next email', {
         id: event.id,
-        delay: 10000,
+        delay,
         scheduledFor: new Date(Date.now() + 10000).toISOString()
       });
 
@@ -157,7 +156,7 @@ export class QueueService implements OnModuleInit {
         Buffer.from(JSON.stringify(message)),
         {
           headers: {
-            'x-delay': 10000 // 10 seconds delay
+            'x-delay': delay // 10 seconds delay
           },
           persistent: true
         }
@@ -165,8 +164,7 @@ export class QueueService implements OnModuleInit {
 
       this.logger.log('Scheduled next email', {
         id: event.id,
-        delay: 10000,
-        scheduledFor: new Date(Date.now() + 10000).toISOString()
+        delay
       });
       return;
     }
