@@ -18,9 +18,9 @@ export class QueueController {
       
       // Wait for the TTL before sending the email
       this.logger.log('Sending email...')
+      channel.ack(originalMsg);
       await this.queueService.sendEmail(data);
 
-      channel.ack(originalMsg);
       this.logger.log('Successfully processed send_email event');
     } catch (error) {
       this.logger.error(

@@ -156,7 +156,7 @@ export class QueueService implements OnModuleInit {
         Buffer.from(JSON.stringify(message)),
         {
           headers: {
-            'x-delay': delay // 10 seconds delay
+            'x-delay': delay
           },
           persistent: true
         }
