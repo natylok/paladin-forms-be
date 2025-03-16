@@ -1,7 +1,8 @@
 import { Injectable, Logger, Inject, OnModuleInit } from '@nestjs/common';
-import { PublicationEvent } from './types/queue.types';
+import { PublicationEvent, TimeFrame } from './types/queue.types';
 import { ClientProxy } from '@nestjs/microservices';
 import * as amqp from 'amqplib';
+import { delay } from 'rxjs';
 
 @Injectable()
 export class QueueService implements OnModuleInit {
@@ -13,7 +14,7 @@ export class QueueService implements OnModuleInit {
 
   constructor(
     @Inject('PUBLICATION_SERVICE') private readonly client: ClientProxy
-  ) {}
+  ) { }
 
   async onModuleInit() {
     try {
@@ -43,6 +44,28 @@ export class QueueService implements OnModuleInit {
     }
   }
 
+  private calculateDelayBasedOnTimeFrame(timeFrame: TimeFrame): number {
+    switch (timeFrame) {
+      case 'day':
+        const endOfTheDay = new Date();
+        endOfTheDay.setHours(23, 59, 59, 999);
+        return endOfTheDay.getTime() - new Date().getTime();
+      case 'week':
+        const endOfTheWeek = new Date();
+        endOfTheWeek.setDate(endOfTheWeek.getDate() + 7);
+        return endOfTheWeek.getTime() - new Date().getTime();
+
+      case 'month':
+        const endOfTheMonth = new Date();
+        endOfTheMonth.setMonth(endOfTheMonth.getMonth() + 1);
+        endOfTheMonth.setDate(0);
+        endOfTheMonth.setHours(23, 59, 59, 999);
+        return endOfTheMonth.getTime() - new Date().getTime();
+      default:
+        return Infinity; // 15 seconds delay
+    }
+  }
+
   async handlePublicationEvent(event: PublicationEvent): Promise<void> {
     try {
       this.logger.log('Processing publication event', {
@@ -52,7 +75,7 @@ export class QueueService implements OnModuleInit {
         emails: event.emails?.length
       });
 
-      const delay = 15000; // 15 seconds delay
+      const delay = this.calculateDelayBasedOnTimeFrame(event.timeFrame);
 
       switch (event.action) {
         case 'create':
@@ -76,7 +99,7 @@ export class QueueService implements OnModuleInit {
               }
             );
 
-            this.logger.log('Publication notification scheduled successfully', { 
+            this.logger.log('Publication notification scheduled successfully', {
               id: event.id,
               delay,
               scheduledFor: new Date(Date.now() + delay).toISOString()
