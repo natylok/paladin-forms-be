@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SentimentResult } from '../types/feedback.types';
 import { pipeline } from '@huggingface/transformers';
-import * as fs from 'fs';
 import * as path from 'path';
 
 @Injectable()
@@ -13,22 +12,13 @@ export class SentimentService {
     private readonly MODEL_CACHE_DIR = path.join(process.cwd(), 'models');
 
     constructor() {
-        // Ensure cache directory exists
-        if (!fs.existsSync(this.MODEL_CACHE_DIR)) {
-            fs.mkdirSync(this.MODEL_CACHE_DIR, { recursive: true });
-        }
         this.initializeModel();
     }
 
     private async initializeModel() {
         try {
-            // Set cache directory for model files
-            process.env.TRANSFORMERS_CACHE = this.MODEL_CACHE_DIR;
-            
             // Initialize the pipeline with local caching
-            this.classifier = await pipeline('text-classification', this.MODEL_NAME, {
-                cache_dir: this.MODEL_CACHE_DIR
-            });
+            this.classifier = await pipeline('sentiment-analysis', this.MODEL_NAME);
 
             this.isInitialized = true;
             this.logger.log('Sentiment analysis model loaded successfully');
