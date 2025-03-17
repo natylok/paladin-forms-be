@@ -148,6 +148,7 @@ export class FeedbackAnalysisService {
         if (rating !== -1) {
             stats.totalRatingScore += rating;
             stats.ratingCount++;
+            summary.statistics.ratingStats.total++;
             summary.statistics.ratingStats.distribution[rating.toString()]++;
         }
     }
@@ -303,6 +304,8 @@ export class FeedbackAnalysisService {
             totalSentimentScore: number;
             sentimentCount: number;
             sentimentCounts: { positive: number; negative: number; neutral: number };
+            totalRatingScore: number;
+            ratingCount: number;
         },
         dailyFeedbacks: Map<string, { positive: number; negative: number }>,
         weeklyFeedbacks: Map<string, { positive: number; negative: number }>,
@@ -311,6 +314,11 @@ export class FeedbackAnalysisService {
         if (stats.sentimentCount > 0) {
             this.calculateSentimentDistribution(summary, stats.sentimentCount, stats.sentimentCounts);
             summary.statistics.averageSentiment = Number((stats.totalSentimentScore / stats.sentimentCount).toFixed(2));
+        }
+
+        // Calculate rating stats
+        if (stats.ratingCount > 0) {
+            summary.statistics.ratingStats.average = Number((stats.totalRatingScore / stats.ratingCount).toFixed(2));
         }
 
         this.updateTimelineTrends(summary, dailyFeedbacks, weeklyFeedbacks, monthlyFeedbacks);
