@@ -1,12 +1,16 @@
-FROM node:20-slim AS builder
+FROM node:18-alpine
 
 WORKDIR /usr/src/app
 
-# Install necessary dependencies
-RUN apt-get update && \
-    apt-get install -y openssl python3 make g++ && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Install system dependencies
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    libc6-compat
+
+# Create cache directory with proper permissions
+RUN mkdir -p /tmp/xenova_cache && chmod 777 /tmp/xenova_cache
 
 # Copy package files
 COPY package*.json ./
@@ -20,24 +24,8 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Production image
-FROM node:20-slim
+# Expose port
+EXPOSE 3000
 
-WORKDIR /usr/src/app
-
-# Install necessary dependencies
-RUN apt-get update && \
-    apt-get install -y openssl && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copy package files and install production dependencies
-COPY package*.json ./
-RUN npm install --production
-
-# Copy built application
-COPY --from=builder /usr/src/app/dist ./dist
-
-EXPOSE 3334
-
+# Start the application
 CMD ["npm", "run", "start:prod"] 

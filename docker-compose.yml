@@ -63,11 +63,16 @@ services:
       context: ./analyzer-feedback
       dockerfile: Dockerfile
     container_name: analyzer-feedback
+    ports:
+      - "3334:3000"
     environment:
       - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-db:27017/mydatabase?authSource=admin
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
-      - NODE_ENV=production
+      - NODE_ENV=production     
+      - TRANSFORMERS_CACHE=/tmp/xenova_cache
+    volumes:
+      - xenova_cache:/tmp/xenova_cache
     depends_on:
       mongo-db:
         condition: service_healthy
@@ -195,5 +200,6 @@ volumes:
   mongo_data:
   redis_data:
   rabbitmq_data:
+  xenova_cache:
 
 # Enviro
