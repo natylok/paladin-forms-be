@@ -1,16 +1,19 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { FeedbackModule } from './feedback/feedback.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async () => ({
-        uri: process.env.MONGO_URI,
+      useFactory: async (configService: ConfigService) => ({
+        uri: `mongodb://${configService.get('MONGODB_HOST')}:${configService.get('MONGODB_PORT')}/${configService.get('MONGODB_DATABASE')}`,
       }),
+      inject: [ConfigService],
     }),
     FeedbackModule
   ],
