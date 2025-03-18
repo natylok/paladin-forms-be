@@ -2,15 +2,11 @@ FROM node:20-slim
 
 WORKDIR /usr/src/app
 
-# Install system dependencies
-RUN apk add --no-cache \
-    python3 \
+RUN apt-get update && apt-get install -y \
+    openssl \
     make \
     g++ \
-    libc6-compat
-
-# Create cache directory with proper permissions
-RUN mkdir -p /tmp/xenova_cache && chmod 777 /tmp/xenova_cache
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
