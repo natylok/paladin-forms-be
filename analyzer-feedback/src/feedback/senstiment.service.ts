@@ -82,7 +82,6 @@ export class SentimentService {
         } catch (error) {
             this.logger.error('Error in sentiment analysis', {
                 error: error instanceof Error ? error.message : 'Unknown error',
-                text: text.substring(0, 100), // Log first 100 chars of text
                 modelName: this.MODEL_NAME,
                 stack: error instanceof Error ? error.stack : undefined
             });
