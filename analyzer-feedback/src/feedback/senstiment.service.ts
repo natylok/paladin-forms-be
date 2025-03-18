@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { pipeline } from '@xenova/transformers';
 
 interface SentimentResult {
     label: string;
@@ -11,46 +12,50 @@ export class SentimentService {
     private classifier: any;
     private isInitialized: boolean = false;
     private readonly MODEL_NAME = 'Xenova/distilbert-base-uncased-finetuned-sst-2-english';
-    private transformersPipeline: any;
+    private initializationPromise: Promise<void> | null = null;
 
     constructor() {
         this.initializeModel();
     }
 
     private async initializeModel() {
-        try {
-            if (this.isInitialized) {
-                return;
-            }
-
-            this.logger.log('Starting sentiment analysis model initialization...');
-            
-            // Import the transformers module dynamically
-            const transformers = await import('@xenova/transformers');
-            this.transformersPipeline = transformers.pipeline;
-            
-            // Initialize the classifier
-            this.classifier = await this.transformersPipeline('sentiment-analysis', this.MODEL_NAME, {
-                cache_dir: '/tmp/xenova_cache',
-                quantized: true
-            });
-            
-            this.isInitialized = true;
-            this.logger.log('Sentiment analysis model loaded successfully', {
-                modelName: this.MODEL_NAME
-            });
-        } catch (error) {
-            this.logger.error('Failed to load sentiment analysis model', {
-                error: error instanceof Error ? error.message : 'Unknown error',
-                modelName: this.MODEL_NAME,
-                stack: error instanceof Error ? error.stack : undefined
-            });
-            throw error;
+        if (this.initializationPromise) {
+            return this.initializationPromise;
         }
+
+        this.initializationPromise = (async () => {
+            try {
+                this.logger.log('Starting sentiment analysis model initialization...');
+                
+                // Configure pipeline with specific options
+                this.classifier = await pipeline('sentiment-analysis', this.MODEL_NAME, {
+                    cache_dir: '/tmp/xenova_cache',
+                    quantized: true,
+                    progress_callback: (progress) => {
+                        this.logger.debug(`Model loading progress: ${progress.status} - ${progress.file} (${progress.progress}%)`);
+                    }
+                });
+                
+                this.isInitialized = true;
+                this.logger.log('Sentiment analysis model loaded successfully', {
+                    modelName: this.MODEL_NAME
+                });
+            } catch (error) {
+                this.logger.error('Failed to load sentiment analysis model', {
+                    error: error instanceof Error ? error.message : 'Unknown error',
+                    modelName: this.MODEL_NAME,
+                    stack: error instanceof Error ? error.stack : undefined
+                });
+                throw error;
+            }
+        })();
+
+        return this.initializationPromise;
     }
 
     async analyzeSentiment(text: string): Promise<SentimentResult> {
         try {
+            // Ensure model is initialized
             if (!this.isInitialized) {
                 await this.initializeModel();
             }
@@ -63,6 +68,7 @@ export class SentimentService {
             
             // Convert label to our format (positive, negative, neutral)
             let normalizedLabel: string;
+            // This model uses POSITIVE/NEGATIVE labels
             if (result[0].label === 'POSITIVE') {
                 normalizedLabel = 'positive';
             } else {
@@ -76,7 +82,7 @@ export class SentimentService {
         } catch (error) {
             this.logger.error('Error in sentiment analysis', {
                 error: error instanceof Error ? error.message : 'Unknown error',
-                text: text.substring(0, 100),
+                text: text.substring(0, 100), // Log first 100 chars of text
                 modelName: this.MODEL_NAME,
                 stack: error instanceof Error ? error.stack : undefined
             });
