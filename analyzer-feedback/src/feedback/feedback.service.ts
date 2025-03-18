@@ -114,27 +114,30 @@ export class FeedbackService {
       let score = 0;
       this.logger.log(`Analyzing feedback: ${feedback._id}`);
 
-      feedback.responses.forEach(async (response) => {
-        const sentiment = await this.sentimentService.analyzeSentiment(response.value as string);
+      for (const response of feedback.responses) {
         if (RATING_COMPONENTS.includes(response.componentType as SurveyComponentType)) {
-          if (Number(response.value) > 3) {
-            score += 1;
-          }
-          else if (Number(response.value) < 3) {
-            score -= 1;
+          const numericValue = Number(response.value);
+          if (!isNaN(numericValue)) {
+            if (numericValue > 3) {
+              score += 1;
+            }
+            else if (numericValue < 3) {
+              score -= 1;
+            }
           }
         }
         else if (INPUT_COMPONENTS.includes(response.componentType as SurveyComponentType)) {
-          if (sentiment.label === 'positive') {
-            score += 1;
-          }
-          else if (sentiment.label === 'negative') {
-            score -= 1;
+          if (typeof response.value === 'string' && response.value.trim()) {
+            const sentiment = await this.sentimentService.analyzeSentiment(response.value);
+            if (sentiment.label === 'positive') {
+              score += 1;
+            }
+            else if (sentiment.label === 'negative') {
+              score -= 1;
+            }
           }
         }
-      });
-
-
+      }
 
       this.logger.log(`Analysis completed for feedback: ${feedback._id}`);
       await this.feedbackModel.findByIdAndUpdate(feedback._id, {
@@ -146,36 +149,6 @@ export class FeedbackService {
     } catch (error) {
       this.logger.error(`Error analyzing feedback: ${error.message}`, error.stack);
     }
-  }
-
-  private async performBasicSentimentAnalysis(textResponses: string[]): Promise<any> {
-    const combinedText = textResponses.join(' ').toLowerCase();
-
-    // Simple keyword-based sentiment analysis
-    const positiveWords = ['great', 'good', 'excellent', 'amazing', 'love', 'helpful', 'best'];
-    const negativeWords = ['bad', 'poor', 'terrible', 'worst', 'hate', 'difficult', 'confusing'];
-
-    const positiveCount = positiveWords.reduce((count, word) =>
-      count + (combinedText.match(new RegExp(word, 'g')) || []).length, 0);
-
-    const negativeCount = negativeWords.reduce((count, word) =>
-      count + (combinedText.match(new RegExp(word, 'g')) || []).length, 0);
-
-    const totalWords = combinedText.split(' ').length;
-    const sentimentScore = (positiveCount - negativeCount) / Math.max(totalWords, 1);
-
-    return {
-      sentiment: sentimentScore > 0.1 ? 'positive' : sentimentScore < -0.1 ? 'negative' : 'neutral',
-      analysis: `Found ${positiveCount} positive and ${negativeCount} negative expressions`,
-      analysisScore: (sentimentScore + 1) / 2, // Normalize to 0-1 range
-      analysisMetadata: {
-        positiveCount,
-        negativeCount,
-        totalWords,
-        responseCount: textResponses.length,
-        averageLength: totalWords / textResponses.length
-      }
-    };
   }
 
   async getFeedbackAnalysis(surveyId: string): Promise<any> {
