@@ -10,8 +10,8 @@ import { FeedbackModule } from './feedback/feedback.module';
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        uri: `mongodb://${configService.get('MONGODB_HOST')}:${configService.get('MONGODB_PORT')}/${configService.get('MONGODB_DATABASE')}`,
+      useFactory: async () => ({
+        uri: process.env.MONGO_URI,
       }),
       inject: [ConfigService],
     }),
