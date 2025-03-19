@@ -11,7 +11,7 @@ import { generateSurvey } from './ai.service';
 import { LimitSurveysGuard } from './limitSurveyGuard';
 import { RateLimit } from 'src/decorators/rate-limit.decorator';
 import { LoggerService } from 'src/logger/logger.service';
-
+import { v4 as uuidv4 } from 'uuid';
 @Controller('surveys')
 export class SurveyController {
     openai: OpenAI;
@@ -68,7 +68,12 @@ export class SurveyController {
     async generateSurvey(@Body() data: { prompt: string, surveyType?: string }, @Req() req: Request) {
         this.logger.log('Generating survey', { prompt: data.prompt, surveyType: data.surveyType, user: (req.user as User).email });
         const survey = await generateSurvey(data.prompt, data.surveyType, (req.user as User).email);
-        return JSON.parse(survey);
+        const parsedSurvey = JSON.parse(survey);
+        parsedSurvey.surveyId = uuidv4();
+        parsedSurvey.components.forEach(component => {  
+            component.id = uuidv4();
+        });
+        return parsedSurvey;
     }
 
     @EventPattern('survey_changed')
