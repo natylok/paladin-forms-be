@@ -359,9 +359,9 @@ export class FeedbackAnalysisService {
     }
 
     private deduplicateAndLimitAnalysis(summary: FeedbackSummary): void {
-        summary.textAnalysis.topStrengths = [...new Set(summary.textAnalysis.topStrengths)].slice(0, 5);
-        summary.textAnalysis.topConcerns = [...new Set(summary.textAnalysis.topConcerns)].slice(0, 5);
-        summary.textAnalysis.suggestions = [...new Set(summary.textAnalysis.suggestions)].slice(0, 5);
-        summary.textAnalysis.urgentIssues = [...new Set(summary.textAnalysis.urgentIssues)].slice(0, 5);
+        summary.textAnalysis.topStrengths = [...new Set(summary.textAnalysis.topStrengths)];
+        summary.textAnalysis.topConcerns = [...new Set(summary.textAnalysis.topConcerns)];
+        summary.textAnalysis.suggestions = [...new Set(summary.textAnalysis.suggestions)];
+        summary.textAnalysis.urgentIssues = [...new Set(summary.textAnalysis.urgentIssues)];
     }
 } 
