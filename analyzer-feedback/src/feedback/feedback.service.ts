@@ -16,7 +16,6 @@ export enum SurveyComponentType {
   CHECKBOX = 'checkbox',
   SLIDER = 'slider',
   DATE_PICKER = 'datePicker',
-  DIVIDER = 'divider',
   MULTIPLE_CHOICE = 'multi',
   TEXT = 'text'
 }

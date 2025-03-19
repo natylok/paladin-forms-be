@@ -248,10 +248,10 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
      d) Special Components (choose at least 1):
         - SLIDER ('slider') for continuous range input
         - DATE_PICKER ('datePicker') for temporal data
-        - DIVIDER ('divider') for visual separation
   4. Tone & Style: Determine an appropriate tone based on the user's prompt and target audience.
   5. Logical Flow: Organize questions in a sensible order, starting with easier/general questions and moving to more specific ones.
   6. Quality Over Quantity: Aim for 8-12 questions that thoroughly cover the topic.
+  7.Each component should have id uuidv4 use it as default value for id
 
   Component Type Usage Guidelines:
   - Use STAR_1_TO_5 or FACE_1_TO_5 for emotional or satisfaction ratings
