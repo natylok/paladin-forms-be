@@ -27,7 +27,7 @@ export class Feedback {
   analysis?: string;
 
   @Prop()
-  analysisScore?: number;
+  score?: string;
 
   @Prop({ type: Object })
   analysisMetadata?: Record<string, any>;

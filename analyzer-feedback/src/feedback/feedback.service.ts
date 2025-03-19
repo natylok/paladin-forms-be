@@ -130,10 +130,10 @@ export class FeedbackService {
           if (typeof response.value === 'string' && response.value.trim()) {
             const sentiment = await this.sentimentService.analyzeSentiment(response.value);
             if (sentiment.label === 'positive') {
-              score += 1;
+              score += 2;
             }
             else if (sentiment.label === 'negative') {
-              score -= 1;
+              score -= 2;
             }
           }
         }
