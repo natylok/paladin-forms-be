@@ -230,7 +230,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   Instructions and Requirements:
   1. Relevance & Specificity: Tailor all questions directly to the user's prompt. Incorporate the topic details or requirements provided by the user so that the survey feels customized and highly relevant.
   2. Clarity & Engagement: Ensure each question is clear, concise, and engaging. Use simple language and avoid ambiguity or jargon (unless the survey's audience expects it).
-  3. Component Type Requirements - You MUST include at least one of each of these categories:
+  3. Component Type Requirements - You MUST include at least one of each of these categories and MAXIMUM 3 OF THE SAME TYPE, NO MORE PLEASE NOTICE THAT:
      a) Rating Components (choose at least 2):
         - ('1to5stars') for visual rating with stars
         -  ('1to5faces') for emotional feedback
