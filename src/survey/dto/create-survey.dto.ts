@@ -120,17 +120,6 @@ class SurveySettingsDto {
   triggerByVariable?: TriggerVariableDto;
 }
 
-class PageDto {
-  @IsString()
-  @IsOptional()
-  id?: string;
-
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ComponentDto)
-  components: ComponentDto[];
-}
-
 class SkipLogicDto {
   @IsString()
   @IsNotEmpty()
@@ -167,8 +156,6 @@ export class CreateSurveyDto {
   @IsNotEmpty()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => PageDto)
-  pages: PageDto[];
 
   @IsOptional()
   @IsArray()

@@ -45,18 +45,12 @@ export interface ISurvey {
     triggerByVariable?: TriggerVariable;
   };
   surveyType: SurveyType;
-  pages: IPage[];
 }
 
 export interface SkipLogic {
   componentId: string;
   value: string;
-  pageId: string;
-}
-
-export interface IPage {
-  id: string;
-  components: Component[];
+  toComponentId: string;
 }
 
 export enum SurveyType {
@@ -142,7 +136,7 @@ export class SkipLogic {
   value: string;
 
   @Prop({ type: String })
-  pageId: string;
+  toComponentId: string;
 }
 
 export const SkipLogicSchema = SchemaFactory.createForClass(SkipLogic);
@@ -174,17 +168,6 @@ export class Component {
 }
 
 export const ComponentSchema = SchemaFactory.createForClass(Component);
-
-@Schema()
-export class Page {
-  @Prop({ type: String, default: uuidv4 })
-  id: string;
-
-  @Prop({ type: [ComponentSchema], default: [] })
-  components: Component[];
-}
-
-export const PageSchema = SchemaFactory.createForClass(Page);
 
 @Schema({ timestamps: true })
 export class Survey extends Document {
@@ -223,9 +206,9 @@ export class Survey extends Document {
 
   @Prop({ type: SurveySettingsSchema })
   settings: SurveySettings;
-
-  @Prop({ type: [PageSchema], default: [] })
-  pages: Page[];
+  
+  @Prop({ type: [ComponentSchema], default: [] })
+  components: Component[];
 
   @Prop({ type: String, enum: Object.values(SurveyType), default: SurveyType.Modal })
   surveyType: SurveyType;

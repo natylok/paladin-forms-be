@@ -52,19 +52,14 @@ export interface ISurvey {
     triggerByVariable?: TriggerVariable;
   };
   surveyType: SurveyType;
-  pages: IPage[];
 }
 
 export interface SkipLogic {
   componentId: string;
   value: string;
-  pageId: string;
+  toComponentId: string;
 }
 
-export interface IPage {
-  id: string;
-  components: Component[];
-}
 
 export enum SurveyType {
   Button = 'button',
@@ -149,7 +144,7 @@ export class SkipLogic {
   value: string;
 
   @Prop({ type: String })
-  pageId: string;
+  toComponentId: string;
 }
 
 export const SkipLogicSchema = SchemaFactory.createForClass(SkipLogic);
@@ -181,17 +176,6 @@ export class Component {
 }
 
 export const ComponentSchema = SchemaFactory.createForClass(Component);
-
-@Schema()
-export class Page {
-  @Prop({ type: String, default: uuidv4 })
-  id: string;
-
-  @Prop({ type: [ComponentSchema], default: [] })
-  components: Component[];
-}
-
-export const PageSchema = SchemaFactory.createForClass(Page);
 
 @Schema({ timestamps: true })
 export class Survey extends Document {
@@ -228,8 +212,8 @@ export class Survey extends Document {
   @Prop({ type: SurveySettingsSchema })
   settings: SurveySettings;
 
-  @Prop({ type: [PageSchema], default: [] })
-  pages: Page[];
+  @Prop({ type: [ComponentSchema], default: [] })
+  components: Component[];
 
   @Prop({ type: String, enum: Object.values(SurveyType), default: SurveyType.Modal })
   surveyType: SurveyType;
@@ -268,7 +252,6 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   4. Tone & Style: Determine an appropriate tone based on the user's prompt and target audience.
   5. Logical Flow: Organize questions in a sensible order, starting with easier/general questions and moving to more specific ones.
   6. Quality Over Quantity: Aim for 8-12 questions that thoroughly cover the topic.
-  7. Should be only one page, no more, no less.
 
   Component Type Usage Guidelines:
   - Use STAR_1_TO_5 or FACE_1_TO_5 for emotional or satisfaction ratings
