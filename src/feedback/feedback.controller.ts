@@ -194,14 +194,18 @@ export class FeedbackController {
   async getSurveySummary(@Req() req: Request, @Param('surveyId') surveyId: string) {
     try {
       const user = req.user as User;
-      this.feedbackService.getSurveySummary(user, surveyId)
       this.logger.log('Getting survey summary', { user: user.email, surveyId });
+      return await this.feedbackService.getSurveySummary(user, surveyId)
     }
     catch (error) {
       this.logger.error(
         'Error getting survey summary',
         error instanceof Error ? error.stack : undefined,
         { user: (req.user as User)?.email, surveyId }
+      );
+      throw new HttpException(
+        'Failed to get survey summary',
+        HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
