@@ -208,7 +208,6 @@ export class SurveyService {
             throw new NotFoundException(`Survey with ID ${id} not found`);
         }
         this.logger.log(`Updating survey ${id} for user ${user.email}`);
-        await this.client.emit('survey_changed', user).toPromise();
 
         // Get and clean the update data
         const surveyData = updateData;
@@ -256,18 +255,19 @@ export class SurveyService {
         }
 
         this.logger.log(`Survey ${id} updated successfully for user ${user.email}`);
+        await this.client.emit('survey_changed', user).toPromise();
         return updatedSurvey;
     }
 
     async deleteSurvey(id: string, user: User): Promise<{ message: string }> {
         const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
         this.logger.log(`Deleting survey ${id} for user ${user.email}`);
-        this.client.emit('survey_changed', user);
         const result = await this.surveyModel.deleteOne({ surveyId: id, ...filter }).exec();
         if (result.deletedCount === 0) {
             this.logger.error(`Survey not found during deletion with ID ${id} for user ${user.email}`);
             throw new NotFoundException(`Survey with ID ${id} not found`);
         }
+        this.client.emit('survey_changed', user);
         this.logger.log(`Survey ${id} deleted successfully for user ${user.email}`);
         return { message: 'Survey deleted successfully' };
     }
