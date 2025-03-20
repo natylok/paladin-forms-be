@@ -31,14 +31,9 @@ export class SurveyService {
         if (user.customerId) {
             createSurveyDto.customerId = user.customerId;
         }
-        try {
-            await this.client.emit('survey_changed', user).toPromise();
-            this.logger.debug('Successfully emitted survey_changed event', { user: user.email });
-        } catch (error) {
-            this.logger.error('Failed to emit survey_changed event', error instanceof Error ? error.stack : undefined, { user: user.email });
-        }
-        const createdSurvey = new this.surveyModel({ ...createSurveyDto, creatorEmail: user.email });
+        const createdSurvey = new this.surveyModel({ ...createSurveyDto, creatorEmail: user.email, createdAt: new Date().toISOString() });
         const result = await createdSurvey.save();
+        await this.client.emit('survey_changed', user).toPromise();
         this.logger.log('Survey created successfully', { surveyId: result.surveyId, user: user.email });
         return result;
     }

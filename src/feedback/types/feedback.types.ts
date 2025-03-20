@@ -18,6 +18,10 @@ export interface HuggingFaceResponse {
     };
 }
 
+export interface SurveySummary {
+    totalFeedbacks: number;
+}
+
 export interface FeedbackSummary {
     textAnalysis: {
         topStrengths: string[];

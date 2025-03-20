@@ -215,6 +215,9 @@ export class Survey extends Document {
 
   @Prop({type: [SkipLogicSchema], default: []})
   skipLogic?: SkipLogic[];
+
+  @Prop({type: String, default: new Date().toISOString()})
+  createdAt: string;
 }
 
 export const SurveySchema = SchemaFactory.createForClass(Survey);

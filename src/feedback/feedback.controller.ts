@@ -19,7 +19,7 @@ export class FeedbackController {
 
   @Post(':surveyId/submit')
   async submitFeedback(
-    @Param('surveyId') surveyId: string, 
+    @Param('surveyId') surveyId: string,
     @Body() responses: Record<string, { componentType: SurveyComponentType, value: string, title: string }>
   ) {
     try {
@@ -49,18 +49,18 @@ export class FeedbackController {
     try {
       const user = req.user as User;
       const pageNumber = page ? parseInt(page, 10) : 1;
-      const filter = user.customerId ? {customerId: user.customerId} : {creatorEmail: user.email};
+      const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
       this.logger.log('Fetching all feedbacks', { page: pageNumber, filter });
       const { feedbacks, totalPages } = await this.feedbackService.getFeedbacks(user, pageNumber);
-      
-      this.logger.log('Feedbacks fetched successfully', { 
-        user: user.email, 
+
+      this.logger.log('Feedbacks fetched successfully', {
+        user: user.email,
         customerId: user.customerId,
         count: feedbacks.length,
         page: pageNumber,
         totalPages
       });
-      
+
       return {
         feedbacks,
         pagination: {
@@ -110,13 +110,13 @@ export class FeedbackController {
     try {
       const user = req.user as User;
       this.logger.log('Exporting feedbacks to CSV', { user: user.email, surveyId });
-      
+
       const csvData = await this.feedbackService.exportFeedbacksToCSV(user, surveyId);
-      
+
       // Set response headers for file download
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename=feedbacks_${surveyId}_${Date.now()}.csv`);
-      
+
       // Send the CSV data directly
       res.send(csvData);
 
@@ -155,7 +155,7 @@ export class FeedbackController {
       );
     }
   }
-  
+
   @UseGuards(JwtGuard, PremiumGuard)
   @Get('filter/:filterType')
   async getFilteredFeedbacks(
@@ -167,8 +167,8 @@ export class FeedbackController {
       const user = req.user as User;
       this.logger.log('Getting filtered feedbacks', { user: user.email, filterType, surveyId });
       const { feedbacks, total } = await this.feedbackService.getFilteredFeedbacks(user, filterType, surveyId);
-      this.logger.log('Filtered feedbacks retrieved successfully', { 
-        user: user.email, 
+      this.logger.log('Filtered feedbacks retrieved successfully', {
+        user: user.email,
         filterType,
         count: feedbacks.length
       });
@@ -189,4 +189,20 @@ export class FeedbackController {
     }
   }
 
+  @UseGuards(JwtGuard)
+  @Get(':surveyId/summary')
+  async getSurveySummary(@Req() req: Request, @Param('surveyId') surveyId: string) {
+    try {
+      const user = req.user as User;
+      this.feedbackService.getSurveySummary(user, surveyId)
+      this.logger.log('Getting survey summary', { user: user.email, surveyId });
+    }
+    catch (error) {
+      this.logger.error(
+        'Error getting survey summary',
+        error instanceof Error ? error.stack : undefined,
+        { user: (req.user as User)?.email, surveyId }
+      );
+    }
+  }
 }

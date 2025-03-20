@@ -9,7 +9,7 @@ import { LoggerService } from '../logger/logger.service';
 import { RedisClientType } from 'redis';
 import { SentimentService } from './services/sentiment.service';
 import { FeedbackCacheService } from './services/cache.service';
-import { FeedbackSummary, TextResponse, FilterType } from './types/feedback.types';
+import { FeedbackSummary, TextResponse, FilterType, SurveySummary } from './types/feedback.types';
 import { FeedbackAnalysisService } from './services/feedback-analysis.service';
 import { FeedbackExportService } from './services/feedback-export.service';
 import { FeedbackFilterService } from './services/feedback-filter.service';
@@ -141,6 +141,20 @@ export class FeedbackService implements OnModuleInit {
                 { user: user.email }
             );
             return { message: error instanceof Error ? error.message : 'Unknown error' };
+        }
+    }
+
+    async getSurveySummary(user: User, surveyId: string): Promise<SurveySummary | { message: string }> {
+        try {
+            const survey = await this.surveyModel.findOne({ surveyId, ...(user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email }) }).exec();
+            if (!survey) {
+                return { message: 'Survey not found' };
+            }
+            const totalFeedbacks = await this.feedbackModel.countDocuments({ surveyId }).exec();
+            return { totalFeedbacks };
+        } catch (error) {
+            this.logger.error('Failed to get survey summary', error instanceof Error ? error.stack : undefined, { user: user.email, surveyId });
+            return { message: 'Failed to get survey summary' };
         }
     }
 

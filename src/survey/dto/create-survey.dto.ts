@@ -166,4 +166,8 @@ export class CreateSurveyDto {
   @IsString()
   @IsOptional()
   customerId?: string;
+
+  @IsString()
+  @IsOptional()
+  createdAt?: string;
 }
