@@ -133,7 +133,20 @@ export class CreateSurveyDto {
 
   @IsNotEmpty()
   @IsString()
-  title: string;
+  creatorEmail: string;
+
+  @IsOptional()
+  @IsString()
+  customerId?: string;
+
+  @IsOptional()
+  @IsString()
+  surveyId?: string;
+
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => ComponentDto)
+  components: ComponentDto[];
 
   @IsNotEmpty()
   @ValidateNested()
@@ -163,9 +176,6 @@ export class CreateSurveyDto {
   @Type(() => SkipLogicDto)
   skipLogic?: SkipLogicDto[];
 
-  @IsString()
-  @IsOptional()
-  customerId?: string;
 
   @IsString()
   @IsOptional()
