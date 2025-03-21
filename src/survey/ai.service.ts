@@ -248,6 +248,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
         - INPUT ('input') for short text answers
         - TEXT ('text') for medium-length responses
      c) Choice Components (choose at least 2):
+        - yesNo ('yesNo') for yes or no questions
         - RADIO_BUTTONS ('radioButtons') for single-choice questions
         - DROPDOWN ('dropdown') for single selection from many options
         - MULTIPLE_CHOICE ('multi') for multiple-choice questions
