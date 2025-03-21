@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy only package files first to leverage Docker cache
 COPY package*.json ./
+COPY .npmrc ./
 
 # Install ALL dependencies (including devDependencies)
 # Use cache mount to speed up installations
