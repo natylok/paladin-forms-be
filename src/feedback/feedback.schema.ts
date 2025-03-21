@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { SurveyComponentType } from 'src/survey/survey.schema';
+import { SurveyComponentType } from '@natylok/paladin-forms-common';
 
 export interface FeedbackResponse {
   componentType: SurveyComponentType;
