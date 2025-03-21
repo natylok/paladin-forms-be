@@ -1,5 +1,5 @@
 // auth.controller.ts
-import { Controller, Post, UseGuards, Request, Get, Res, Req, Body } from '@nestjs/common';
+import { Controller, Post, UseGuards, Request, Get, Res, Req, Body, Logger } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtGuard } from './guards/jwt-auth.guard';
@@ -17,15 +17,33 @@ interface RequestWithUser extends Request {
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
-    private readonly logger: LoggerService
+    private readonly loggerService: LoggerService
   ) {}
 
   @Post('signup')
   async signup(@Body() signupDto: SignupDto) {
-    return this.authService.signup(signupDto);
+    this.logger.debug('Received signup request', {
+      email: signupDto.email,
+      bodyReceived: JSON.stringify(signupDto)
+    });
+
+    try {
+      const result = await this.authService.signup(signupDto);
+      this.logger.debug('Signup successful', { email: signupDto.email });
+      return result;
+    } catch (error) {
+      this.logger.error('Signup failed', {
+        error: error.message,
+        stack: error.stack,
+        dto: JSON.stringify(signupDto)
+      });
+      throw error;
+    }
   }
   
   @Post('login')
