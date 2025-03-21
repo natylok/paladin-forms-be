@@ -32,6 +32,7 @@ export class SurveyService {
             createSurveyDto.customerId = user.customerId;
         }
         const createdSurvey = new this.surveyModel({ ...createSurveyDto, creatorEmail: user.email, createdAt: new Date().toISOString() });
+        this.logger.log('Survey created successfully', { surveyId: createdSurvey.surveyId, user: user.email });
         const result = await createdSurvey.save();
         await this.client.emit('survey_changed', user).toPromise();
         this.logger.log('Survey created successfully', { surveyId: result.surveyId, user: user.email });
