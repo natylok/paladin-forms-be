@@ -1,94 +1,105 @@
 import fs from 'fs';
 import path from 'path';
 import { OpenAI } from 'openai';
-import { SurveyComponentType } from './survey.schema';
+import { SurveyComponentType, TriggerVariableType, ISurvey, SurveyComponent } from '@natylok/paladin-forms-common';
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+const surveySchema = `
+export interface DependsOn {
+    componentId: string;
+    condition: string;
+  }
+  
+  export interface TriggerVariable {
+    key: string;
+    type: TriggerVariableType;
+    value: string;
+  }
+  
+  export interface TriggerByAction {
+    action: 'CLICK';
+    elementSelector: string;
+  }
+  
+  export interface ISurvey {
+    createdAt: string;
+    surveyId: string;
+    surveyName: string;
+    title: string;
+    creatorEmail: string;
+    components: {
+      options: string[];
+      title: string;
+      type: SurveyComponentType;
+      id: string;
+      dependsOn?: DependsOn;
+      required: boolean;
+    }[];
+    style: {
+      backgroundColor: string;
+      width: string;
+      height: string;
+      logoUrl: string;
+    };
+    isActive: boolean;
+    settings: {
+      showOnPercent: number;
+      usersWhoDeclined: number;
+      usersWhoSubmitted: number;
+      usersOnSessionInSeconds: number;
+      minTimeOnSiteSeconds: number;
+      excludeUrls: string[];
+      includeUrls: string[];
+      maxAttemptsPerUser: number;
+      triggerByAction?: TriggerByAction;
+      triggerByVariable?: TriggerVariable;
+    };
+    surveyType: SurveyType;
+  }
+
+  export enum SurveyType {
+    Button = 'button',
+    Modal = 'modal',
+  }
+  
+  export enum SurveyComponentType {
+    STAR_1_TO_5 = '1to5stars',
+    TEXTBOX = 'textbox',
+    SCALE_1_TO_10 = '1to10',
+    SCALE_1_TO_5 = '1to5scale',
+    TEXT = 'text',
+    FACE_1_TO_5 = '1to5faces',
+    RADIO_BUTTONS = 'radioButtons',
+    DROPDOWN = 'dropdown',
+    YES_NO = 'yesNo',
+    EMAIL = 'email',
+    PHONE = 'phone',
+    
+  }
+  
+  export enum TriggerVariableType {
+    COOKIE = 'COOKIE',
+    VAR = 'VAR',
+    URL = 'URL'
+  }
+  
+  export interface SurveyComponent {
+    options: string[];
+    title: string;
+    type: SurveyComponentType;
+    id: string;
+    dependsOn?: DependsOn;
+    required: boolean;
+  
+  }`
 
 export const formSchemaFile = `import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { Types } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
-
-export interface DependsOn {
-  componentId: string;
-  condition: string;
-}
-
-export interface TriggerVariable {
-  key: string;
-  type: TriggerVariableType;
-  value: string;
-}
-
-export interface TriggerByAction {
-  action: 'CLICK';
-  elementSelector: string;
-}
-
-export interface ISurvey {
-  surveyId: string;
-  surveyName: string;
-  title: string;
-  creatorEmail: string;
-  style: {
-    backgroundColor: string;
-    width: string;
-    height: string;
-    logoUrl: string;
-  };
-  isActive: boolean;
-  settings: {
-    showOnPercent: number;
-    usersWhoDeclined: number;
-    usersWhoSubmitted: number;
-    usersOnSessionInSeconds: number;
-    minTimeOnSiteSeconds: number;
-    excludeUrls: string[];
-    includeUrls: string[];
-    maxAttemptsPerUser: number;
-    triggerByAction?: TriggerByAction;
-    triggerByVariable?: TriggerVariable;
-  };
-  surveyType: SurveyType;
-}
-
-export interface SkipLogic {
-  componentId: string;
-  value: string;
-  toComponentId: string;
-}
-
-
-export enum SurveyType {
-  Button = 'button',
-  Modal = 'modal',
-}
-
-export enum SurveyComponentType {
-  STAR_1_TO_5 = '1to5stars',
-  TEXTBOX = 'textbox',
-  SCALE_1_TO_10 = '1to10',
-  INPUT = 'input',
-  FACE_1_TO_5 = '1to5faces',
-  RADIO_BUTTONS = 'radioButtons',
-  DROPDOWN = 'dropdown',
-  SCALE_1_TO_5 = '1to5scale',
-  CHECKBOX = 'checkbox',
-  SLIDER = 'slider',
-  DATE_PICKER = 'datePicker',
-  DIVIDER = 'divider',
-  MULTIPLE_CHOICE = 'multi',
-  TEXT = 'text'
-}
-
-export enum TriggerVariableType {
-  COOKIE = 'COOKIE',
-  VAR = 'VAR',
-  URL = 'URL'
-}
-
+${surveySchema}
 @Schema()
 export class SurveySettings {
   @Prop({ type: Number, default: 100 })

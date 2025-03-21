@@ -7,7 +7,6 @@ import { User } from '@prisma/client';
 import { ClientProxy } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
 import { Storage } from '@google-cloud/storage';
-import { v4 as uuidv4 } from 'uuid';
 import { LoggerService } from '../logger/logger.service';
 
 @Injectable()

@@ -8,7 +8,7 @@ import { JwtGuard } from 'src/auth/guards';
 import { PremiumGuard } from 'src/auth/guards/premium.guard';
 import { LoggerService } from '../logger/logger.service';
 import { FilterType } from './types/feedback.types';
-import { SurveyComponentType } from 'src/survey/survey.schema';
+import { SurveyComponentType } from '@natylok/paladin-forms-common';
 
 @Controller('feedbacks')
 export class FeedbackController {
