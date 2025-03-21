@@ -12,7 +12,6 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   // Use cookie parser
-  app.use(cookieParser());
 
   app.enableCors({
     origin: true, // Allow all origins for now
