@@ -277,7 +277,7 @@ export class SurveyService {
         this.logger.log(`Generating JavaScript code for user ${user.email}`);
         try {
             const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
-            const surveys = await this.surveyModel.find({ ...filter }).exec();
+            const surveys = await this.surveyModel.find({ ...filter, isActive: true }).exec();
             if (!surveys) {
                 this.logger.error(`No surveys found for user ${user.email} ${user.customerId}`);
                 throw new NotFoundException('Survey not found');
