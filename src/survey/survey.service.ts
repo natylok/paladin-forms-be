@@ -36,7 +36,7 @@ export class SurveyService {
         const result = await createdSurvey.save();
         await this.client.emit('survey_changed', user).toPromise();
         this.logger.log('Survey created successfully', { surveyId: result.surveyId, user: user.email });
-        return result;
+        return createdSurvey;
     }
 
     async getSurveys(user: User): Promise<Survey[]> {
