@@ -3,7 +3,7 @@ import { FeedbackSummary, TextResponse } from '../types/feedback.types';
 import { Feedback } from '../feedback.schema';
 import { SentimentService } from './sentiment.service';
 import { FILTER_PHRASES } from '../constants/feedback.constants';
-import { SurveyComponentType } from '../../survey/survey.schema';
+import { SurveyComponentType } from '@natylok/paladin-forms-common';
 import {
     containsPhrases,
     convertRatingToNumber,

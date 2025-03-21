@@ -4,8 +4,7 @@ import { SentimentService } from './sentiment.service';
 import { FILTER_PHRASES } from '../constants/feedback.constants';
 import { containsPhrases, isDemographicResponse } from '../utils/feedback.utils';
 import { FilterType } from '../types/feedback.types';
-import { SurveyComponentType } from 'src/survey/survey.schema';
-
+import { SurveyComponentType } from '@natylok/paladin-forms-common';
 @Injectable()
 export class FeedbackFilterService {
     private readonly logger = new Logger(FeedbackFilterService.name);
