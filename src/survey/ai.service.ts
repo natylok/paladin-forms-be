@@ -259,6 +259,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   5. Logical Flow: Organize questions in a sensible order, starting with easier/general questions and moving to more specific ones.
   6. Quality Over Quantity: Aim for 8-12 questions that thoroughly cover the topic.
   7.Each component should have id uuidv4 use it as default value for id
+  8. DO NOT ADD THE KEY surveyId to the survey object
 
   Component Type Usage Guidelines:
   - Use STAR_1_TO_5 or FACE_1_TO_5 for emotional or satisfaction ratings
