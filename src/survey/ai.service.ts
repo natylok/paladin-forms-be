@@ -239,7 +239,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   2. Clarity & Engagement: Ensure each question is clear, concise, and engaging. Use simple language and avoid ambiguity or jargon (unless the survey's audience expects it).
   3. Component Type Requirements - You MUST include at least one of each of these categories and MAXIMUM 3 OF THE SAME TYPE, NO MORE PLEASE NOTICE THAT:
      a) Rating Components (choose at least 2) MAXIMUM 2 OF THE SAME TYPE:
-        - ('1to5stars') for visual rating with stars
+        -  ('1to5stars') for visual rating with stars
         -  ('1to5faces') for emotional feedback
         -  ('1to10scale') for detailed numerical rating
         -  ('1to5scale') for simple numerical rating
@@ -260,7 +260,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   6. Quality Over Quantity: Aim for 8-12 questions that thoroughly cover the topic.
   7.Each component should have id uuidv4 use it as default value for id
   8. DO NOT ADD THE KEY surveyId to the survey object
-  9. MAXIMUM OF 3 OF THE SAME COMPONENT TYPE NO MORE 
+  9. MAXIMUM OF 3 OF THE SAME COMPONENT TYPE NO MORE,maximum 3 of 1to5stars!!!! 
 
   Component Type Usage Guidelines:
   - Use STAR_1_TO_5 or FACE_1_TO_5 for emotional or satisfaction ratings MAXIMUM 2 OF THE SAME TYPE
