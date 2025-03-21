@@ -33,6 +33,10 @@ class ComponentDto {
   @IsBoolean()
   @IsOptional()
   required: boolean;
+
+  @IsString()
+  @IsOptional()
+  id?: string;
 }
 
 class StyleDto {
@@ -176,6 +180,9 @@ export class CreateSurveyDto {
   @Type(() => SkipLogicDto)
   skipLogic?: SkipLogicDto[];
 
+  @IsNotEmpty()
+  @IsString()
+  title: string;
 
   @IsString()
   @IsOptional()
