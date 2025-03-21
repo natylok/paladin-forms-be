@@ -35,10 +35,10 @@ export class SurveyController {
 
     @UseGuards(JwtGuard)
     @Get(':id')
-    async getSurveyById(@Param('id') id: string) {
+    async getSurveyById(@Param('id') id: string, @Req() req: Request) {
         try {
             this.logger.log('Fetching survey by ID', { surveyId: id });
-            const survey = await this.surveyService.getSurveyById(id);
+            const survey = await this.surveyService.getSurveyById(id, req.user as User);
             this.logger.log('Survey fetched successfully', { surveyId: id });
             return survey;
         } catch (error) {
