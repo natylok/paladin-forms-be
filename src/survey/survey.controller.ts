@@ -70,7 +70,6 @@ export class SurveyController {
         this.logger.log('Generating survey', { prompt: data.prompt, surveyType: data.surveyType, user: (req.user as User).email });
         const survey = await generateSurvey(data.prompt, data.surveyType, (req.user as User).email);
         const parsedSurvey = JSON.parse(survey);
-        parsedSurvey.surveyId = uuidv4();
         parsedSurvey.components.forEach(component => {  
             component.id = uuidv4();
         });
