@@ -222,7 +222,7 @@ export class Survey extends Document {
   @Prop({ type: [ComponentSchema], default: [] })
   components: Component[];
 
-  @Prop({ type: String, enum: Object.values(SurveyType), default: SurveyType.Modal })
+  @Prop({ type: String, enum: Object.values(SurveyType), default: 'modal' })
   surveyType: SurveyType;
 
   @Prop({type: [SkipLogicSchema], default: []})
@@ -238,7 +238,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   1. Relevance & Specificity: Tailor all questions directly to the user's prompt. Incorporate the topic details or requirements provided by the user so that the survey feels customized and highly relevant.
   2. Clarity & Engagement: Ensure each question is clear, concise, and engaging. Use simple language and avoid ambiguity or jargon (unless the survey's audience expects it).
   3. Component Type Requirements - You MUST include at least one of each of these categories and MAXIMUM 3 OF THE SAME TYPE, NO MORE PLEASE NOTICE THAT:
-     a) Rating Components (choose at least 2):
+     a) Rating Components (choose at least 2) MAXIMUM 2 OF THE SAME TYPE:
         - ('1to5stars') for visual rating with stars
         -  ('1to5faces') for emotional feedback
         -  ('1to10scale') for detailed numerical rating
@@ -262,8 +262,8 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   8. DO NOT ADD THE KEY surveyId to the survey object
 
   Component Type Usage Guidelines:
-  - Use STAR_1_TO_5 or FACE_1_TO_5 for emotional or satisfaction ratings
-  - Use SCALE_1_TO_10 for detailed numerical feedback
+  - Use STAR_1_TO_5 or FACE_1_TO_5 for emotional or satisfaction ratings MAXIMUM 2 OF THE SAME TYPE
+  - Use SCALE_1_TO_10 for detailed numerical feedback MAXIMUM 2 OF THE SAME TYPE
   - Use TEXTBOX for detailed opinions or explanations
   - Use INPUT for short, specific answers (name, email, etc.)
   - Use TEXT for medium-length responses
