@@ -31,7 +31,7 @@ export interface DependsOn {
     components: {
       options: string[];
       title: string;
-      type: SurveyComponentType;
+      type: ${Object.values(SurveyComponentType).join(',')};
       id: string;
       dependsOn?: DependsOn;
       required: boolean;
@@ -87,7 +87,7 @@ export interface DependsOn {
   export interface SurveyComponent {
     options: string[];
     title: string;
-    type: SurveyComponentType;
+    type: ${Object.values(SurveyComponentType).join(',')};
     id: string;
     dependsOn?: DependsOn;
     required: boolean;

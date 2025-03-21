@@ -92,7 +92,11 @@ export class AuthService {
       });
 
       this.logger.log('User created successfully', { email: signupDto.email });
-      return this.signToken(user.id, user.email);
+      const token = await this.signToken(user.id, user.email);
+      return {
+        user,
+        token,
+      };
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
