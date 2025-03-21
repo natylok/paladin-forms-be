@@ -1,5 +1,5 @@
 // auth.controller.ts
-import { Controller, Post, UseGuards, Request, Get, Res, Req } from '@nestjs/common';
+import { Controller, Post, UseGuards, Request, Get, Res, Req, Body } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtGuard } from './guards/jwt-auth.guard';
@@ -8,6 +8,8 @@ import { Response, Request as ExpressRequest } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '../logger/logger.service';
 import { User } from '@prisma/client';
+import { SignupDto } from './dto/signup.dto';
+import { LoginDto } from './dto/login.dto';
 
 interface RequestWithUser extends Request {
   user: User;
@@ -21,13 +23,14 @@ export class AuthController {
     private readonly logger: LoggerService
   ) {}
 
-  @UseGuards(LocalAuthGuard)
+  @Post('signup')
+  async signup(@Body() signupDto: SignupDto) {
+    return this.authService.signup(signupDto);
+  }
+  
   @Post('login')
-  async login(@Request() req: RequestWithUser) {
-    this.logger.log('User attempting local login', { email: req.user.email });
-    const result = await this.authService.login(req.user);
-    this.logger.log('User logged in successfully', { email: req.user.email });
-    return result;
+  async login(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto);
   }
 
   @UseGuards(GoogleAuthGuard)

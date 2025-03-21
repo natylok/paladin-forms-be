@@ -2,7 +2,7 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/user/user.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuthDto } from './dto';
+import { AuthDto, LoginDto, SignupDto } from './dto';
 import * as argon from 'argon2';
 import { Prisma, User } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
@@ -29,11 +29,20 @@ export class AuthService {
     return null;
   }
 
-  async login(user: Omit<User, 'hash'>) {
+  async login(loginDto: LoginDto) {
+    const user = await this.usersService.findOneByEmail(loginDto.email) as UserWithHash;
+    if (!user) {
+      throw new ForbiddenException('User not found');
+    }
+    const pwMatches = await argon.verify(user.hash, loginDto.password);
+    if (!pwMatches) {
+      throw new ForbiddenException('Credentials incorrect');
+    }
     const payload = { email: user.email, sub: user.id };
     return {
       access_token: this.jwtService.sign(payload),
     };
+
   }
 
   async googleLogin(req: any) {
@@ -57,21 +66,32 @@ export class AuthService {
     return { accessToken };
   }
 
-  async signup(dto: AuthDto) {
+  async isEmailExist(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+    return !!user;
+  }
+
+  async signup(signupDto: SignupDto ) {
     try {
-      this.logger.log('Processing signup request', { email: dto.email });
+      this.logger.log('Processing signup request', { email: signupDto.email });
+      if(await this.isEmailExist(signupDto.email)) {
+        throw new ForbiddenException('Email already exists');
+      }
       // generate the password hash
-      const hash = await argon.hash(dto.password);
+      const hash = await argon.hash(signupDto.password);
       // save the new user in the db
       const user = await this.prisma.user.create({
         data: {
-          email: dto.email,
+          email: signupDto.email,
           hash,
           surveysLimit: 3,
+          userType: 'FREEMIUM',
         } as Prisma.UserCreateInput,
       });
 
-      this.logger.log('User created successfully', { email: dto.email });
+      this.logger.log('User created successfully', { email: signupDto.email });
       return this.signToken(user.id, user.email);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -79,7 +99,7 @@ export class AuthService {
           this.logger.error(
             'Email already exists',
             error.stack,
-            { email: dto.email }
+            { email: signupDto.email }
           );
           throw new ForbiddenException('Credentials taken');
         }
@@ -87,7 +107,7 @@ export class AuthService {
       this.logger.error(
         'Error during signup',
         error instanceof Error ? error.stack : undefined,
-        { email: dto.email }
+        { email: signupDto.email }
       );
       throw error;
     }
