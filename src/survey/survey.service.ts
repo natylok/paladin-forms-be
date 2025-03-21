@@ -1,14 +1,15 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Survey, TriggerVariableType, SurveyType } from './survey.schema';
+
 import { CreateSurveyDto } from './dto/create-survey.dto';
 import { User } from '@prisma/client';
 import { ClientProxy } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
 import { Storage } from '@google-cloud/storage';
 import { LoggerService } from '../logger/logger.service';
-
+import { Survey } from './survey.schema';
+import { TriggerVariableType, SurveyType } from '@natylok/paladin-forms-common';
 @Injectable()
 export class SurveyService {
     constructor(

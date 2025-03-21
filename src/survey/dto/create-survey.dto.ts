@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsString, IsArray, ValidateNested, IsObject, IsEnum, IsOptional, IsBoolean, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
-import { SurveyType, SurveyComponentType, TriggerVariableType } from '../survey.schema';
+import { SurveyType, SurveyComponentType, TriggerVariableType } from '@natylok/paladin-forms-common';
 
 class DependsOnDto {
   @IsString()
