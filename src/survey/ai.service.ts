@@ -25,7 +25,6 @@ export interface DependsOn {
   
   export interface ISurvey {
     createdAt: string;
-    surveyId: string;
     surveyName: string;
     title: string;
     creatorEmail: string;
@@ -192,9 +191,6 @@ export const ComponentSchema = SchemaFactory.createForClass(Component);
 export class Survey extends Document {
   @Prop({ type: String, required: true })
   surveyName: string;
-
-  @Prop({ type: String, default: uuidv4 })
-  surveyId: string;
 
   @Prop({ type: String })
   title: string;
