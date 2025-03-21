@@ -5,7 +5,7 @@ import { Feedback } from '../feedback/feedback.schema';
 import { Survey } from '../survey/survey.schema';
 import { User } from '@prisma/client';
 import { LoggerService } from '../logger/logger.service';
-import { SurveyComponentType } from '../survey/survey.schema';
+import { SurveyComponentType } from '@natylok/paladin-forms-common';
 
 const SATISFACTION_COMPONENTS = [
     SurveyComponentType.STAR_1_TO_5,

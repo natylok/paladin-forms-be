@@ -146,7 +146,7 @@ export class FeedbackFilterService {
         }
 
         // Then handle text responses
-        if (response.componentType === 'text' || response.componentType === 'textbox' || response.componentType === 'input') {
+        if (response.componentType === SurveyComponentType.TEXT || response.componentType === SurveyComponentType.TEXTBOX) {
             try {
                 const sentiment = await this.sentimentService.analyzeSentiment(value);
                 switch (filterType) {
