@@ -250,7 +250,6 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
      c) Choice Components (choose at least 2):
         - RADIO_BUTTONS ('radioButtons') for single-choice questions
         - DROPDOWN ('dropdown') for single selection from many options
-        - CHECKBOX ('checkbox') for multiple selection
         - MULTIPLE_CHOICE ('multi') for multiple-choice questions
      d) Special Components (choose at least 1):
         - SLIDER ('slider') for continuous range input
