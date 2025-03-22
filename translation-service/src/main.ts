@@ -6,50 +6,22 @@ import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const logger = new Logger('Main');
-  
-  // First create the app
   const app = await NestFactory.create(AppModule);
-  const configService = app.get(ConfigService);
 
-  const user = configService.get('RABBITMQ_DEFAULT_USER', 'guest');
-  const password = configService.get('RABBITMQ_DEFAULT_PASS', 'guest');
-  const host = configService.get('RABBITMQ_HOST', 'rabbitmq');
-
-  // Create the microservice for consuming publication events
-  const microservice = await NestFactory.createMicroservice<MicroserviceOptions>(
-    AppModule,
-    {
-      transport: Transport.RMQ,
-      options: {
-        urls: [`amqp://${user}:${password}@${host}:5672`],
-        queue: 'translation_queue',
-        queueOptions: {
-          durable: true
-        },
-        noAck: false,
-        prefetchCount: 1,
-        socketOptions: {
-          heartbeatIntervalInSeconds: 60,
-          reconnectTimeInSeconds: 5
-        },
-        persistent: true
+  // Configure RabbitMQ microservice
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.RMQ,
+    options: {
+      urls: [`amqp://${process.env.RABBITMQ_DEFAULT_USER}:${process.env.RABBITMQ_DEFAULT_PASS}@rabbitmq:5672`],
+      queue: 'translation_queue',
+      queueOptions: {
+        durable: true
       },
+      prefetchCount: 1
     },
-  );
+  });
 
-  // Start both HTTP and microservice
-  try {
-    await Promise.all([
-      app.listen(3009),
-      microservice.listen()
-    ]);
-    
-    logger.log(`Translation service is running on port 3009`);
-    logger.log(`Listening for messages on translation_queue`);
-  } catch (error) {
-    logger.error('Failed to start services', error);
-    process.exit(1);
-  }
+  await app.startAllMicroservices();
 }
 
 // Add global error handlers
