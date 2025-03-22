@@ -13,7 +13,7 @@ async function bootstrap() {
 
   const user = configService.get('RABBITMQ_DEFAULT_USER', 'guest');
   const password = configService.get('RABBITMQ_DEFAULT_PASS', 'guest');
-  const host = configService.get('RABBITMQ_HOST', 'localhost');
+  const host = configService.get('RABBITMQ_HOST', 'rabbitmq');
 
   // Create the microservice for consuming publication events
   const microservice = await NestFactory.createMicroservice<MicroserviceOptions>(
