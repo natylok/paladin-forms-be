@@ -4,7 +4,7 @@ import { TranslateService } from './translate.service';
 
 @Controller()
 export class TranslateController {
-  private readonly logger = new Logger(QueueController.name);
+  private readonly logger = new Logger(TranslateController.name);
 
     constructor(private readonly translateService: TranslateService) {}
 
