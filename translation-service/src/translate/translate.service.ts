@@ -17,25 +17,35 @@ export class TranslateService implements OnModuleInit {
   async onModuleInit() {
   }
 
-  async translateSurvey(surveyId: string, user: any, sourceLang: TranslationLanguages = TranslationLanguages.EN, targetLang: TranslationLanguages = TranslationLanguages.HE) {
-    this.logger.log('Translating survey', { surveyId, sourceLang, targetLang });
-    const survey = await this.surveyService.getSurveyById(surveyId, user);
-    const components = survey.components;
-    
-    // Use the translator service to translate components
-    for (const component of components) {
-      if (component.title) {
-        component.title = await this.translatorService.translate(component.title, sourceLang, targetLang);
-        this.logger.log('Translated title', { title: component.title });
-      }
-      if (component.options) {
-        component.options = await Promise.all(
-          component.options.map(option => this.translatorService.translate(option, sourceLang, targetLang))
-        );
+  async translateSurveys(surveyIds: string[], user: { email: string }, sourceLang: TranslationLanguages = TranslationLanguages.EN, targetLangs: TranslationLanguages[] = [TranslationLanguages.HE]) {
+    this.logger.log('Translating surveys', { surveyIds, user, sourceLang, targetLangs });
+    for (const surveyId of surveyIds) {
+      const survey = await this.surveyService.getSurveyById(surveyId, user);
+      this.logger.log('Survey fetched', { survey });
+      const components = survey.components;
+      for (const targetLang of targetLangs) {
+        for (const component of components) {
+          this.logger.log('Translating component', { component });
+          component.title = await this.translatorService.translate(component.title, sourceLang, targetLang);
+          if (component.options) {
+            let translatedOptions = [];
+            for (const option of component.options) {
+              const translatedOption = await this.translatorService.translate(option, sourceLang, targetLang);
+              translatedOptions.push(translatedOption);
+            }
+            component.options = translatedOptions;
+          }
+        }
+        const surveyTranslations = (survey.translations || []).filter(translation => translation.language !== targetLang);
+
+        const plainSurvey = survey.toObject ? survey.toObject() : survey;
+        const updatedSurvey = {
+          ...plainSurvey,
+          translations: [...surveyTranslations, { language: targetLang, components: components }]
+        } as any; // Type assertion needed due to Mongoose types
+
+        await this.surveyService.updateSurvey(surveyId, updatedSurvey);
       }
     }
-    
-    this.logger.log('Translation completed', { surveyId, sourceLang, components});
-    return components;
   }
 }

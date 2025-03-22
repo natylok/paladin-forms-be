@@ -10,6 +10,7 @@ import { Storage } from '@google-cloud/storage';
 import { LoggerService } from '../logger/logger.service';
 import { Survey } from './survey.schema';
 import { TriggerVariableType, SurveyType } from '@natylok/paladin-forms-common';
+import { TranslationLanguages } from 'src/consts/translations';
 @Injectable()
 export class SurveyService {
     constructor(
@@ -36,7 +37,6 @@ export class SurveyService {
         this.logger.log('Survey created successfully', { surveyId: createdSurvey.surveyId, user: user.email });
         const result = await createdSurvey.save();
         await this.client.emit('survey_changed', user).toPromise();
-        await this.translationClient.emit('survey_translation_requested', { user: user, surveyId: createdSurvey.surveyId }).toPromise();
         this.logger.log('Survey created successfully', { surveyId: result.surveyId, user: user.email });
         return createdSurvey;
     }
@@ -69,6 +69,10 @@ export class SurveyService {
             );
             throw error;
         }
+    }
+
+    async translateSurveys(surveyIds: string[], user: User, sourceLang: TranslationLanguages, targetLangs: TranslationLanguages[]) {
+        return this.translationClient.emit('survey_translation_requested', { user: user, surveyIds: surveyIds, sourceLang: sourceLang, targetLangs: targetLangs }).toPromise();
     }
 
     private cleanData(data: any): any {
@@ -255,7 +259,6 @@ export class SurveyService {
 
         this.logger.log(`Survey ${id} updated successfully for user ${user.email}`);
         await this.client.emit('survey_changed', user).toPromise();
-        await this.translationClient.emit('survey_translation_requested', { user: user, surveyId: survey.surveyId }).toPromise();
         return updatedSurvey;
     }
 
