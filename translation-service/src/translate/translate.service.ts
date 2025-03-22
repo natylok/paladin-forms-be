@@ -1,7 +1,8 @@
 import { Injectable, Logger, Inject, OnModuleInit } from '@nestjs/common';
 import * as amqp from 'amqplib';
 import { SurveyService } from './survey.service';
-import { TranslatorService } from './translate-service';
+import { TranslatorService } from './translator.service';
+
 @Injectable()
 export class TranslateService implements OnModuleInit {
   private readonly logger = new Logger(TranslateService.name);
@@ -10,13 +11,10 @@ export class TranslateService implements OnModuleInit {
   constructor(
     private readonly surveyService: SurveyService,
     private readonly translatorService: TranslatorService,
-  ) { 
-
-  }
+  ) { }
 
   async onModuleInit() {
   }
-
 
   async translateSurvey(surveyId: string, user: any) {
     this.logger.log('Translating survey', surveyId);
@@ -24,5 +22,19 @@ export class TranslateService implements OnModuleInit {
     const components = survey.components;
     this.logger.log('Components', components);
     
+    // Use the translator service to translate components
+    for (const component of components) {
+      if (component.title) {
+        component.title = await this.translatorService.translate(component.title);
+      }
+      if (component.options) {
+        component.options = await Promise.all(
+          component.options.map(option => this.translatorService.translate(option))
+        );
+      }
+    }
+    
+    this.logger.log('Translation completed', { surveyId });
+    return components;
   }
 }

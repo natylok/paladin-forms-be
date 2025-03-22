@@ -1,10 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-interface SentimentResult {
-    label: string;
-    score: number;
-}
-
 @Injectable()
 export class TranslatorService {
     private readonly logger = new Logger(TranslatorService.name);
