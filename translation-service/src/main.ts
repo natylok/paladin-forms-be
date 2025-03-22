@@ -22,7 +22,7 @@ async function bootstrap() {
       transport: Transport.RMQ,
       options: {
         urls: [`amqp://${user}:${password}@${host}:5672`],
-        queue: 'survey_queue_v2',
+        queue: 'translation_queue',
         queueOptions: {
           durable: true
         },
@@ -45,7 +45,7 @@ async function bootstrap() {
     ]);
     
     logger.log(`Translation service is running on port 3009`);
-    logger.log(`Listening for messages on survey_queue_v2`);
+    logger.log(`Listening for messages on translation_queue`);
   } catch (error) {
     logger.error('Failed to start services', error);
     process.exit(1);
