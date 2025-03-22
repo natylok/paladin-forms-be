@@ -26,6 +26,7 @@ export class TranslateService implements OnModuleInit {
     for (const component of components) {
       if (component.title) {
         component.title = await this.translatorService.translate(component.title, sourceLang, targetLang);
+        this.logger.log('Translated title', { title: component.title });
       }
       if (component.options) {
         component.options = await Promise.all(

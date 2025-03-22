@@ -1,7 +1,7 @@
 import os
 import sys
 import json
-from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer, pipeline
+from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
 
 def load_model(cache_dir=None):
     """Load the multilingual translation model"""
@@ -34,6 +34,9 @@ def load_model(cache_dir=None):
         
     except Exception as e:
         print(f"Error loading model: {str(e)}", file=sys.stderr)
+        error_response = {"error": str(e)}
+        print(json.dumps(error_response))
+        sys.stdout.flush()
         sys.exit(1)
 
 def translate_text(model, tokenizer, text, source_lang="en", target_lang="fr"):
@@ -57,42 +60,62 @@ def translate_text(model, tokenizer, text, source_lang="en", target_lang="fr"):
         
     except Exception as e:
         print(f"Translation error: {str(e)}", file=sys.stderr)
-        return ""
+        error_response = {"error": str(e)}
+        print(json.dumps(error_response))
+        sys.stdout.flush()
+        return None
 
 def main():
-    # Load the model once
-    model, tokenizer = load_model()
-    
-    print("Multilingual translation service ready to process requests", file=sys.stderr)
-    sys.stderr.flush()
-    
-    # Read input from stdin and write translations to stdout
-    for line in sys.stdin:
-        try:
-            # Parse input JSON
-            input_data = json.loads(line)
-            text = input_data.get('text', '')
-            source_lang = input_data.get('source_lang', 'en')
-            target_lang = input_data.get('target_lang', 'fr')
+    try:
+        # Load the model once
+        model, tokenizer = load_model()
+        
+        print("Multilingual translation service ready to process requests", file=sys.stderr)
+        sys.stderr.flush()
+        
+        # Read input from stdin and write translations to stdout
+        for line in sys.stdin:
+            try:
+                # Parse input JSON
+                input_data = json.loads(line.strip())
+                text = input_data.get('text', '')
+                source_lang = input_data.get('source_lang', 'en')
+                target_lang = input_data.get('target_lang', 'fr')
+                
+                # Translate
+                translation = translate_text(model, tokenizer, text, source_lang, target_lang)
+                
+                if translation is not None:
+                    # Output result as JSON
+                    result = {
+                        'translation': translation,
+                        'source_lang': source_lang,
+                        'target_lang': target_lang
+                    }
+                    print(json.dumps(result))
+                    sys.stdout.flush()
+                else:
+                    error_response = {"error": "Translation failed"}
+                    print(json.dumps(error_response))
+                    sys.stdout.flush()
+                
+            except json.JSONDecodeError as e:
+                error_response = {"error": f"Invalid JSON input: {str(e)}"}
+                print(json.dumps(error_response))
+                sys.stdout.flush()
+            except Exception as e:
+                error_response = {"error": str(e)}
+                print(json.dumps(error_response))
+                sys.stdout.flush()
             
-            # Translate
-            translation = translate_text(model, tokenizer, text, source_lang, target_lang)
-            
-            # Output result as JSON
-            result = {
-                'translation': translation,
-                'source_lang': source_lang,
-                'target_lang': target_lang
-            }
-            print(json.dumps(result))
+            # Always flush after each response
             sys.stdout.flush()
             
-        except json.JSONDecodeError:
-            print(json.dumps({'error': 'Invalid JSON input'}))
-            sys.stdout.flush()
-        except Exception as e:
-            print(json.dumps({'error': str(e)}))
-            sys.stdout.flush()
+    except Exception as e:
+        error_response = {"error": f"Fatal error: {str(e)}"}
+        print(json.dumps(error_response))
+        sys.stdout.flush()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main() 

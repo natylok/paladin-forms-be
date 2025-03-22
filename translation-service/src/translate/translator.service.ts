@@ -34,14 +34,25 @@ export class TranslatorService implements OnModuleInit {
                 stdio: ['pipe', 'pipe', 'pipe']
             });
 
-            // Handle Python process errors
+            // Handle Python process errors and output
             this.pythonProcess.stderr.on('data', (data) => {
-                this.logger.log(`Python Model Output: ${data.toString()}`);
+                this.logger.log(`Python Model Output: ${data.toString().trim()}`);
+            });
+
+            this.pythonProcess.stdout.on('data', (data) => {
+                this.logger.debug(`Python stdout: ${data.toString().trim()}`);
             });
 
             this.pythonProcess.on('error', (error) => {
                 this.logger.error('Failed to start Python process', error);
                 throw error;
+            });
+
+            this.pythonProcess.on('exit', (code, signal) => {
+                if (code !== 0) {
+                    this.logger.error(`Python process exited with code ${code}, signal ${signal}`);
+                    this.isInitialized = false;
+                }
             });
 
             this.isInitialized = true;
@@ -63,6 +74,8 @@ export class TranslatorService implements OnModuleInit {
             }
 
             return new Promise((resolve, reject) => {
+                let responseData = '';
+
                 // Create a request object with language parameters
                 const request = {
                     text,
@@ -76,19 +89,54 @@ export class TranslatorService implements OnModuleInit {
                 // Handle the response
                 const handleOutput = (data: Buffer) => {
                     try {
-                        const response = JSON.parse(data.toString());
-                        if (response.error) {
-                            reject(new Error(response.error));
-                        } else {
-                            resolve(response.translation);
+                        responseData += data.toString();
+                        
+                        // Try to parse the accumulated data
+                        try {
+                            const response = JSON.parse(responseData);
+                            // Clear the accumulated data
+                            responseData = '';
+                            
+                            if (response.error) {
+                                this.logger.error('Translation error from Python:', response.error);
+                                reject(new Error(response.error));
+                            } else {
+                                resolve(response.translation);
+                            }
+                            
+                            // Remove the listener after successful parsing
+                            this.pythonProcess.stdout.removeListener('data', handleOutput);
+                        } catch (e) {
+                            // If we can't parse the JSON yet, wait for more data
+                            if (!(e instanceof SyntaxError)) {
+                                throw e;
+                            }
                         }
                     } catch (error) {
+                        this.logger.error('Error parsing Python response:', error);
                         reject(error);
+                        // Remove the listener on error
+                        this.pythonProcess.stdout.removeListener('data', handleOutput);
                     }
                 };
 
-                // Listen for one response
-                this.pythonProcess.stdout.once('data', handleOutput);
+                // Set a timeout for the translation request
+                const timeout = setTimeout(() => {
+                    this.pythonProcess.stdout.removeListener('data', handleOutput);
+                    reject(new Error('Translation request timed out'));
+                }, 30000); // 30 seconds timeout
+
+                // Listen for response
+                this.pythonProcess.stdout.on('data', handleOutput);
+
+                // Clean up the timeout on success or failure
+                Promise.race([
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Translation timed out')), 30000))
+                ]).catch(error => {
+                    clearTimeout(timeout);
+                    this.pythonProcess.stdout.removeListener('data', handleOutput);
+                    throw error;
+                });
             });
 
         } catch (error) {
