@@ -98,9 +98,10 @@ services:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
       - NODE_ENV=production     
-      - TRANSFORMERS_CACHE=/tmp/xenova_cache
+      - TRANSFORMERS_CACHE=/usr/src/app/models
+      - PYTHONUNBUFFERED=1
     volumes:
-      - xenova_cache:/tmp/xenova_cache
+      - translation_models:/usr/src/app/models
     depends_on:
       mongo-db:
         condition: service_healthy
@@ -230,5 +231,6 @@ volumes:
   redis_data:
   rabbitmq_data:
   xenova_cache:
+  translation_models:
 
 # Enviro

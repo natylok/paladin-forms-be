@@ -1,15 +1,23 @@
-import { Injectable, Logger } from '@nestjs/common';
-import * as ort from 'onnxruntime-node';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { spawn } from 'child_process';
 
 @Injectable()
-export class TranslatorService {
+export class TranslatorService implements OnModuleInit {
     private readonly logger = new Logger(TranslatorService.name);
-    private classifier: any;
+    private pythonProcess: any;
     private isInitialized: boolean = false;
-    private readonly MODEL_NAME = 'Helsinki-NLP/opus-mt-en-fr';
 
     constructor() {
         this.initializeModel();
+    }
+
+    async onModuleInit() {
+        // Cleanup on application shutdown
+        process.on('beforeExit', () => {
+            if (this.pythonProcess) {
+                this.pythonProcess.kill();
+            }
+        });
     }
 
     private async initializeModel() {
@@ -20,50 +28,70 @@ export class TranslatorService {
 
             this.logger.log('Starting translation model initialization...');
             
-            // Set the execution provider to CPU for Node.js
-            ort.env.wasm.numThreads = 4;
-            ort.env.wasm.simd = true;
-            
-            // Import the transformers module dynamically
-            const { pipeline } = await import('@xenova/transformers');
-            
-            // Initialize the classifier with specific model configuration
-            this.classifier = await pipeline('translation', this.MODEL_NAME, {
-                cache_dir: '/tmp/xenova_cache',
-                quantized: false,  // This model might work better without quantization
-                revision: 'main'
+            // Start the Python process
+            this.pythonProcess = spawn('python3', ['model_loader.py'], {
+                stdio: ['pipe', 'pipe', 'pipe']
             });
-            
+
+            // Handle Python process errors
+            this.pythonProcess.stderr.on('data', (data) => {
+                this.logger.log(`Python Model Output: ${data.toString()}`);
+            });
+
+            this.pythonProcess.on('error', (error) => {
+                this.logger.error('Failed to start Python process', error);
+                throw error;
+            });
+
             this.isInitialized = true;
-            this.logger.log('Translation model loaded successfully', {
-                modelName: this.MODEL_NAME
-            });
+            this.logger.log('Translation model service initialized');
+            
         } catch (error) {
-            this.logger.error('Failed to load translation model', {
+            this.logger.error('Failed to initialize translation model', {
                 error: error instanceof Error ? error.message : 'Unknown error',
-                modelName: this.MODEL_NAME,
                 stack: error instanceof Error ? error.stack : undefined
             });
             throw error;
         }
     }
 
-    async translate(text: string, sourceLang: string = 'en', targetLang: string = 'fr') {
+    async translate(text: string): Promise<string> {
         try {
-            if (!this.isInitialized || !this.classifier) {
+            if (!this.isInitialized || !this.pythonProcess) {
                 await this.initializeModel();
             }
 
-            // For Helsinki model, we don't need to specify source/target languages
-            const result = await this.classifier(text);
+            return new Promise((resolve, reject) => {
+                // Create a request object
+                const request = {
+                    text: text
+                };
 
-            return result[0].translation_text;
+                // Send the request to Python process
+                this.pythonProcess.stdin.write(JSON.stringify(request) + '\n');
+
+                // Handle the response
+                const handleOutput = (data: Buffer) => {
+                    try {
+                        const response = JSON.parse(data.toString());
+                        if (response.error) {
+                            reject(new Error(response.error));
+                        } else {
+                            resolve(response.translation);
+                        }
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+
+                // Listen for one response
+                this.pythonProcess.stdout.once('data', handleOutput);
+            });
+
         } catch (error) {
             this.logger.error('Translation failed', {
                 error: error instanceof Error ? error.message : 'Unknown error',
-                text,
-                sourceLang,
-                targetLang
+                text
             });
             throw error;
         }
