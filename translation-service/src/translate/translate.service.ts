@@ -29,24 +29,37 @@ export class TranslateService implements OnModuleInit {
       await Promise.all(targetLangs.map(async (targetLang) => {
         try {
           // Deep clone components to avoid conflicts between translations
-          const components = JSON.parse(JSON.stringify(survey.components));
+          const originalComponents = JSON.parse(JSON.stringify(survey.components));
           
-          // Translate all components concurrently
-          await Promise.all(components.map(async (component) => {
+          // Translate all components and create new translated components
+          const translatedComponents = await Promise.all(originalComponents.map(async (component) => {
+            // Create a new component object for this translation
+            const translatedComponent = { ...component };
+            
             // Translate title
-            component.title = await this.translatorService.translate(component.title, sourceLang, targetLang);
+            translatedComponent.title = await this.translatorService.translate(
+              component.title,
+              sourceLang,
+              targetLang
+            );
             
             // Translate options if they exist
             if (component.options?.length) {
-              component.options = await Promise.all(
-                component.options.map(option => 
+              translatedComponent.options = await Promise.all(
+                component.options.map(option =>
                   this.translatorService.translate(option, sourceLang, targetLang)
                 )
               );
             }
+            
+            return translatedComponent;
           }));
 
-          this.logger.log('Components translated', { components });
+          this.logger.log('Components translated', { 
+            targetLang,
+            componentCount: translatedComponents.length 
+          });
+
           // Update survey with new translation
           const surveyTranslations = (survey.translations || [])
             .filter(translation => translation.language !== targetLang);
@@ -54,7 +67,10 @@ export class TranslateService implements OnModuleInit {
           const plainSurvey = survey.toObject ? survey.toObject() : survey;
           const updatedSurvey = {
             ...plainSurvey,
-            translations: [...surveyTranslations, { language: targetLang, components }]
+            translations: [...surveyTranslations, { 
+              language: targetLang, 
+              components: translatedComponents 
+            }]
           } as any;
 
           await this.surveyService.updateSurvey(surveyId, updatedSurvey);
