@@ -11,9 +11,15 @@ RUN apt-get update && \
 # Copy package files
 COPY package*.json ./
 
+# Create .npmrc file with GitHub authentication for production install
+ARG GITHUB_TOKEN
+RUN echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" > .npmrc \
+    && echo "@natylok:registry=https://npm.pkg.github.com" >> .npmrc
+
 # Install dependencies
 RUN npm install
 
+RUN rm -f .npmrc
 # Copy source code
 COPY . .
 

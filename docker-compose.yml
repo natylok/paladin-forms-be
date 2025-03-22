@@ -85,6 +85,8 @@ services:
     restart: always
 
   translation-service:
+    args:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
     build:
       context: ./translation-service
       dockerfile: Dockerfile

@@ -3,7 +3,7 @@ import { Document } from 'mongoose';
 import { Types } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import { TriggerVariableType, TriggerVariable, TriggerByAction, SurveyComponentType, DependsOn, SurveyType } from '@natylok/paladin-forms-common';
-import { TranslationLanguages } from 'src/consts/translations';
+import { TranslationLanguages } from '../consts/index';
 
 @Schema()
 export class SurveySettings {
