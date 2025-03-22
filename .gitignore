@@ -55,7 +55,7 @@ config
 ./translation-service/node_modules
 ./translation-service/dist
 ./translation-service/.env
-./translation-service/config
+./translation-service/.npmrc
 ./translation-service/.gitignore
 ./translation-service/package-lock.json
 ./translation-service/tsconfig.json
