@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { QueueController } from './translate.controller';
+import { TranslateController } from './translate.controller';
 import { TranslateService } from './translate.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { HttpModule } from '@nestjs/axios';
@@ -29,7 +29,7 @@ import { HttpModule } from '@nestjs/axios';
       },
     ]),
   ],
-  controllers: [QueueController],
+  controllers: [TranslateController],
   providers: [TranslateService]
 })
 export class TranslateModule { }

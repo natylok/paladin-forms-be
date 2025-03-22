@@ -3,7 +3,7 @@ import { EventPattern, Payload, Ctx, RmqContext } from '@nestjs/microservices';
 import { TranslateService } from './translate.service';
 
 @Controller()
-export class QueueController {
+export class TranslateController {
   private readonly logger = new Logger(QueueController.name);
 
     constructor(private readonly translateService: TranslateService) {}

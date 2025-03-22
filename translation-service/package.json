@@ -1,7 +1,7 @@
 {
   "name": "translation-service",
   "version": "1.0.0",
-  "description": "Queue service for Paladin Forms",
+  "description": "Translation service for Paladin Forms",
   "main": "dist/main.js",
   "scripts": {
     "build": "nest build",
