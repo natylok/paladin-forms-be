@@ -1,11 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { Survey } from "./survey.schema";
 import { Model } from "mongoose";
+import { InjectModel } from "@nestjs/mongoose";
+
 @Injectable()
 export class SurveyService {
-    constructor(private readonly surveySchema: Model<Survey>) {}
+    constructor(@InjectModel(Survey.name) private readonly surveyModel: Model<Survey>) {}
 
     async getSurveyById(surveyId: string, user: { email: string }) {
-        return this.surveySchema.findOne({ surveyId: surveyId, email: user.email });
+        return this.surveyModel.findOne({ surveyId: surveyId, creatorEmail: user.email });
     }
 }

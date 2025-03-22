@@ -5,10 +5,14 @@ import { TranslateService } from './translate.service';
 import { HttpModule } from '@nestjs/axios';
 import { SurveyService } from './survey.service';
 import { TranslatorService } from './translate-service';
+import { MongooseModule } from '@nestjs/mongoose';
+import { Survey, SurveySchema } from './survey.schema';
+
 @Module({
   imports: [
     ConfigModule,
     HttpModule,
+    MongooseModule.forFeature([{ name: Survey.name, schema: SurveySchema }]),
   ],
   controllers: [TranslateController],
   providers: [TranslateService, SurveyService, TranslatorService]
