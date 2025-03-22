@@ -313,7 +313,10 @@ export class SurveyService {
             const filePath = `embedded/${user.email}/latest/embed.js`;
             this.logger.debug(`Writing JavaScript code to storage at ${filePath} for user ${user.email}`);
 
-            const stream = await bucket.file(filePath).createWriteStream();
+            const stream = await bucket.file(filePath).createWriteStream({
+                contentType: 'utf-8',
+
+            });
             const javascriptCode = `
                 window.paladinSurveys = ${JSON.stringify(surveys)};
                 const element = document.createElement('script');
