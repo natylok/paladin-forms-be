@@ -79,6 +79,9 @@ export class SurveyService {
         const redisQueueName = id
         const redisClient = this.redisService.getClient();
         const status = await redisClient.get(redisQueueName);
+        if (status === 'completed') {
+            redisClient.del(redisQueueName);
+        }
         return status;
     }
 
