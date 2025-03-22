@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { spawn } from 'child_process';
 import { RedisService } from '../redis/redis.service';
+import { TranslationLanguages } from '../consts';
 
 interface TranslationStatus {
     status: 'in_progress' | 'completed' | 'failed';
@@ -13,27 +14,10 @@ export class TranslatorService {
     private readonly logger = new Logger(TranslatorService.name);
     private pythonProcess: any;
     private isInitialized: boolean = false;
+    private readonly TRANSLATION_TIMEOUT = 60000; // 60 seconds timeout
 
     constructor(private readonly redisService: RedisService) {
         this.initializeModel();
-    }
-
-    private getTranslationKey(surveyId: string, targetLang: string): string {
-        return `translation:${surveyId}:${targetLang}`;
-    }
-
-    async setTranslationStatus(surveyId: string, targetLang: string, status: 'in_progress' | 'completed' | 'failed', error?: string) {
-        const key = this.getTranslationKey(surveyId, targetLang);
-        await this.redisService.set(key, {
-            status,
-            updatedAt: new Date().toISOString(),
-            error
-        }, 60 * 60 * 24); // 24 hours TTL
-    }
-
-    async getTranslationStatus(surveyId: string, targetLang: string): Promise<TranslationStatus | null> {
-        const key = this.getTranslationKey(surveyId, targetLang);
-        return await this.redisService.get<TranslationStatus>(key);
     }
 
     private async initializeModel() {
@@ -60,6 +44,7 @@ export class TranslatorService {
 
             this.pythonProcess.on('error', (error) => {
                 this.logger.error('Failed to start Python process', error);
+                this.isInitialized = false;
                 throw error;
             });
 
@@ -90,6 +75,7 @@ export class TranslatorService {
 
             return new Promise((resolve, reject) => {
                 let responseData = '';
+                let timeoutId: NodeJS.Timeout;
 
                 // Create a request object with language parameters
                 const request = {
@@ -98,8 +84,10 @@ export class TranslatorService {
                     target_lang: targetLang
                 };
 
-                // Send the request to Python process
-                this.pythonProcess.stdin.write(JSON.stringify(request) + '\n');
+                const cleanup = () => {
+                    if (timeoutId) clearTimeout(timeoutId);
+                    this.pythonProcess.stdout.removeListener('data', handleOutput);
+                };
 
                 // Handle the response
                 const handleOutput = (data: Buffer) => {
@@ -113,51 +101,51 @@ export class TranslatorService {
                             responseData = '';
                             
                             if (response.error) {
+                                cleanup();
                                 this.logger.error('Translation error from Python:', response.error);
                                 reject(new Error(response.error));
                             } else {
+                                cleanup();
                                 resolve(response.translation);
                             }
-                            
-                            // Remove the listener after successful parsing
-                            this.pythonProcess.stdout.removeListener('data', handleOutput);
                         } catch (e) {
                             // If we can't parse the JSON yet, wait for more data
                             if (!(e instanceof SyntaxError)) {
+                                cleanup();
                                 throw e;
                             }
                         }
                     } catch (error) {
+                        cleanup();
                         this.logger.error('Error parsing Python response:', error);
                         reject(error);
-                        // Remove the listener on error
-                        this.pythonProcess.stdout.removeListener('data', handleOutput);
                     }
                 };
 
                 // Set a timeout for the translation request
-                const timeout = setTimeout(() => {
-                    this.pythonProcess.stdout.removeListener('data', handleOutput);
-                    reject(new Error('Translation request timed out'));
-                }, 30000); // 30 seconds timeout
+                timeoutId = setTimeout(() => {
+                    cleanup();
+                    this.logger.error(`Translation timed out for text: "${text.substring(0, 50)}..."`);
+                    reject(new Error(`Translation timed out after ${this.TRANSLATION_TIMEOUT/1000} seconds`));
+                }, this.TRANSLATION_TIMEOUT);
 
                 // Listen for response
                 this.pythonProcess.stdout.on('data', handleOutput);
 
-                // Clean up the timeout on success or failure
-                Promise.race([
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Translation timed out')), 30000))
-                ]).catch(error => {
-                    clearTimeout(timeout);
-                    this.pythonProcess.stdout.removeListener('data', handleOutput);
-                    throw error;
-                });
+                // Send the request to Python process
+                try {
+                    this.pythonProcess.stdin.write(JSON.stringify(request) + '\n');
+                } catch (error) {
+                    cleanup();
+                    this.logger.error('Failed to write to Python process:', error);
+                    reject(new Error('Failed to send translation request to Python process'));
+                }
             });
 
         } catch (error) {
             this.logger.error('Translation failed', {
                 error: error instanceof Error ? error.message : 'Unknown error',
-                text,
+                text: text.substring(0, 50) + '...',
                 sourceLang,
                 targetLang
             });

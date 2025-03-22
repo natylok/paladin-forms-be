@@ -107,11 +107,9 @@ export class TranslateService {
                         // Set translation status to completed
 
                         this.logger.log(`Successfully updated survey ${surveyId} with ${targetLang} translations`);
-                        this.redisService.set(redisQueueName, 'completed');
                     } catch (error) {
                         this.redisService.set(redisQueueName, 'failed');
                         this.logger.error(`Failed to translate survey ${surveyId} to ${targetLang}`, error);
-                        await this.translatorService.setTranslationStatus(surveyId, targetLang, 'failed', error.message);
                         throw error;
                     }
                 }
@@ -121,5 +119,6 @@ export class TranslateService {
                 throw error;
             }
         }
+        this.redisService.set(redisQueueName, 'completed');
     }
 }
