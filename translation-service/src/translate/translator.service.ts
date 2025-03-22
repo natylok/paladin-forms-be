@@ -6,7 +6,7 @@ export class TranslatorService {
     private readonly logger = new Logger(TranslatorService.name);
     private classifier: any;
     private isInitialized: boolean = false;
-    private readonly MODEL_NAME = 'Helsinki-NLP/opus-mt-en-fr';
+    private readonly MODEL_NAME = 'Xenova/opus-mt-en-fr';
 
     constructor() {
         this.initializeModel();
