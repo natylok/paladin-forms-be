@@ -314,22 +314,44 @@ export class SurveyService {
             this.logger.debug(`Writing JavaScript code to storage at ${filePath} for user ${user.email}`);
 
             const stream = await bucket.file(filePath).createWriteStream({
-                contentType: 'utf-8',
-
+                metadata: {
+                    contentType: 'application/javascript; charset=utf-8',
+                    contentEncoding: 'utf-8',
+                },
+                resumable: false
             });
+
+            // Ensure proper encoding of Hebrew characters in JSON
+            const surveysJson = JSON.stringify(surveys, (key, value) => {
+                if (typeof value === 'string') {
+                    return value.normalize('NFC');
+                }
+                return value;
+            }, 2);
+
             const javascriptCode = `
-                window.paladinSurveys = ${JSON.stringify(surveys)};
+                window.paladinSurveys = ${surveysJson};
                 const element = document.createElement('script');
                 element.src = "https://storage.cloud.google.com/paladin-surveys/engine/latest/embed.js";
                 setTimeout(() => { document.body.appendChild(element) }, 4000);
                 window.PALADIN_SURVEY_URL = "https://storage.cloud.google.com/paladin-surveys/surveys/v1/index.html";
             `;
-            stream.end(javascriptCode);
+
+            // Write with explicit UTF-8 encoding
+            stream.end(Buffer.from(javascriptCode, 'utf8'));
+            
+            // Wait for the stream to finish
+            await new Promise((resolve, reject) => {
+                stream.on('finish', resolve);
+                stream.on('error', reject);
+            });
+
             this.logger.log(`JavaScript code generated successfully for user ${user.email}`);
         }
         catch (error: unknown) {
             this.logger.error(`Error generating JavaScript code for user ${user.email}: ${error instanceof Error ? error.stack : 'Unknown error'}`);
             console.log(error);
+            throw error;
         }
     }
 }
