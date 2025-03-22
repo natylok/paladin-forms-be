@@ -17,7 +17,7 @@ import { HttpModule } from '@nestjs/axios';
           transport: Transport.RMQ,
           options: {
             urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@rabbitmq:5672`],
-            queue: 'survey_queue_v2',
+            queue: 'translation_queue',
             queueOptions: {
               durable: true
             },
