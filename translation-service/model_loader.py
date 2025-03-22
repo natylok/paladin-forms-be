@@ -13,7 +13,7 @@ def load_model(cache_dir=None):
         
         print(f"Using cache directory: {cache_dir}", file=sys.stderr)
         
-        # Load tokenizer and model with optimizations
+        # Load tokenizer and model
         model_name = "facebook/m2m100_418M"
         
         tokenizer = M2M100Tokenizer.from_pretrained(
@@ -22,19 +22,15 @@ def load_model(cache_dir=None):
             local_files_only=False
         )
         
-        # Load model with optimizations
+        # Load model with basic optimizations
         model = M2M100ForConditionalGeneration.from_pretrained(
             model_name,
             cache_dir=cache_dir,
-            local_files_only=False,
-            torch_dtype=torch.float16,  # Use half precision
-            low_cpu_mem_usage=True
+            local_files_only=False
         )
         
-        # Optimize model for inference
+        # Basic optimization for inference
         model.eval()
-        if torch.cuda.is_available():
-            model = model.cuda()
         
         print(f"Model loaded successfully from {model_name}", file=sys.stderr)
         return model, tokenizer
@@ -52,14 +48,10 @@ def translate_text(model, tokenizer, text, source_lang="en", target_lang="fr"):
         # Set the source language
         tokenizer.src_lang = source_lang
         
-        # Tokenize with optimized settings
-        encoded = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+        # Tokenize with basic settings
+        encoded = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
         
-        # Move to GPU if available
-        if torch.cuda.is_available():
-            encoded = {k: v.cuda() for k, v in encoded.items()}
-        
-        # Generate translation with optimized settings
+        # Generate translation
         with torch.no_grad():
             generated_tokens = model.generate(
                 **encoded,
