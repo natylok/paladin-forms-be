@@ -7,7 +7,7 @@ import { TranslationLanguages } from '../consts';
 export class TranslateController {
     constructor(private readonly translateService: TranslateService) {}
 
-    @EventPattern('translate_surveys')
+    @EventPattern('survey_translation_requested')
     async handleTranslateSurveys(data: {
         surveyIds: string[];
         user: { email: string };
