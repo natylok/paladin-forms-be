@@ -48,7 +48,7 @@ export class TranslateService implements OnModuleInit {
                   sourceLang,
                   targetLang
                 );
-                
+                this.logger.debug(`Translated title for component `, translatedComponent.title);
                 // Translate options if they exist
                 if (component.options?.length) {
                   this.logger.debug(`Translating ${component.options.length} options for component ${index + 1}`);
