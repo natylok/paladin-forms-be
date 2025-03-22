@@ -1,10 +1,10 @@
 import os
 import sys
 import json
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
+from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer, pipeline
 
-def load_model(model_path="Helsinki-NLP/opus-mt-en-fr", cache_dir=None):
-    """Load the model and return a translation pipeline"""
+def load_model(cache_dir=None):
+    """Load the multilingual translation model"""
     try:
         # Use environment variable for cache directory or default to ./models
         cache_dir = cache_dir or os.getenv('TRANSFORMERS_CACHE', './models')
@@ -14,48 +14,56 @@ def load_model(model_path="Helsinki-NLP/opus-mt-en-fr", cache_dir=None):
         
         print(f"Using cache directory: {cache_dir}", file=sys.stderr)
         
-        # Load tokenizer and model
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_path,
+        # Load tokenizer and model - using M2M100 which supports many language pairs
+        model_name = "facebook/m2m100_418M"  # smaller version, use facebook/m2m100_1.2B for better quality
+        
+        tokenizer = M2M100Tokenizer.from_pretrained(
+            model_name,
             cache_dir=cache_dir,
-            local_files_only=False  # Set to True after first download
+            local_files_only=False
         )
         
-        model = AutoModelForSeq2SeqLM.from_pretrained(
-            model_path,
+        model = M2M100ForConditionalGeneration.from_pretrained(
+            model_name,
             cache_dir=cache_dir,
-            local_files_only=False  # Set to True after first download
+            local_files_only=False
         )
         
-        # Create translation pipeline
-        translator = pipeline(
-            "translation",
-            model=model,
-            tokenizer=tokenizer,
-            device=-1  # Use CPU
-        )
-        
-        print(f"Model loaded successfully from {model_path}", file=sys.stderr)
-        return translator
+        print(f"Model loaded successfully from {model_name}", file=sys.stderr)
+        return model, tokenizer
         
     except Exception as e:
         print(f"Error loading model: {str(e)}", file=sys.stderr)
         sys.exit(1)
 
-def translate_text(translator, text):
-    """Translate a single piece of text"""
+def translate_text(model, tokenizer, text, source_lang="en", target_lang="fr"):
+    """Translate text between any supported language pair"""
     try:
-        result = translator(text)
-        return result[0]['translation_text']
+        # Set the source language
+        tokenizer.src_lang = source_lang
+        
+        # Tokenize the text
+        encoded = tokenizer(text, return_tensors="pt")
+        
+        # Generate translation
+        generated_tokens = model.generate(
+            **encoded,
+            forced_bos_token_id=tokenizer.get_lang_id(target_lang)
+        )
+        
+        # Decode the translation
+        translation = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)[0]
+        return translation
+        
     except Exception as e:
         print(f"Translation error: {str(e)}", file=sys.stderr)
         return ""
 
 def main():
-    # Load the model
-    translator = load_model()
+    # Load the model once
+    model, tokenizer = load_model()
     
-    print("Translation service ready to process requests", file=sys.stderr)
+    print("Multilingual translation service ready to process requests", file=sys.stderr)
     sys.stderr.flush()
     
     # Read input from stdin and write translations to stdout
@@ -64,12 +72,18 @@ def main():
             # Parse input JSON
             input_data = json.loads(line)
             text = input_data.get('text', '')
+            source_lang = input_data.get('source_lang', 'en')
+            target_lang = input_data.get('target_lang', 'fr')
             
             # Translate
-            translation = translate_text(translator, text)
+            translation = translate_text(model, tokenizer, text, source_lang, target_lang)
             
             # Output result as JSON
-            result = {'translation': translation}
+            result = {
+                'translation': translation,
+                'source_lang': source_lang,
+                'target_lang': target_lang
+            }
             print(json.dumps(result))
             sys.stdout.flush()
             
