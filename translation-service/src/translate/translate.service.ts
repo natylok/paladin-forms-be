@@ -17,11 +17,10 @@ export class TranslateService implements OnModuleInit {
   async onModuleInit() {
   }
 
-  async translateSurvey(surveyId: string, user: any, sourceLang: TranslationLanguages = TranslationLanguages.EN, targetLang: TranslationLanguages = TranslationLanguages.FR) {
+  async translateSurvey(surveyId: string, user: any, sourceLang: TranslationLanguages = TranslationLanguages.EN, targetLang: TranslationLanguages = TranslationLanguages.HE) {
     this.logger.log('Translating survey', { surveyId, sourceLang, targetLang });
     const survey = await this.surveyService.getSurveyById(surveyId, user);
     const components = survey.components;
-    this.logger.log('Components', components);
     
     // Use the translator service to translate components
     for (const component of components) {
@@ -35,7 +34,7 @@ export class TranslateService implements OnModuleInit {
       }
     }
     
-    this.logger.log('Translation completed', { surveyId, sourceLang, targetLang });
+    this.logger.log('Translation completed', { surveyId, sourceLang, components});
     return components;
   }
 }
