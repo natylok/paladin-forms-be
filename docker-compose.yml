@@ -84,10 +84,10 @@ services:
       - nati-network
     restart: always
 
-  translation-service:
-    args:
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
+  translation-service:      
     build:
+      args:
+        - GITHUB_TOKEN=${GITHUB_TOKEN}
       context: ./translation-service
       dockerfile: Dockerfile
     container_name: translation-service
