@@ -21,9 +21,6 @@
     "@nestjs/microservices": "^11.0.0",
     "@nestjs/mongoose": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
-    "@nestjs/cache-manager": "^2.2.0",
-    "cache-manager": "^5.4.0",
-    "cache-manager-redis-store": "^3.0.1",
     "@xenova/transformers": "^2.17.2",
     "onnxruntime-node": "^1.17.0",
     "uuid": "^11.1.0",
@@ -32,7 +29,9 @@
     "mongoose": "^8.0.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "redis": "^4.6.13",
+    "ioredis": "^5.3.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",

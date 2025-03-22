@@ -1,8 +1,7 @@
-import { Injectable, Logger, OnModuleInit, Inject } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { spawn } from 'child_process';
 import { TranslationLanguages } from '../consts';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+import { redis } from '../config/cache.config';
 
 @Injectable()
 export class TranslatorService implements OnModuleInit {
@@ -10,9 +9,7 @@ export class TranslatorService implements OnModuleInit {
     private pythonProcess: any;
     private isInitialized: boolean = false;
 
-    constructor(
-        @Inject(CACHE_MANAGER) private cacheManager: Cache
-    ) {
+    constructor() {
         this.initializeModel();
     }
 
@@ -29,17 +26,19 @@ export class TranslatorService implements OnModuleInit {
         return `translation:${surveyId}:${targetLang}`;
     }
 
-    async setTranslationStatus(redisKeyName: string, status: string, error?: string) {
-        await this.cacheManager.set(redisKeyName, {
+    async setTranslationStatus(surveyId: string, targetLang: string, status: 'in_progress' | 'completed' | 'failed', error?: string) {
+        const key = this.getTranslationKey(surveyId, targetLang);
+        await redis.set(key, JSON.stringify({
             status,
             updatedAt: new Date().toISOString(),
             error
-        }, 60 * 60 * 5); // 5 hours TTL
+        }), 'EX', 60 * 60 * 24); // 24 hours TTL
     }
 
     async getTranslationStatus(surveyId: string, targetLang: string) {
         const key = this.getTranslationKey(surveyId, targetLang);
-        return await this.cacheManager.get(key);
+        const result = await redis.get(key);
+        return result ? JSON.parse(result) : null;
     }
 
     private async initializeModel() {
