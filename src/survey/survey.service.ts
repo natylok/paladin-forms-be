@@ -12,8 +12,8 @@ import { Survey } from './survey.schema';
 import { TriggerVariableType, SurveyType } from '@natylok/paladin-forms-common';
 import { TranslationLanguages } from 'src/consts/translations';
 import { v4 as uuidv4 } from 'uuid';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+import { RedisService } from 'src/redis/redis.service';
+
 @Injectable()
 export class SurveyService {
     constructor(
@@ -22,7 +22,7 @@ export class SurveyService {
         @Inject('TRANSLATION_SERVICE') private readonly translationClient: ClientProxy,
         private readonly configService: ConfigService,
         private readonly logger: LoggerService,
-        @Inject(CACHE_MANAGER) private cacheManager: Cache
+        private readonly redisService: RedisService
     ) {
         // Log RabbitMQ connection status
         this.client.connect().then(() => {
@@ -77,7 +77,8 @@ export class SurveyService {
 
     async getTranslateStatus(id: string) {
         const redisQueueName = id
-        const status = await this.cacheManager.get(redisQueueName);
+        const redisClient = this.redisService.getClient();
+        const status = await redisClient.get(redisQueueName);
         return status;
     }
 

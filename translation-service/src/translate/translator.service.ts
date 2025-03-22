@@ -1,25 +1,21 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { spawn } from 'child_process';
-import { TranslationLanguages } from '../consts';
-import { redis } from '../config/cache.config';
+import { RedisService } from '../redis/redis.service';
+
+interface TranslationStatus {
+    status: 'in_progress' | 'completed' | 'failed';
+    updatedAt: string;
+    error?: string;
+}
 
 @Injectable()
-export class TranslatorService implements OnModuleInit {
+export class TranslatorService {
     private readonly logger = new Logger(TranslatorService.name);
     private pythonProcess: any;
     private isInitialized: boolean = false;
 
-    constructor() {
+    constructor(private readonly redisService: RedisService) {
         this.initializeModel();
-    }
-
-    async onModuleInit() {
-        // Cleanup on application shutdown
-        process.on('beforeExit', () => {
-            if (this.pythonProcess) {
-                this.pythonProcess.kill();
-            }
-        });
     }
 
     private getTranslationKey(surveyId: string, targetLang: string): string {
@@ -28,17 +24,16 @@ export class TranslatorService implements OnModuleInit {
 
     async setTranslationStatus(surveyId: string, targetLang: string, status: 'in_progress' | 'completed' | 'failed', error?: string) {
         const key = this.getTranslationKey(surveyId, targetLang);
-        await redis.set(key, JSON.stringify({
+        await this.redisService.set(key, {
             status,
             updatedAt: new Date().toISOString(),
             error
-        }), 'EX', 60 * 60 * 24); // 24 hours TTL
+        }, 60 * 60 * 24); // 24 hours TTL
     }
 
-    async getTranslationStatus(surveyId: string, targetLang: string) {
+    async getTranslationStatus(surveyId: string, targetLang: string): Promise<TranslationStatus | null> {
         const key = this.getTranslationKey(surveyId, targetLang);
-        const result = await redis.get(key);
-        return result ? JSON.parse(result) : null;
+        return await this.redisService.get<TranslationStatus>(key);
     }
 
     private async initializeModel() {
@@ -87,7 +82,7 @@ export class TranslatorService implements OnModuleInit {
         }
     }
 
-    async translate(text: string, sourceLang: TranslationLanguages = TranslationLanguages.EN, targetLang: TranslationLanguages = TranslationLanguages.FR, surveyId?: string): Promise<string> {
+    async translate(text: string, sourceLang: string = 'en', targetLang: string = 'fr', surveyId?: string): Promise<string> {
         try {
             if (!this.isInitialized || !this.pythonProcess) {
                 await this.initializeModel();
