@@ -32,6 +32,28 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         inject: [ConfigService],
       },
     ]),
+    ClientsModule.registerAsync([
+      {
+        name: 'TRANSLATION_SERVICE',
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [`amqp://${configService.get('RABBITMQ_DEFAULT_USER')}:${configService.get('RABBITMQ_DEFAULT_PASS')}@rabbitmq:5672`],
+            queue: 'translation_queue',
+            queueOptions: {
+              durable: true,
+              noAck: false,
+              autoDelete: false
+            },
+            persistent: true,
+            prefetchCount: 1,
+            isGlobalPrefetchCount: false
+          },
+        }),
+        inject: [ConfigService],
+      },
+    ]),
   ],
   controllers: [SurveyController],
   providers: [SurveyService],

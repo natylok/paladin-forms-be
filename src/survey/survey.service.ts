@@ -15,6 +15,7 @@ export class SurveyService {
     constructor(
         @InjectModel(Survey.name) private readonly surveyModel: Model<Survey>,
         @Inject('SURVEY_SERVICE') private readonly client: ClientProxy,
+        @Inject('TRANSLATION_SERVICE') private readonly translationClient: ClientProxy,
         private readonly configService: ConfigService,
         private readonly logger: LoggerService
     ) {
@@ -35,7 +36,7 @@ export class SurveyService {
         this.logger.log('Survey created successfully', { surveyId: createdSurvey.surveyId, user: user.email });
         const result = await createdSurvey.save();
         await this.client.emit('survey_changed', user).toPromise();
-        this.client.emit('survey_translation_requested', { user: user, surveyId: createdSurvey.surveyId });
+        await this.translationClient.emit('survey_translation_requested', { user: user, surveyId: createdSurvey.surveyId }).toPromise();
         this.logger.log('Survey created successfully', { surveyId: result.surveyId, user: user.email });
         return createdSurvey;
     }
@@ -254,7 +255,7 @@ export class SurveyService {
 
         this.logger.log(`Survey ${id} updated successfully for user ${user.email}`);
         await this.client.emit('survey_changed', user).toPromise();
-        this.client.emit('survey_translation_requested', { user: user, surveyId: survey.surveyId });
+        await this.translationClient.emit('survey_translation_requested', { user: user, surveyId: survey.surveyId }).toPromise();
         return updatedSurvey;
     }
 
