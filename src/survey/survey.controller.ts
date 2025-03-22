@@ -59,6 +59,12 @@ export class SurveyController {
     }
 
     @UseGuards(JwtGuard)
+    @Get('translate-status/:id')
+    async getTranslateStatus(@Param('id') id: string, @Req() req: Request) {
+        return this.surveyService.getTranslateStatus(id);
+    }
+
+    @UseGuards(JwtGuard)
     @Post('translate-surveys')
     async translateSurveys(@Body() body: { surveyIds: string[], sourceLang: TranslationLanguages, targetLangs: TranslationLanguages[] }, @Req() req: Request) {
         return this.surveyService.translateSurveys(body.surveyIds, req.user as User, body.sourceLang, body.targetLangs);

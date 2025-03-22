@@ -1,6 +1,8 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Inject } from '@nestjs/common';
 import { spawn } from 'child_process';
 import { TranslationLanguages } from '../consts';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class TranslatorService implements OnModuleInit {
@@ -8,7 +10,9 @@ export class TranslatorService implements OnModuleInit {
     private pythonProcess: any;
     private isInitialized: boolean = false;
 
-    constructor() {
+    constructor(
+        @Inject(CACHE_MANAGER) private cacheManager: Cache
+    ) {
         this.initializeModel();
     }
 
@@ -19,6 +23,23 @@ export class TranslatorService implements OnModuleInit {
                 this.pythonProcess.kill();
             }
         });
+    }
+
+    private getTranslationKey(surveyId: string, targetLang: string): string {
+        return `translation:${surveyId}:${targetLang}`;
+    }
+
+    async setTranslationStatus(redisKeyName: string, status: string, error?: string) {
+        await this.cacheManager.set(redisKeyName, {
+            status,
+            updatedAt: new Date().toISOString(),
+            error
+        }, 60 * 60 * 5); // 5 hours TTL
+    }
+
+    async getTranslationStatus(surveyId: string, targetLang: string) {
+        const key = this.getTranslationKey(surveyId, targetLang);
+        return await this.cacheManager.get(key);
     }
 
     private async initializeModel() {
@@ -67,7 +88,7 @@ export class TranslatorService implements OnModuleInit {
         }
     }
 
-    async translate(text: string, sourceLang: TranslationLanguages = TranslationLanguages.EN, targetLang: TranslationLanguages = TranslationLanguages.FR): Promise<string> {
+    async translate(text: string, sourceLang: TranslationLanguages = TranslationLanguages.EN, targetLang: TranslationLanguages = TranslationLanguages.FR, surveyId?: string): Promise<string> {
         try {
             if (!this.isInitialized || !this.pythonProcess) {
                 await this.initializeModel();

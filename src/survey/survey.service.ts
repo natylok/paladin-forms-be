@@ -11,6 +11,9 @@ import { LoggerService } from '../logger/logger.service';
 import { Survey } from './survey.schema';
 import { TriggerVariableType, SurveyType } from '@natylok/paladin-forms-common';
 import { TranslationLanguages } from 'src/consts/translations';
+import { v4 as uuidv4 } from 'uuid';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 @Injectable()
 export class SurveyService {
     constructor(
@@ -18,7 +21,8 @@ export class SurveyService {
         @Inject('SURVEY_SERVICE') private readonly client: ClientProxy,
         @Inject('TRANSLATION_SERVICE') private readonly translationClient: ClientProxy,
         private readonly configService: ConfigService,
-        private readonly logger: LoggerService
+        private readonly logger: LoggerService,
+        @Inject(CACHE_MANAGER) private cacheManager: Cache
     ) {
         // Log RabbitMQ connection status
         this.client.connect().then(() => {
@@ -71,8 +75,16 @@ export class SurveyService {
         }
     }
 
+    async getTranslateStatus(id: string) {
+        const redisQueueName = id
+        const status = await this.cacheManager.get(redisQueueName);
+        return status;
+    }
+
     async translateSurveys(surveyIds: string[], user: User, sourceLang: TranslationLanguages, targetLangs: TranslationLanguages[]) {
-        return this.translationClient.emit('survey_translation_requested', { user: user, surveyIds: surveyIds, sourceLang: sourceLang, targetLangs: targetLangs }).toPromise();
+        const redisQueueName = `survey_translation_${uuidv4()}`;
+        await this.translationClient.emit('survey_translation_requested', { user: user, surveyIds: surveyIds, sourceLang: sourceLang, targetLangs: targetLangs, redisQueueName }).toPromise();
+        return redisQueueName;
     }
 
     private cleanData(data: any): any {

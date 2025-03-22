@@ -17,7 +17,7 @@ export class TranslateService implements OnModuleInit {
   async onModuleInit() {
   }
 
-  async translateSurveys(surveyIds: string[], user: { email: string }, sourceLang: TranslationLanguages = TranslationLanguages.EN, targetLangs: TranslationLanguages[] = [TranslationLanguages.HE]) {
+  async translateSurveys(surveyIds: string[], user: { email: string }, sourceLang: TranslationLanguages = TranslationLanguages.EN, targetLangs: TranslationLanguages[] = [TranslationLanguages.HE], redisQueueName: string) {
     this.logger.log('Translating surveys', { surveyIds, user, sourceLang, targetLangs });
     
     // Process surveys sequentially
@@ -29,6 +29,9 @@ export class TranslateService implements OnModuleInit {
         // Process each target language sequentially
         for (const targetLang of targetLangs) {
           try {
+            // Set translation status to in_progress
+            await this.translatorService.setTranslationStatus(redisQueueName, 'in_progress');
+            
             // Deep clone components to avoid conflicts between translations
             const originalComponents = JSON.parse(JSON.stringify(survey.components));
             this.logger.log(`Starting translation for ${surveyId} to ${targetLang}`, {
@@ -47,7 +50,8 @@ export class TranslateService implements OnModuleInit {
                 translatedComponent.title = await this.translatorService.translate(
                   component.title,
                   sourceLang,
-                  targetLang
+                  targetLang,
+                  surveyId
                 );
                 this.logger.debug(`Translated title: ${translatedComponent.title}`);
                 
@@ -61,7 +65,8 @@ export class TranslateService implements OnModuleInit {
                     const translated = await this.translatorService.translate(
                       option,
                       sourceLang,
-                      targetLang
+                      targetLang,
+                      surveyId
                     );
                     this.logger.debug(`Translated option ${optionIndex + 1}/${component.options.length}: ${translated}`);
                     translatedComponent.options.push(translated);
@@ -75,6 +80,7 @@ export class TranslateService implements OnModuleInit {
                   error,
                   component: component.title
                 });
+                await this.translatorService.setTranslationStatus(redisQueueName, 'failed', error.message);
                 throw error;
               }
             }
@@ -97,9 +103,13 @@ export class TranslateService implements OnModuleInit {
             } as any;
 
             await this.surveyService.updateSurvey(surveyId, updatedSurvey);
+            
+            // Set translation status to completed
+            await this.translatorService.setTranslationStatus(redisQueueName, 'completed');
             this.logger.log(`Successfully updated survey ${surveyId} with ${targetLang} translations`);
           } catch (error) {
             this.logger.error(`Failed to translate survey ${surveyId} to ${targetLang}`, error);
+            await this.translatorService.setTranslationStatus(redisQueueName, 'failed', error.message);
             throw error;
           }
         }
