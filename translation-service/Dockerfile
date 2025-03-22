@@ -39,7 +39,15 @@ RUN apt-get update && \
 
 # Copy package files and install production dependencies
 COPY package*.json ./
+
+# Create .npmrc file with GitHub authentication for production install
+ARG GITHUB_TOKEN
+RUN echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" > .npmrc \
+    && echo "@natylok:registry=https://npm.pkg.github.com" >> .npmrc
+
 RUN npm install --production
+
+RUN rm -f .npmrc
 
 # Copy built application
 COPY --from=builder /usr/src/app/dist ./dist
