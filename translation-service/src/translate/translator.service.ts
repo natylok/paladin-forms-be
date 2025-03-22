@@ -1,11 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as ort from 'onnxruntime-node';
 
 @Injectable()
 export class TranslatorService {
     private readonly logger = new Logger(TranslatorService.name);
     private classifier: any;
     private isInitialized: boolean = false;
-    private readonly MODEL_NAME = 'Xenova/nllb-200-distilled-600M';  // This model is available locally
+    private readonly MODEL_NAME = 'Helsinki-NLP/opus-mt-en-fr';
 
     constructor() {
         this.initializeModel();
@@ -19,13 +20,18 @@ export class TranslatorService {
 
             this.logger.log('Starting translation model initialization...');
             
+            // Set the execution provider to CPU for Node.js
+            ort.env.wasm.numThreads = 4;
+            ort.env.wasm.simd = true;
+            
             // Import the transformers module dynamically
             const { pipeline } = await import('@xenova/transformers');
             
-            // Initialize the classifier
+            // Initialize the classifier with specific model configuration
             this.classifier = await pipeline('translation', this.MODEL_NAME, {
                 cache_dir: '/tmp/xenova_cache',
-                quantized: true
+                quantized: false,  // This model might work better without quantization
+                revision: 'main'
             });
             
             this.isInitialized = true;
@@ -42,16 +48,14 @@ export class TranslatorService {
         }
     }
 
-    async translate(text: string, sourceLang: string = 'eng_Latn', targetLang: string = 'fra_Latn') {
+    async translate(text: string, sourceLang: string = 'en', targetLang: string = 'fr') {
         try {
             if (!this.isInitialized || !this.classifier) {
                 await this.initializeModel();
             }
 
-            const result = await this.classifier(text, {
-                src_lang: sourceLang,
-                tgt_lang: targetLang
-            });
+            // For Helsinki model, we don't need to specify source/target languages
+            const result = await this.classifier(text);
 
             return result[0].translation_text;
         } catch (error) {
