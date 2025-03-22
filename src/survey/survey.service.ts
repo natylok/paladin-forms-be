@@ -35,6 +35,7 @@ export class SurveyService {
         this.logger.log('Survey created successfully', { surveyId: createdSurvey.surveyId, user: user.email });
         const result = await createdSurvey.save();
         await this.client.emit('survey_changed', user).toPromise();
+        this.client.emit('survey_translation_requested', { user: user, surveyId: createdSurvey.surveyId });
         this.logger.log('Survey created successfully', { surveyId: result.surveyId, user: user.email });
         return createdSurvey;
     }
@@ -253,6 +254,7 @@ export class SurveyService {
 
         this.logger.log(`Survey ${id} updated successfully for user ${user.email}`);
         await this.client.emit('survey_changed', user).toPromise();
+        this.client.emit('survey_translation_requested', { user: user, surveyId: survey.surveyId });
         return updatedSurvey;
     }
 

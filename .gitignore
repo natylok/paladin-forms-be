@@ -51,3 +51,11 @@ config
 ./queue-service/.gitignore
 ./queue-service/package-lock.json
 ./queue-service/tsconfig.json
+
+./translation-service/node_modules
+./translation-service/dist
+./translation-service/.env
+./translation-service/config
+./translation-service/.gitignore
+./translation-service/package-lock.json
+./translation-service/tsconfig.json
