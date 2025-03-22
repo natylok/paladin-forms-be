@@ -3,6 +3,8 @@ import { TranslatorService } from './translator.service';
 import { TranslationLanguages } from '../consts';
 import { SurveyService } from './survey.service';
 import { RedisService } from '../redis/redis.service';
+import { ClientProxy } from '@nestjs/microservices';
+import { Inject } from '@nestjs/common';
 @Injectable()
 export class TranslateService {
     private readonly logger = new Logger(TranslateService.name);
@@ -10,7 +12,8 @@ export class TranslateService {
     constructor(
         private readonly translatorService: TranslatorService,
         private readonly surveyService: SurveyService,
-        private readonly redisService: RedisService
+        private readonly redisService: RedisService,
+        @Inject('SURVEY_SERVICE') private readonly client: ClientProxy
     ) {}
 
     async translateSurveys(
@@ -119,6 +122,8 @@ export class TranslateService {
                 throw error;
             }
         }
+        this.logger.log('All surveys translated');
+        this.client.emit('survey_changed', user).toPromise();
         this.redisService.set(redisQueueName, 'completed');
     }
 }
