@@ -36,25 +36,25 @@ print_success "Docker build cache cleaned"
 
 # Stop and remove only the application containers (not everything)
 print_step "Stopping and removing application containers..."
-docker compose stop app analyzer-feedback queue-service
-docker compose rm -f app analyzer-feedback queue-service
+docker compose stop app analyzer-feedback queue-service translation-service
+docker compose rm -f app analyzer-feedback queue-service translation-service
 print_success "Application containers stopped and removed"
 
 # Rebuild without forcing a full cache clear
 print_step "Building and starting containers..."
-docker compose up -d --build app analyzer-feedback queue-service
+docker compose up -d --build app analyzer-feedback queue-service translation-service
 if [ $? -ne 0 ]; then
     print_error "Failed to build and start containers"
-    docker compose logs app analyzer-feedback queue-service
+    docker compose logs app analyzer-feedback queue-service translation-service
     exit 1
 fi
 
 # Show running containers
 print_step "Running containers:"
-docker compose ps app analyzer-feedback queue-service
+docker compose ps app analyzer-feedback queue-service translation-service
 
 print_success "All done! Your applications are rebuilt and running"
 
 # Show logs
 print_step "Showing logs (press Ctrl+C to exit)..."
-docker compose logs -f app analyzer-feedback queue-service
+docker compose logs -f app analyzer-feedback queue-service translation-service
