@@ -261,6 +261,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   7.Each component should have id uuidv4 use it as default value for id
   8. DO NOT ADD THE KEY surveyId to the survey object
   9. MAXIMUM OF 3 OF THE SAME COMPONENT TYPE NO MORE,maximum 3 of 1to5stars!!!! 
+  10. Please add to compoonents that require options add  the optionsl, for example for radio buttons or for yes/no component
 
   Component Type Usage Guidelines:
   - Use STAR_1_TO_5 or FACE_1_TO_5 for emotional or satisfaction ratings MAXIMUM 2 OF THE SAME TYPE
