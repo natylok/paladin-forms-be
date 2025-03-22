@@ -84,6 +84,31 @@ services:
       - nati-network
     restart: always
 
+  translation-service:
+    build:
+      context: ./translation-service
+      dockerfile: Dockerfile
+    container_name: translation-service
+    ports:
+      - "3009:3009"
+    environment:
+      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-db:27017/mydatabase?authSource=admin
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+      - NODE_ENV=production     
+      - TRANSFORMERS_CACHE=/tmp/xenova_cache
+    volumes:
+      - xenova_cache:/tmp/xenova_cache
+    depends_on:
+      mongo-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - nati-network
+    restart: always
+
+
   # Queue Service
   queue-service:
     build:
