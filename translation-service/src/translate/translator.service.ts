@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { spawn } from 'child_process';
+import { TranslationLanguages } from '../consts';
 
 @Injectable()
 export class TranslatorService implements OnModuleInit {
@@ -55,16 +56,18 @@ export class TranslatorService implements OnModuleInit {
         }
     }
 
-    async translate(text: string): Promise<string> {
+    async translate(text: string, sourceLang: TranslationLanguages = TranslationLanguages.EN, targetLang: TranslationLanguages = TranslationLanguages.FR): Promise<string> {
         try {
             if (!this.isInitialized || !this.pythonProcess) {
                 await this.initializeModel();
             }
 
             return new Promise((resolve, reject) => {
-                // Create a request object
+                // Create a request object with language parameters
                 const request = {
-                    text: text
+                    text,
+                    source_lang: sourceLang,
+                    target_lang: targetLang
                 };
 
                 // Send the request to Python process
@@ -91,7 +94,9 @@ export class TranslatorService implements OnModuleInit {
         } catch (error) {
             this.logger.error('Translation failed', {
                 error: error instanceof Error ? error.message : 'Unknown error',
-                text
+                text,
+                sourceLang,
+                targetLang
             });
             throw error;
         }
