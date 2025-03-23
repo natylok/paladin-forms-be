@@ -34,10 +34,8 @@ RUN npm install
 # Remove .npmrc after install
 RUN rm -f .npmrc
 
-# Copy shared schemas first
-COPY shared ./shared/
-
-# Copy source code
+# Copy shared schemas and source code
+COPY shared /usr/src/app/shared/
 COPY translation-service/src ./src/
 COPY translation-service/tsconfig*.json ./
 

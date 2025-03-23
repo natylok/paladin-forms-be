@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { Survey } from "../../../shared/schemas/survey.schema";
+import { Survey } from "@shared/schemas/survey.schema";
 import { Model } from "mongoose";
 import { InjectModel } from "@nestjs/mongoose";
 
