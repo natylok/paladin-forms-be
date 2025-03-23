@@ -229,10 +229,8 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
         -  ('1to5stars') for visual rating with stars
         -  ('1to5faces') for emotional feedback
         -  ('1to10scale') for detailed numerical rating
-        -  ('1to5scale') for simple numerical rating
      b) Text Input Components (choose at least 1):
         - TEXTBOX ('textbox') for long-form responses
-        - INPUT ('input') for short text answers
         - TEXT ('text') for medium-length responses
      c) Choice Components (choose at least 2):
         - yesNo ('yesNo') for yes or no questions
@@ -246,7 +244,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   6. Quality Over Quantity: Aim for 8-12 questions that thoroughly cover the topic.
   7.Each component should have id uuidv4 use it as default value for id
   8. DO NOT ADD THE KEY surveyId to the survey object
-  9. MAXIMUM OF 3 OF THE SAME COMPONENT TYPE NO MORE,maximum 3 of 1to5stars or faces or any other component no more!!!! 
+  9. MAXIMUM OF 3 TYPE OF THE SAME COMPONENT, NO MORE,maximum 3 of 1to5stars or 1to5faces 
   10. Please add to compoonents that require options add  the optionsl, for example for  yes/no component or multipleChoice
 
   Component Type Usage Guidelines:
