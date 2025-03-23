@@ -88,8 +88,8 @@ services:
     build:
       args:
         - GITHUB_TOKEN=${GITHUB_TOKEN}
-      context: .
-      dockerfile: translation-service/Dockerfile
+      context: ./translation-service
+      dockerfile: Dockerfile
     container_name: translation-service
     ports:
       - "3009:3009"

@@ -14,14 +14,14 @@ RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy Python requirements and install Python dependencies
-COPY translation-service/requirements.txt ./
+COPY requirements.txt ./
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Copy Python model loader
-COPY translation-service/model_loader.py ./
+COPY model_loader.py ./
 
 # Copy package files
-COPY translation-service/package*.json ./
+COPY package*.json ./
 
 # Create .npmrc file with GitHub authentication
 ARG GITHUB_TOKEN
@@ -34,12 +34,8 @@ RUN npm install
 # Remove .npmrc after install
 RUN rm -f .npmrc
 
-# Copy shared schemas first
-COPY shared ./shared/
-
 # Copy source code
-COPY translation-service/src ./src/
-COPY translation-service/tsconfig*.json ./
+COPY . .
 
 # Build the application
 RUN npm run build

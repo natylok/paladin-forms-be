@@ -6,7 +6,7 @@ import { HttpModule } from '@nestjs/axios';
 import { SurveyService } from './survey.service';
 import { TranslatorService } from './translator.service';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Survey, SurveySchema } from '../../../shared/schemas/survey.schema';
+import { Survey, SurveySchema } from './survey.schema';
 import { Transport, ClientsModule } from '@nestjs/microservices';
 
 @Module({
