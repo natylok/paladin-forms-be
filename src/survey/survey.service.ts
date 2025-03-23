@@ -46,7 +46,8 @@ export class SurveyService {
                     <script>
                         window.PALADIN_FORM_SURVEY = ${surveyAsString};
                     </script>
-                    <script src="https://storage.cloud.google.com/paladin-surveys/surveys/v1/bundle.js" />
+                    <script src="https://storage.cloud.google.com/paladin-surveys/surveys/v1/bundle.js">
+                    </script>
                 </head>
                 <body>
                     <div id="app"> 
