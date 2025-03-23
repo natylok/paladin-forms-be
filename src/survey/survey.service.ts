@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { Storage } from '@google-cloud/storage';
 import { LoggerService } from '../logger/logger.service';
 import { Survey } from './survey.schema';
-import { TriggerVariableType, SurveyType } from '@natylok/paladin-forms-common';
+import { TriggerVariableType, SurveyType, ISurvey } from '@natylok/paladin-forms-common';
 import { TranslationLanguages } from 'src/consts/translations';
 import { v4 as uuidv4 } from 'uuid';
 import { RedisService } from 'src/redis/redis.service';
@@ -32,6 +32,41 @@ export class SurveyService {
         });
     }
 
+    async createLinkToSurvey(user: User, survey: ISurvey) {
+        this.logger.debug('Creating html survey for customer')
+        const surveyAsString = JSON.stringify(survey);
+        const storage = new Storage({
+            projectId: this.configService.get('GCP_PROJECT_ID'),
+        });
+        const bucket = storage.bucket(this.configService.get('GCP_BUCKET_NAME'));
+        const html = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <script>
+                        window.PALADIN_FORM_SURVEY = ${surveyAsString}
+                    </script>
+                    <script src="https://storage.cloud.google.com/paladin-surveys/surveys/v1/bundle.js" />
+
+                </head>
+            </html>
+        `
+        this.logger.debug('Writing html survey to storage')
+        const filePath = `customer-surveys/${user.customerId ?? user.email}/${survey.surveyId}`;
+        const stream = bucket.file(filePath).createWriteStream({
+            metadata: {
+                contentType: 'text/html',
+            },
+            resumable: false
+        });
+        stream.end(Buffer.from(html, 'utf8'));
+        await new Promise((resolve, reject) => {
+            stream.on('finish', resolve);
+            stream.on('error', reject);
+        });
+        this.logger.debug('Html survey written to storage')
+    }
+
     async createSurvey(createSurveyDto: CreateSurveyDto, user: User): Promise<Survey> {
         this.logger.log('Creating new survey', { user: user.email, dto: createSurveyDto });
         if (user.customerId) {
@@ -41,6 +76,7 @@ export class SurveyService {
         this.logger.log('Survey created successfully', { surveyId: createdSurvey.surveyId, user: user.email });
         const result = await createdSurvey.save();
         await this.client.emit('survey_changed', user).toPromise();
+        await this.client.emit('survey_created', { user, survey: result }).toPromise();
         this.logger.log('Survey created successfully', { surveyId: result.surveyId, user: user.email });
         return createdSurvey;
     }
@@ -339,7 +375,7 @@ export class SurveyService {
 
             // Write with explicit UTF-8 encoding
             stream.end(Buffer.from(javascriptCode, 'utf8'));
-            
+
             // Wait for the stream to finish
             await new Promise((resolve, reject) => {
                 stream.on('finish', resolve);

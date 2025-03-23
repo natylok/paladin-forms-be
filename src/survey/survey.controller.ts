@@ -14,6 +14,7 @@ import { LoggerService } from 'src/logger/logger.service';
 import { v4 as uuidv4 } from 'uuid';
 import { TranslationLanguages } from 'src/consts/translations';
 import { PremiumGuard } from 'src/auth/guards/premium.guard';
+import { ISurvey } from '@natylok/paladin-forms-common';
 @Controller('surveys')
 export class SurveyController {
     openai: OpenAI;
@@ -115,6 +116,24 @@ export class SurveyController {
             
             // Reject the message and requeue it in case of error
             await channel.nack(originalMsg, false, true);
+        }
+    }
+
+    @EventPattern('survey_created')
+    async onSurveyCreated(@Payload() data: { user: User, survey: ISurvey }, @Ctx() context: RmqContext) {
+        const channel = context.getChannelRef();
+        const originalMsg = context.getMessage();
+
+        this.surveyService.createLinkToSurvey(data.user, data.survey);
+
+        try {
+            this.logger.log(`Processing survey_created event for user: ${data.user.email}, surveyId: ${data.survey.surveyId}`);
+        }
+        catch (error) {
+            this.logger.error(
+                `Failed to process survey_created event for user: ${data.user.email}`,
+                error instanceof Error ? error.stack : undefined
+            );
         }
     }
 }
