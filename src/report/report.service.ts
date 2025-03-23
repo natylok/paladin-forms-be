@@ -14,8 +14,7 @@ const SATISFACTION_COMPONENTS = [
 ];
 
 const FEEDBACK_COMPONENTS = [
-    SurveyComponentType.RADIO_BUTTONS,
-    SurveyComponentType.DROPDOWN
+    SurveyComponentType.TEXTBOX
 ];
 
 @Injectable()
