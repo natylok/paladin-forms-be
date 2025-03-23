@@ -121,11 +121,12 @@ export class SurveyController {
 
     @EventPattern('survey_created')
     async onSurveyCreated(@Payload() data: { user: User, survey: ISurvey }, @Ctx() context: RmqContext) {
+        this.logger.debug('Survey created event received')
         const channel = context.getChannelRef();
         const originalMsg = context.getMessage();
 
         this.surveyService.createLinkToSurvey(data.user, data.survey);
-
+        await channel.ack(originalMsg);
         try {
             this.logger.log(`Processing survey_created event for user: ${data.user.email}, surveyId: ${data.survey.surveyId}`);
         }
