@@ -235,10 +235,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
      c) Choice Components (choose at least 2):
         - yesNo ('yesNo') for yes or no questions
         - DROPDOWN ('dropdown') for single selection from many options
-        - MULTIPLE_CHOICE ('multi') for multiple-choice questions
-     d) Special Components (choose at least 1):
-        - SLIDER ('slider') for continuous range input
-        - DATE_PICKER ('datePicker') for temporal data
+        - MULTIPLE_CHOICE ('multipleChoice') for multiple-choice questions
   4. Tone & Style: Determine an appropriate tone based on the user's prompt and target audience.
   5. Logical Flow: Organize questions in a sensible order, starting with easier/general questions and moving to more specific ones.
   6. Quality Over Quantity: Aim for 8-12 questions that thoroughly cover the topic.
