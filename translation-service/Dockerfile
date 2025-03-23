@@ -38,8 +38,8 @@ RUN rm -f .npmrc
 COPY translation-service/src ./src/
 COPY translation-service/tsconfig*.json ./
 
-# Copy shared schemas to match tsconfig paths
-COPY shared ./shared/
+# Copy shared schemas to the correct location relative to src
+COPY shared ./src/shared/
 
 # Build the application
 RUN npm run build
