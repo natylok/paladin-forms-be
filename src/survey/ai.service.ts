@@ -246,7 +246,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   6. Quality Over Quantity: Aim for 8-12 questions that thoroughly cover the topic.
   7.Each component should have id uuidv4 use it as default value for id
   8. DO NOT ADD THE KEY surveyId to the survey object
-  9. MAXIMUM OF 3 OF THE SAME COMPONENT TYPE NO MORE,maximum 3 of 1to5stars!!!! 
+  9. MAXIMUM OF 3 OF THE SAME COMPONENT TYPE NO MORE,maximum 3 of 1to5stars or faces or any other component no more!!!! 
   10. Please add to compoonents that require options add  the optionsl, for example for  yes/no component or multipleChoice
 
   Component Type Usage Guidelines:
