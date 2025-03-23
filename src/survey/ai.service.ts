@@ -236,7 +236,6 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
         - TEXT ('text') for medium-length responses
      c) Choice Components (choose at least 2):
         - yesNo ('yesNo') for yes or no questions
-        - RADIO_BUTTONS ('radioButtons') for single-choice questions
         - DROPDOWN ('dropdown') for single selection from many options
         - MULTIPLE_CHOICE ('multi') for multiple-choice questions
      d) Special Components (choose at least 1):
@@ -248,7 +247,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   7.Each component should have id uuidv4 use it as default value for id
   8. DO NOT ADD THE KEY surveyId to the survey object
   9. MAXIMUM OF 3 OF THE SAME COMPONENT TYPE NO MORE,maximum 3 of 1to5stars!!!! 
-  10. Please add to compoonents that require options add  the optionsl, for example for radio buttons or for yes/no component
+  10. Please add to compoonents that require options add  the optionsl, for example for  yes/no component or multipleChoice
 
   Component Type Usage Guidelines:
   - Use  FACE_1_TO_5 for emotional or satisfaction ratings MAXIMUM 2 OF THE SAME TYPE
@@ -256,7 +255,6 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   - Use TEXTBOX for detailed opinions or explanations
   - Use INPUT for short, specific answers (name, email, etc.)
   - Use TEXT for medium-length responses
-  - Use RADIO_BUTTONS for 3-5 options
   - Use DROPDOWN for more than 5 options
   - Use CHECKBOX for "select all that apply" questions
   - Use MULTIPLE_CHOICE for structured multiple-choice questions
@@ -284,7 +282,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   - Keep the survey focused and concise
   - Use clear, unambiguous language
   - Include ALL the required component types as specified above
-  - Add appropriate options array for components that need them (radioButtons, dropdown, checkbox, multi)
+  - Add appropriate options array for components that need them ( dropdown, checkbox, multi, YesNo)
 `;
 
 export const generateSurvey = async (prompt: string, surveyType: string, userEmail: string) => {

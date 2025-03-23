@@ -10,7 +10,6 @@ export enum SurveyComponentType {
   SCALE_1_TO_10 = '1to10',
   INPUT = 'input',
   FACE_1_TO_5 = '1to5faces',
-  RADIO_BUTTONS = 'radioButtons',
   DROPDOWN = 'dropdown',
   SCALE_1_TO_5 = '1to5scale',
   CHECKBOX = 'checkbox',
