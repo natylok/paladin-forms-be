@@ -8,7 +8,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
 import { Storage } from '@google-cloud/storage';
 import { LoggerService } from '../logger/logger.service';
-import { Survey } from './survey.schema';
+import { Survey } from '../../shared/schemas/survey.schema';
 import { TriggerVariableType, SurveyType } from '@natylok/paladin-forms-common';
 import { TranslationLanguages } from 'src/consts/translations';
 import { v4 as uuidv4 } from 'uuid';

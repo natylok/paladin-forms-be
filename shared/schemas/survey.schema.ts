@@ -1,9 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { Types } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import { TriggerVariableType, TriggerVariable, TriggerByAction, SurveyComponentType, DependsOn, SurveyType } from '@natylok/paladin-forms-common';
-import { TranslationLanguages } from '../consts/index';
 
 @Schema()
 export class SurveySettings {
@@ -95,11 +93,18 @@ export const ComponentSchema = SchemaFactory.createForClass(Component);
 
 @Schema()
 export class Translation {
-  @Prop({ type: String, enum: Object.values(TranslationLanguages) })
-  language: TranslationLanguages;
+  @Prop({ type: String, required: true })
+  language: string;
 
-  @Prop({ type: [ComponentSchema], default: [] })
-  components: Component[];
+  @Prop({ type: String })
+  title: string;
+
+  @Prop({ type: [Object], default: [] })
+  components: {
+    id: string;
+    title: string;
+    options: string[];
+  }[];
 }
 
 export const TranslationSchema = SchemaFactory.createForClass(Translation);
@@ -158,4 +163,4 @@ export class Survey extends Document {
   translations?: Translation[];
 }
 
-export const SurveySchema = SchemaFactory.createForClass(Survey);
+export const SurveySchema = SchemaFactory.createForClass(Survey); 

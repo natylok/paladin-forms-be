@@ -35,6 +35,9 @@ COPY nest-cli.json ./
 COPY prisma ./prisma/
 RUN npx prisma generate
 
+# Copy shared schemas first
+COPY shared ./shared/
+
 # Copy source code
 COPY src ./src/
 
@@ -78,6 +81,9 @@ COPY nest-cli.json ./
 # Copy Prisma files and generate client
 COPY prisma ./prisma/
 RUN npx prisma generate
+
+# Copy shared schemas
+COPY shared ./shared/
 
 # Copy built application and necessary files
 COPY --from=builder /usr/src/app/dist ./dist

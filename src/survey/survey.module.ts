@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { Survey, SurveySchema } from './survey.schema';
+import { Survey, SurveySchema } from '../../shared/schemas/survey.schema';
 import { SurveyController } from './survey.controller';
 import { SurveyService } from './survey.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
