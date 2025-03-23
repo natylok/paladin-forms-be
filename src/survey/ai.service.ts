@@ -63,20 +63,7 @@ export interface DependsOn {
     Modal = 'modal',
   }
   
-  export enum SurveyComponentType {
-    STAR_1_TO_5 = '1to5stars',
-    TEXTBOX = 'textbox',
-    SCALE_1_TO_10 = '1to10',
-    SCALE_1_TO_5 = '1to5scale',
-    TEXT = 'text',
-    FACE_1_TO_5 = '1to5faces',
-    RADIO_BUTTONS = 'radioButtons',
-    DROPDOWN = 'dropdown',
-    YES_NO = 'yesNo',
-    EMAIL = 'email',
-    PHONE = 'phone',
-    
-  }
+  export enum SurveyComponentType ${SurveyComponentType}
   
   export enum TriggerVariableType {
     COOKIE = 'COOKIE',
@@ -264,7 +251,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   10. Please add to compoonents that require options add  the optionsl, for example for radio buttons or for yes/no component
 
   Component Type Usage Guidelines:
-  - Use STAR_1_TO_5 or FACE_1_TO_5 for emotional or satisfaction ratings MAXIMUM 2 OF THE SAME TYPE
+  - Use  FACE_1_TO_5 for emotional or satisfaction ratings MAXIMUM 2 OF THE SAME TYPE
   - Use SCALE_1_TO_10 for detailed numerical feedback MAXIMUM 2 OF THE SAME TYPE
   - Use TEXTBOX for detailed opinions or explanations
   - Use INPUT for short, specific answers (name, email, etc.)
