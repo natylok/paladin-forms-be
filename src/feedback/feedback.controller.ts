@@ -9,6 +9,7 @@ import { PremiumGuard } from 'src/auth/guards/premium.guard';
 import { LoggerService } from '../logger/logger.service';
 import { FilterType } from './types/feedback.types';
 import { SurveyComponentType } from '@natylok/paladin-forms-common';
+import { SubmitFeedbackDto } from './dto/submit-feedback.dto';
 
 @Controller('feedbacks')
 export class FeedbackController {
@@ -23,37 +24,67 @@ export class FeedbackController {
     @Body() body: any
   ) {
     try {
-      this.logger.log(`Received feedback submission for survey ${surveyId}`, body);
+      this.logger.log(`Received feedback submission for survey ${surveyId}`, {
+        bodyType: typeof body,
+        bodyKeys: body ? Object.keys(body) : null,
+        bodyString: JSON.stringify(body)
+      });
 
-      if (!body || typeof body !== 'object') {
-        this.logger.error('Invalid request body', undefined, body);
+      // Validate the request body structure
+      if (!body) {
+        this.logger.error('Request body is null or undefined', undefined, { body });
         throw new HttpException(
-          'Invalid request body',
+          'Request body is required',
           HttpStatus.BAD_REQUEST
         );
       }
 
-      if (!body.responses || typeof body.responses !== 'object') {
-        this.logger.error('Missing or invalid responses in request body', undefined, body);
+      if (typeof body !== 'object') {
+        this.logger.error('Request body is not an object', undefined, { body, bodyType: typeof body });
         throw new HttpException(
-          'Missing or invalid responses in request body',
+          'Request body must be an object',
           HttpStatus.BAD_REQUEST
         );
       }
 
-      this.logger.log(`Processing feedback submission for survey ${surveyId}`, body.responses);
-      await this.feedbackService.submitFeedback(surveyId, body.responses);
+      if (!body.responses) {
+        this.logger.error('Missing responses in request body', undefined, { body });
+        throw new HttpException(
+          'Responses are required in request body',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      if (typeof body.responses !== 'object') {
+        this.logger.error('Responses is not an object', undefined, { responses: body.responses });
+        throw new HttpException(
+          'Responses must be an object',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      // Transform numeric values to strings
+      const transformedResponses = Object.entries(body.responses).reduce((acc, [key, response]: [string, any]) => {
+        acc[key] = {
+          ...response,
+          value: response.value.toString()
+        };
+        return acc;
+      }, {} as Record<string, any>);
+
+      this.logger.log(`Processing feedback submission for survey ${surveyId}`, transformedResponses);
+      await this.feedbackService.submitFeedback(surveyId, transformedResponses);
       this.logger.log(`Feedback submitted successfully for survey ${surveyId}`);
       return { message: 'Feedback submitted successfully!' };
     } catch (error) {
       this.logger.error(
         `Error submitting feedback for survey ${surveyId}`,
         error instanceof Error ? error.stack : undefined,
-        body
+        { body, error: error.message }
       );
       throw new HttpException(
-        'Failed to submit feedback',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        error instanceof HttpException ? error.message : 'Failed to submit feedback',
+        error instanceof HttpException ? error.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
