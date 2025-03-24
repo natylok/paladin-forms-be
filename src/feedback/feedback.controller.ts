@@ -9,7 +9,6 @@ import { PremiumGuard } from 'src/auth/guards/premium.guard';
 import { LoggerService } from '../logger/logger.service';
 import { FilterType } from './types/feedback.types';
 import { SurveyComponentType } from '@natylok/paladin-forms-common';
-import { SubmitFeedbackDto } from './dto/submit-feedback.dto';
 
 @Controller('feedbacks')
 export class FeedbackController {
