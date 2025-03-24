@@ -103,7 +103,10 @@ export class SurveyController {
 
     @EventPattern('publish_survey')
     async handlePublishSurvey(@Payload() data: { user: User, surveyId: string }, @Ctx() context: RmqContext) {
-        return this.surveyService.handlePublishSurvey(data.surveyId, data.user);
+        const channel = context.getChannelRef();
+        const originalMsg = context.getMessage();
+        this.surveyService.handlePublishSurvey(data.surveyId, data.user);
+        await channel.ack(originalMsg);
     }
 
     @EventPattern('survey_changed')
