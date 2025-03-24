@@ -204,6 +204,7 @@ export class FeedbackAnalysisService {
         for (const response of textResponses) {
             try {
                 const sentiment = await this.sentimentService.analyzeSentiment(response.text);
+                this.logger.debug('Analyzed sentiment', { sentiment, text: response.text });
                 this.updateSentimentStats(
                     sentiment,
                     response,
@@ -278,12 +279,12 @@ export class FeedbackAnalysisService {
         weeklyStats: { positive: number; negative: number },
         monthlyStats: { positive: number; negative: number }
     ): void {
-        if (sentiment.label === 'positive' && sentiment.score > 0.7 && hasPraiseWords && !hasConcernWords) {
+        if (sentiment.label === 'positive' && sentiment.score > 0.7) {
             summary.textAnalysis.topStrengths.push(text);
             dailyStats.positive++;
             weeklyStats.positive++;
             monthlyStats.positive++;
-        } else if ((sentiment.label === 'negative' && sentiment.score > 0.7) || hasConcernWords) {
+        } else if ((sentiment.label === 'negative' && sentiment.score > 0.7)) {
             summary.textAnalysis.topConcerns.push(text);
             dailyStats.negative++;
             weeklyStats.negative++;
