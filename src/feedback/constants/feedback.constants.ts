@@ -80,6 +80,7 @@ export const FILTER_PHRASES = {
     ],
     suggestions: [
         'suggest', 'suggestion', 'recommend', 'recommendation',
+        'should be good', 'should be great', 'should be awesome',
         'would be nice', 'could be better', 'improve',
         'enhancement', 'feature request', 'add', 'missing'
     ],
