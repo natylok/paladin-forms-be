@@ -78,8 +78,6 @@ export class SurveyService {
         const createdSurvey = new this.surveyModel({ ...createSurveyDto, creatorEmail: user.email, createdAt: new Date().toISOString() });
         this.logger.log('Survey created successfully', { surveyId: createdSurvey.surveyId, user: user.email });
         const result = await createdSurvey.save();
-        await this.client.emit('survey_changed', user).toPromise();
-        await this.client.emit('survey_created', { user, survey: result }).toPromise();
         this.logger.log('Survey created successfully', { surveyId: result.surveyId, user: user.email });
         return createdSurvey;
     }
@@ -112,6 +110,23 @@ export class SurveyService {
             );
             throw error;
         }
+    }
+
+    async publishSurvey(id: string, user: User) {
+        const survey = await this.getSurveyById(id, user);
+        if (!survey) {
+            throw new NotFoundException(`Survey with ID ${id} not found`);
+        }
+        this.client.emit('publish_survey', { user, surveyId: survey.surveyId }).toPromise();
+        return survey;
+    }
+
+    async handlePublishSurvey(surveyId: string, user: User) {
+        const survey = await this.getSurveyById(surveyId, user);
+        this.logger.debug('Handling publish survey', { surveyId, user: user.email });
+        this.generateJavascriptCode(user);
+        this.createLinkToSurvey(user, survey);
+        return survey;
     }
 
     async getTranslateStatus(id: string) {
@@ -313,7 +328,6 @@ export class SurveyService {
         }
 
         this.logger.log(`Survey ${id} updated successfully for user ${user.email}`);
-        await this.client.emit('survey_changed', user).toPromise();
         return updatedSurvey;
     }
 

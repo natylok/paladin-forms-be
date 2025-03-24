@@ -94,6 +94,18 @@ export class SurveyController {
         return parsedSurvey;
     }
 
+
+    @UseGuards(JwtGuard)
+    @Get('publish-survey/:id')
+    async publishSurvey(@Param('id') id: string, @Req() req: Request) {
+        return this.surveyService.publishSurvey(id, req.user as User);
+    }
+
+    @EventPattern('publish_survey')
+    async handlePublishSurvey(@Payload() data: { user: User, surveyId: string }, @Ctx() context: RmqContext) {
+        return this.surveyService.handlePublishSurvey(data.surveyId, data.user);
+    }
+
     @EventPattern('survey_changed')
     async handleSurveyCreated(@Payload() user: User, @Ctx() context: RmqContext) {
         const channel = context.getChannelRef();
