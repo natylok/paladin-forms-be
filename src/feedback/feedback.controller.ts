@@ -20,18 +20,18 @@ export class FeedbackController {
   @Post(':surveyId/submit')
   async submitFeedback(
     @Param('surveyId') surveyId: string,
-    @Body() responses: Record<string, { componentType: SurveyComponentType, value: string, title: string }>
+    @Body() body: { responses: Record<string, { componentType: SurveyComponentType, value: string, title: string }> }
   ) {
     try {
-      this.logger.log('Submitting feedback', { surveyId, responses });
-      await this.feedbackService.submitFeedback(surveyId, responses);
+      this.logger.log('Submitting feedback', { surveyId, responses: body.responses });
+      await this.feedbackService.submitFeedback(surveyId, body.responses);
       this.logger.log('Feedback submitted successfully', { surveyId });
       return { message: 'Feedback submitted successfully!' };
     } catch (error) {
       this.logger.error(
         'Error submitting feedback',
         error instanceof Error ? error.stack : undefined,
-        { surveyId, responses }
+        { surveyId, responses: body.responses }
       );
       throw new HttpException(
         'Failed to submit feedback',
