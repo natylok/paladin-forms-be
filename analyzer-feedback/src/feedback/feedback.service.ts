@@ -64,43 +64,31 @@ export class FeedbackService {
   }
 
   private cleanAndTransformResponses(responses: Record<string, any>): any[] {
-    try {
-      const cleanResponses: Record<string, RawFeedbackResponse> = {};
-      
-      // Handle both direct responses and nested responses object
-      const actualResponses = responses?.responses || responses;
-      
-      if (!actualResponses || typeof actualResponses !== 'object') {
-        this.logger.error('Invalid responses format received', { responses });
-        throw new Error('Invalid responses format');
+    const cleanResponses: Record<string, RawFeedbackResponse> = {};
+    const actualResponses = responses.responses || responses;
+
+    // First, clean the responses
+    Object.entries(actualResponses).forEach(([key, value]) => {
+      if (key === 'responses' || key === 'surveyId' || key === 'submittedAt') {
+        return;
       }
+      if (value && typeof value === 'object' && 'componentType' in value && 'value' in value) {
+        const typedValue = value as { componentType: string; value: string | number; title?: string };
+        cleanResponses[key] = {
+          componentType: typedValue.componentType,
+          value: typedValue.value,
+          title: typedValue.title || ''
+        };
+      }
+    });
 
-      // First, clean the responses
-      Object.entries(actualResponses).forEach(([key, value]) => {
-        if (key === 'responses' || key === 'surveyId' || key === 'submittedAt') {
-          return;
-        }
-        if (value && typeof value === 'object' && 'componentType' in value && 'value' in value) {
-          const typedValue = value as { componentType: string; value: string | number; title?: string };
-          cleanResponses[key] = {
-            componentType: typedValue.componentType,
-            value: typedValue.value,
-            title: typedValue.title || ''
-          };
-        }
-      });
-
-      // Then transform to array format
-      return Object.entries(cleanResponses).map(([componentId, response]) => ({
-        componentId,
-        value: response.value,
-        componentType: response.componentType,
-        title: response.title || ''
-      }));
-    } catch (error) {
-      this.logger.error('Error cleaning and transforming responses', { error, responses });
-      throw error;
-    }
+    // Then transform to array format
+    return Object.entries(cleanResponses).map(([componentId, response]) => ({
+      componentId,
+      value: response.value,
+      componentType: response.componentType,
+      title: response.title || ''
+    }));
   }
 
   private async analyzeFeedback(feedback: FeedbackDocument): Promise<void> {

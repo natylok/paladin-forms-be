@@ -20,18 +20,36 @@ export class FeedbackController {
   @Post(':surveyId/submit')
   async submitFeedback(
     @Param('surveyId') surveyId: string,
-    @Body() body: { responses: Record<string, { componentType: SurveyComponentType, value: string, title: string }> }
+    @Body() body: any
   ) {
     try {
-      this.logger.log('Submitting feedback', { surveyId, responses: body.responses });
+      this.logger.log(`Received feedback submission for survey ${surveyId}`, body);
+
+      if (!body || typeof body !== 'object') {
+        this.logger.error('Invalid request body', undefined, body);
+        throw new HttpException(
+          'Invalid request body',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      if (!body.responses || typeof body.responses !== 'object') {
+        this.logger.error('Missing or invalid responses in request body', undefined, body);
+        throw new HttpException(
+          'Missing or invalid responses in request body',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      this.logger.log(`Processing feedback submission for survey ${surveyId}`, body.responses);
       await this.feedbackService.submitFeedback(surveyId, body.responses);
-      this.logger.log('Feedback submitted successfully', { surveyId });
+      this.logger.log(`Feedback submitted successfully for survey ${surveyId}`);
       return { message: 'Feedback submitted successfully!' };
     } catch (error) {
       this.logger.error(
-        'Error submitting feedback',
+        `Error submitting feedback for survey ${surveyId}`,
         error instanceof Error ? error.stack : undefined,
-        { surveyId, responses: body.responses }
+        body
       );
       throw new HttpException(
         'Failed to submit feedback',
