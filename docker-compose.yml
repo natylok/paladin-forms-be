@@ -62,6 +62,8 @@ services:
   # Feedback Analyzer Service
   analyzer-feedback:
     build:
+      args:
+        - GITHUB_TOKEN=${GITHUB_TOKEN}
       context: ./analyzer-feedback
       dockerfile: Dockerfile
     container_name: analyzer-feedback

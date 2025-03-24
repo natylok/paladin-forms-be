@@ -11,6 +11,10 @@ RUN apt-get update && apt-get install -y \
 # Copy package files
 COPY package*.json ./
 
+ARG GITHUB_TOKEN
+RUN echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" > .npmrc \
+    && echo "@natylok:registry=https://npm.pkg.github.com" >> .npmrc
+
 # Install dependencies
 RUN npm install
 
