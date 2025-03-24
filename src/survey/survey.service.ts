@@ -124,9 +124,8 @@ export class SurveyService {
     async handlePublishSurvey(surveyId: string, user: User) {
         const survey = await this.getSurveyById(surveyId, user);
         this.logger.debug('Handling publish survey', { surveyId, user: user.email });
-        this.generateJavascriptCode(user);
-        this.createLinkToSurvey(user, survey);
-        return survey;
+        await this.generateJavascriptCode(user);
+        await this.createLinkToSurvey(user, survey);
     }
 
     async getTranslateStatus(id: string) {
