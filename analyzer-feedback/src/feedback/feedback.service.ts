@@ -3,22 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Feedback, FeedbackDocument } from './feedback.schema';
 import { SentimentService } from './senstiment.service';
-
-export enum SurveyComponentType {
-  STAR_1_TO_5 = '1to5stars',
-  TEXTBOX = 'textbox',
-  SCALE_1_TO_10 = '1to10',
-  INPUT = 'input',
-  FACE_1_TO_5 = '1to5faces',
-  DROPDOWN = 'dropdown',
-  SCALE_1_TO_5 = '1to5scale',
-  CHECKBOX = 'checkbox',
-  SLIDER = 'slider',
-  DATE_PICKER = 'datePicker',
-  MULTIPLE_CHOICE = 'multi',
-  TEXT = 'text'
-}
-
+import { SurveyComponentType } from '@natylok/paladin-forms-common';
 interface RawFeedbackResponse {
   componentType: string;
   value: string | number;
@@ -27,14 +12,13 @@ interface RawFeedbackResponse {
 
 const RATING_COMPONENTS = [
   SurveyComponentType.STAR_1_TO_5,
-  SurveyComponentType.SCALE_1_TO_5,
   SurveyComponentType.SCALE_1_TO_10,
   SurveyComponentType.FACE_1_TO_5,
 ];
 
 const INPUT_COMPONENTS = [
   SurveyComponentType.TEXTBOX,
-  SurveyComponentType.INPUT,
+  SurveyComponentType.TEXT,
 
 ]
 
@@ -80,31 +64,43 @@ export class FeedbackService {
   }
 
   private cleanAndTransformResponses(responses: Record<string, any>): any[] {
-    const cleanResponses: Record<string, RawFeedbackResponse> = {};
-    const actualResponses = responses.responses || responses;
-
-    // First, clean the responses
-    Object.entries(actualResponses).forEach(([key, value]) => {
-      if (key === 'responses' || key === 'surveyId' || key === 'submittedAt') {
-        return;
+    try {
+      const cleanResponses: Record<string, RawFeedbackResponse> = {};
+      
+      // Handle both direct responses and nested responses object
+      const actualResponses = responses?.responses || responses;
+      
+      if (!actualResponses || typeof actualResponses !== 'object') {
+        this.logger.error('Invalid responses format received', { responses });
+        throw new Error('Invalid responses format');
       }
-      if (value && typeof value === 'object' && 'componentType' in value && 'value' in value) {
-        const typedValue = value as { componentType: string; value: string | number; title?: string };
-        cleanResponses[key] = {
-          componentType: typedValue.componentType,
-          value: typedValue.value,
-          title: typedValue.title || ''
-        };
-      }
-    });
 
-    // Then transform to array format
-    return Object.entries(cleanResponses).map(([componentId, response]) => ({
-      componentId,
-      value: response.value,
-      componentType: response.componentType,
-      title: response.title || ''
-    }));
+      // First, clean the responses
+      Object.entries(actualResponses).forEach(([key, value]) => {
+        if (key === 'responses' || key === 'surveyId' || key === 'submittedAt') {
+          return;
+        }
+        if (value && typeof value === 'object' && 'componentType' in value && 'value' in value) {
+          const typedValue = value as { componentType: string; value: string | number; title?: string };
+          cleanResponses[key] = {
+            componentType: typedValue.componentType,
+            value: typedValue.value,
+            title: typedValue.title || ''
+          };
+        }
+      });
+
+      // Then transform to array format
+      return Object.entries(cleanResponses).map(([componentId, response]) => ({
+        componentId,
+        value: response.value,
+        componentType: response.componentType,
+        title: response.title || ''
+      }));
+    } catch (error) {
+      this.logger.error('Error cleaning and transforming responses', { error, responses });
+      throw error;
+    }
   }
 
   private async analyzeFeedback(feedback: FeedbackDocument): Promise<void> {
