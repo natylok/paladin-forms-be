@@ -112,7 +112,7 @@ export class FeedbackAnalysisService {
                 }
             }
         }
-
+        this.logger.debug('Processing text responses', { textResponses });
         await this.processTextResponses(
             textResponses,
             summary,
