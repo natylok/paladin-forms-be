@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable } 
 import { PrismaService } from '../prisma/prisma.service';
 import { SurveyService } from './survey.service';
 import { LoggerService } from '../logger/logger.service';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class LimitSurveysGuard implements CanActivate {
@@ -13,14 +14,14 @@ export class LimitSurveysGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
+    const user = request.user as User;
     
     const userSurveys = await this.surveyService.getSurveysByUser(user);
     const userFromDb = await this.prisma.user.findUnique({
       where: { id: user.id }
     });
 
-    if (userSurveys.length >= userFromDb.surveysLimit) {
+    if (userSurveys.length >= userFromDb.surveysLimit && user.userType === 'FREEMIUM') {
       this.logger.error(
         `User ${user.email} has reached their limit of ${userFromDb.surveysLimit} surveys`,
         undefined,
