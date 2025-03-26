@@ -120,13 +120,13 @@ export class FeedbackService implements OnModuleInit {
         }
     }
 
-    async summerizeAllFeedbacks(user: User, timeFrame?: string): Promise<FeedbackSummary | { message: string }> {
+    async summerizeAllFeedbacks(user: User, timeFrame?: string, surveyId?: string): Promise<FeedbackSummary | { message: string }> {
         try {
             let filter: Record<string, any> = {};
             if(timeFrame){
                 filter = this.filterService.getFilterByTimeFrame(timeFrame);
             }
-            const { feedbacks } = await this.getFeedbacks(user, 1, filter);
+            const { feedbacks } = await this.getFeedbacks(user, 1, { ...filter, surveyId });
             if (!feedbacks.length) {
                 return { message: 'No feedbacks found' };
             }

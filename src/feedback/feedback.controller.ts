@@ -89,17 +89,18 @@ export class FeedbackController {
   }
 
   @UseGuards(JwtGuard)
-  @Get('')
+  @Get(':surveyId')
   async getAllFeedbacks(
     @Req() req: Request,
     @Query('page') page?: string
   ) {
     try {
+      const surveyId = req.params.surveyId;
       const user = req.user as User;
       const pageNumber = page ? parseInt(page, 10) : 1;
       const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
-      this.logger.log('Fetching all feedbacks', { page: pageNumber, filter });
-      const { feedbacks, totalPages } = await this.feedbackService.getFeedbacks(user, pageNumber);
+
+      const { feedbacks, totalPages } = await this.feedbackService.getFeedbacks(user, pageNumber, { ...filter, surveyId });
 
       this.logger.log('Feedbacks fetched successfully', {
         user: user.email,
@@ -131,19 +132,19 @@ export class FeedbackController {
   }
 
   @UseGuards(JwtGuard, PremiumGuard)
-  @Get('summerize')
-  async summerizeFeedbacks(@Req() req: Request, @Param('timeFrame') timeFrame?: string) {
+  @Get('summerize/:surveyId')
+  async summerizeFeedbacks(@Req() req: Request, @Param('surveyId') surveyId: string, @Param('timeFrame') timeFrame?: string) {
     try {
       const user = req.user as User;
-      this.logger.log('Summarizing feedbacks', { user: user.email });
-      const summary = await this.feedbackService.summerizeAllFeedbacks(user, timeFrame);
+      this.logger.log(`Summarizing feedbacks for survey: ${surveyId}`, { user: user.email });
+      const summary = await this.feedbackService.summerizeAllFeedbacks(user, timeFrame, surveyId);
       this.logger.log('Feedbacks summarized successfully', { user: user.email });
       return summary;
     } catch (error) {
       this.logger.error(
         'Error summarizing feedbacks',
         error instanceof Error ? error.stack : undefined,
-        { user: (req.user as User)?.email }
+        { user: (req.user as User)?.email, surveyId }
       );
       throw new HttpException(
         'Failed to summarize feedbacks',
