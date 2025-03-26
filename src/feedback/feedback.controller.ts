@@ -90,21 +90,22 @@ export class FeedbackController {
 
   @UseGuards(JwtGuard)
   @Get(':surveyId')
-  async getAllFeedbacks(
+  async getAllFeedbacksBySurveyId(
+    @Param('surveyId') surveyId: string,
     @Req() req: Request,
     @Query('page') page?: string
   ) {
     try {
-      const surveyId = req.params.surveyId;
       const user = req.user as User;
       const pageNumber = page ? parseInt(page, 10) : 1;
       const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
-
+      this.logger.log(`Fetching all feedbacks for survey: ${surveyId}`, { user: user.email, page: pageNumber, filter });
       const { feedbacks, totalPages } = await this.feedbackService.getFeedbacks(user, pageNumber, { ...filter, surveyId });
 
       this.logger.log('Feedbacks fetched successfully', {
         user: user.email,
         customerId: user.customerId,
+        surveyId,
         count: feedbacks.length,
         page: pageNumber,
         totalPages
@@ -122,7 +123,7 @@ export class FeedbackController {
       this.logger.error(
         'Error fetching feedbacks',
         error instanceof Error ? error.stack : undefined,
-        { user: (req.user as User)?.email, page: page }
+        { user: (req.user as User)?.email, page: page, surveyId }
       );
       throw new HttpException(
         'Failed to fetch feedbacks',
