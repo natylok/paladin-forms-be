@@ -82,15 +82,16 @@ export class FeedbackService implements OnModuleInit {
             // First get all surveys for the user
             const surveys = await this.surveyModel.find(filter);
 
-            const surveyId = surveys.find(survey => survey.surveyId === filter.surveyId);
+            const survey= surveys.find(survey => survey.surveyId === filter.surveyId);
 
-            if(!surveyId){
+            if(!survey){
+                this.logger.error('Survey not found', { user: user.email, filter });
                 return { feedbacks: [], totalPages: 0 };
             }
 
             // Then get feedbacks for those surveys
             const [feedbacks, total] = await Promise.all([
-                this.feedbackModel.find(filter)
+                this.feedbackModel.find({surveyId: survey.surveyId})
                     .skip(skip)
                     .limit(itemsPerPage)
                     .exec(),
