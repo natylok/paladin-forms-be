@@ -23,11 +23,6 @@ export class FeedbackController {
     @Body() body: any
   ) {
     try {
-      this.logger.log(`Received feedback submission for survey ${surveyId}`, {
-        bodyType: typeof body,
-        bodyKeys: body ? Object.keys(body) : null,
-        bodyString: JSON.stringify(body)
-      });
 
       // Validate the request body structure
       if (!body) {
