@@ -151,16 +151,15 @@ export class FeedbackController {
 
   @UseGuards(JwtGuard, PremiumGuard)
   @Get(':surveyId/export')
-  async exportFeedbacks(@Req() req: Request, @Res() res: Response, @Param('surveyId') surveyId: string) {
+  async exportFeedbacks(@Req() req: Request, @Param('surveyId') surveyId: string) {
     try {
       const user = req.user as User;
       this.logger.log('Exporting feedbacks to CSV', { user: user.email, surveyId });
 
       const csvData = await this.feedbackService.exportFeedbacksToCSV(user, surveyId);
 
-      this.logger.log('Feedbacks exported successfully', { user: user.email, surveyId });
+      this.logger.log('Feedbacks exported successfully', { user: user.email, surveyId, csvData });
 
-      // Send the CSV data directly
       return csvData;
     } catch (error) {
       this.logger.error(
