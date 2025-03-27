@@ -223,7 +223,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --replica-read-only no --replica-serve-stale-data yes
 
 networks:
   nati-network:
