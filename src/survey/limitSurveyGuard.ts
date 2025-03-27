@@ -13,6 +13,7 @@ export class LimitSurveysGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    this.logger.log('Checking if user has reached their limit of surveys');
     const request = context.switchToHttp().getRequest();
     const user = request.user as User;
     
