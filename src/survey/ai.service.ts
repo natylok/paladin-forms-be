@@ -234,16 +234,16 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
         - TEXT ('text') for medium-length responses
      c) Choice Components (choose at least 2):
         - yesNo ('yesNo') for yes or no questions
-        - DROPDOWN ('dropdown') for single selection from many options
         - MULTIPLE_CHOICE ('multipleChoice') for multiple-choice questions
   4. Tone & Style: Determine an appropriate tone based on the user's prompt and target audience.
   5. Logical Flow: Organize questions in a sensible order, starting with easier/general questions and moving to more specific ones.
   6. Quality Over Quantity: Aim for 8-12 questions that thoroughly cover the topic.
   7.Each component should have id uuidv4 use it as default value for id
   8. DO NOT ADD THE KEY surveyId to the survey object
-  9. MAXIMUM OF 3 TYPE OF THE SAME COMPONENT, NO MORE,maximum 3 of 1to5stars or 1to5faces 
-  10. Please add to compoonents that require options add  the optionsl, for example for  yes/no component or multipleChoice
-
+  9. MAXIMUM OF 3 TYPE OF THE SAME COMPONENT, NO MORE,maximum 3 of 1to5stars or 1to5faces or 1to10scale
+  10. Please add to compoonents that require options add  the options array, for example for  yes/no component or multipleChoice
+  11. MINIMUM 4 OF COMPONENT TYPES NO LESS
+  
   Component Type Usage Guidelines:
   - Use  FACE_1_TO_5 for emotional or satisfaction ratings MAXIMUM 2 OF THE SAME TYPE
   - Use SCALE_1_TO_10 for detailed numerical feedback MAXIMUM 2 OF THE SAME TYPE
