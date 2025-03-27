@@ -154,12 +154,12 @@ export class FeedbackAnalysisService {
     }
 
     private collectTextResponse(
-        response: { componentType: string; title?: string },
+        response: { componentType: SurveyComponentType; title?: string },
         value: string,
         date: Date,
         textResponses: TextResponse[]
     ): void {
-        if (response.componentType === 'textbox' || response.componentType === 'input') {
+        if (response.componentType === 'textbox' || response.componentType === SurveyComponentType.TEXT) {
             textResponses.push({
                 text: value,
                 type: response.title || 'general',
