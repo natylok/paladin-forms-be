@@ -33,7 +33,7 @@ export class FeedbackService {
 
   async processFeedback(data: any): Promise<Feedback> {
     try {
-      this.logger.log(`Processing feedback for survey: ${data.surveyId}`);
+      this.logger.log(`Processing feedback for survey: ${data.surveyId}, time to fill survey: ${data.timeToFillSurvey}`);
 
       // Clean and transform the responses
       const cleanResponses = this.cleanAndTransformResponses(data.responses);
@@ -42,6 +42,7 @@ export class FeedbackService {
       const feedbackToSave = {
         surveyId: data.surveyId,
         responses: cleanResponses,
+        timeToFillSurvey: data.timeToFillSurvey,
         metadata: {
           originalTimestamp: data.submittedAt || new Date(),
           source: 'paladin-forms-be'

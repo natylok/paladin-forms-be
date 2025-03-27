@@ -29,6 +29,9 @@ export class Feedback {
   @Prop()
   score?: string;
 
+  @Prop()
+  timeToFillSurvey?: number;
+
   @Prop({ type: Object })
   analysisMetadata?: Record<string, any>;
 }

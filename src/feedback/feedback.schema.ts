@@ -23,6 +23,9 @@ export class Feedback extends Document {
   @Prop({ type: Boolean, default: false })
   isRead: boolean;
 
+  @Prop({ type: Number, default: 0 })
+  timeToFillSurvey: number;
+
   createdAt: Date;
   updatedAt: Date;
 }

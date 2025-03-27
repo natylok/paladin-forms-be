@@ -32,7 +32,7 @@ export class FeedbackService implements OnModuleInit {
         private readonly filterService: FeedbackFilterService
     ) { }
 
-    async submitFeedback(surveyId: string, responses: Record<string, FeedbackResponse>): Promise<void> {
+    async submitFeedback(surveyId: string, responses: Record<string, FeedbackResponse>, timeToFillSurvey: number): Promise<void> {
         try {
             this.logger.debug('Processing feedback submission', { surveyId, responses });
 
@@ -40,7 +40,8 @@ export class FeedbackService implements OnModuleInit {
             await this.client.emit('feedback.created', {
                 surveyId,
                 responses,
-                submittedAt: new Date()
+                submittedAt: new Date(),
+                timeToFillSurvey
             }).toPromise();
 
             this.logger.debug('Feedback event emitted successfully', { surveyId });
