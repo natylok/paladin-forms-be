@@ -129,7 +129,7 @@ export class FeedbackController {
     }
   }
 
-  @UseGuards(JwtGuard, PremiumGuard)
+  @UseGuards(JwtGuard)
   @Get('summerize/:surveyId')
   async summerizeFeedbacks(@Req() req: Request, @Param('surveyId') surveyId: string, @Param('timeFrame') timeFrame?: string) {
     try {
