@@ -66,8 +66,10 @@ export class FeedbackController {
         return acc;
       }, {} as Record<string, any>);
 
+      const timeToFillSurvey = body.timeToFillSurvey;
+
       this.logger.log(`Processing feedback submission for survey ${surveyId}`, transformedResponses);
-      await this.feedbackService.submitFeedback(surveyId, transformedResponses);
+      await this.feedbackService.submitFeedback(surveyId, transformedResponses, timeToFillSurvey);
       this.logger.log(`Feedback submitted successfully for survey ${surveyId}`);
       return { message: 'Feedback submitted successfully!' };
     } catch (error) {
