@@ -199,11 +199,11 @@ export class FeedbackController {
   }
 
   @UseGuards(JwtGuard, PremiumGuard)
-  @Get('filter/:filterType')
+  @Get(':surveyId/filter/:filterType')
   async getFilteredFeedbacks(
     @Req() req: Request,
     @Param('filterType') filterType: FilterType,
-    @Query('surveyId') surveyId?: string
+    @Param('surveyId') surveyId?: string
   ) {
     try {
       const user = req.user as User;
