@@ -158,12 +158,10 @@ export class FeedbackController {
 
       const csvData = await this.feedbackService.exportFeedbacksToCSV(user, surveyId);
 
-      // Set response headers for file download
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=feedbacks_${surveyId}_${Date.now()}.csv`);
+      this.logger.log('Feedbacks exported successfully', { user: user.email, surveyId });
 
       // Send the CSV data directly
-      res.send(csvData);
+      return csvData;
 
       this.logger.log('Feedbacks exported successfully', { user: user.email, surveyId });
     } catch (error) {
