@@ -70,6 +70,16 @@ export class SurveyService {
         this.logger.debug('Html survey written to storage')
     }
 
+    async viewSurvey(surveyId: string) {
+        const survey = await this.surveyModel.findOne({ surveyId: surveyId }).exec();
+        if (!survey) {
+            throw new NotFoundException(`Survey with ID ${surveyId} not found`);
+        }
+        survey.numOfViews++;
+        await survey.save();
+        return survey;
+    }
+
     async createSurvey(createSurveyDto: CreateSurveyDto, user: User): Promise<Survey> {
         this.logger.log('Creating new survey', { user: user.email, dto: createSurveyDto });
         if (user.customerId) {

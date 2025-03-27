@@ -81,6 +81,11 @@ export class SurveyController {
         return this.surveyService.deleteSurvey(id, req.user as User);
     }
   
+    @Get(':surveyId/view')
+    async viewSurvey(@Param('surveyId') surveyId: string) {
+        return this.surveyService.viewSurvey(surveyId);
+    }
+
     @Post('generate')
     @UseGuards(JwtGuard, LimitSurveysGuard)
     @RateLimit(50)

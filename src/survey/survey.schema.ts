@@ -156,6 +156,9 @@ export class Survey extends Document {
 
   @Prop({type: [TranslationSchema], default: []})
   translations?: Translation[];
+
+  @Prop({type: Number, default: 0})
+  numOfViews?: number;
 }
 
 export const SurveySchema = SchemaFactory.createForClass(Survey);
