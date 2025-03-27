@@ -162,8 +162,6 @@ export class FeedbackController {
 
       // Send the CSV data directly
       return csvData;
-
-      this.logger.log('Feedbacks exported successfully', { user: user.email, surveyId });
     } catch (error) {
       this.logger.error(
         'Error exporting feedbacks',

@@ -3,7 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Feedback, FeedbackResponse } from '../feedback.schema';
 import { Survey } from '../../survey/survey.schema';
-import { createObjectCsvWriter } from 'csv-writer';
 import { User } from '@prisma/client';
 
 @Injectable()
@@ -15,7 +14,7 @@ export class FeedbackExportService {
         @InjectModel(Feedback.name) private readonly feedbackModel: Model<Feedback>
     ) {}
 
-    async exportToCSV(surveyId: string, user: User): Promise<Array<{ id: string; title: string }>> {
+    async exportToCSV(surveyId: string, user: User): Promise<string> {
         try {
             this.logger.debug('Starting feedback export to CSV', { surveyId });
             const filter = user.customerId ? {customerId: user.customerId} : {creatorEmail: user.email};
@@ -34,7 +33,30 @@ export class FeedbackExportService {
             const questionIds = this.collectQuestionIds(feedbacks);
             const fields = this.prepareCSVFields(questionIds);
 
-            return fields
+            // Create CSV header row
+            const headerRow = fields.map(field => field.title).join(',');
+            const csvRows = [headerRow];
+
+            // Process each feedback
+            for (const feedback of feedbacks) {
+                const record = this.prepareFeedbackRecord(feedback);
+                const row = fields.map(field => {
+                    const value = record[field.id];
+                    // Escape quotes and wrap in quotes if contains comma or quotes
+                    return typeof value === 'string' && (value.includes(',') || value.includes('"'))
+                        ? `"${value.replace(/"/g, '""')}"`
+                        : value;
+                });
+                csvRows.push(row.join(','));
+            }
+
+            const csvData = csvRows.join('\n');
+            this.logger.debug('CSV data generated successfully', { 
+                surveyId,
+                rowCount: csvRows.length - 1 // Subtract 1 for header row
+            });
+
+            return csvData;
         } catch (error) {
             this.logger.error(
                 'Failed to export feedbacks to CSV',
@@ -88,27 +110,6 @@ export class FeedbackExportService {
         ]);
 
         return [...baseFields, ...questionFields];
-    }
-
-    private generateFilename(surveyId: string): string {
-        return `feedbacks_${surveyId}_${new Date().toISOString()
-            .replace(/[-:]/g, '')
-            .replace('T', '_')
-            .replace('Z', '')}.csv`;
-    }
-
-    private async writeToCSV(
-        filename: string,
-        fields: Array<{ id: string; title: string }>,
-        feedbacks: Feedback[]
-    ): Promise<void> {
-        const csvWriter = createObjectCsvWriter({
-            path: `./${filename}`,
-            header: fields
-        });
-
-        const records = feedbacks.map(feedback => this.prepareFeedbackRecord(feedback));
-        await csvWriter.writeRecords(records);
     }
 
     private prepareFeedbackRecord(feedback: Feedback): Record<string, any> {

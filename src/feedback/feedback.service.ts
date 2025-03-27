@@ -257,7 +257,7 @@ export class FeedbackService implements OnModuleInit {
         }
     }
 
-    async exportFeedbacksToCSV(user: User, surveyId: string): Promise<Array<{ id: string; title: string }>> {
+    async exportFeedbacksToCSV(user: User, surveyId: string) {
         // First verify the survey belongs to the user
         const survey = await this.surveyModel.findOne({
             surveyId,
@@ -268,7 +268,7 @@ export class FeedbackService implements OnModuleInit {
             throw new Error('Survey not found or access denied');
         }
 
-        return this.exportService.exportToCSV(surveyId, user);
+        return await this.exportService.exportToCSV(surveyId, user);
     }
 
     async getAvailableFilters(): Promise<FilterType[]> {
