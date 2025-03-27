@@ -33,8 +33,19 @@ export class FeedbackExportService {
             const questionIds = this.collectQuestionIds(feedbacks);
             const fields = this.prepareCSVFields(questionIds);
 
-            // Create CSV header row
-            const headerRow = fields.map(field => field.title).join(',');
+            // Get question titles from the first feedback
+            const firstFeedback = feedbacks[0];
+            const questionTitles = this.getQuestionTitles(firstFeedback);
+
+            // Create CSV header row with actual question titles
+            const headerRow = fields.map(field => {
+                if (field.id.startsWith('responses.')) {
+                    const questionId = field.id.split('.')[1];
+                    return questionTitles[questionId] || `Question ${questionId}`;
+                }
+                return field.title;
+            }).join(',');
+
             const csvRows = [headerRow];
 
             // Process each feedback
@@ -42,10 +53,15 @@ export class FeedbackExportService {
                 const record = this.prepareFeedbackRecord(feedback);
                 const row = fields.map(field => {
                     const value = record[field.id];
-                    // Escape quotes and wrap in quotes if contains comma or quotes
-                    return typeof value === 'string' && (value.includes(',') || value.includes('"'))
-                        ? `"${value.replace(/"/g, '""')}"`
-                        : value;
+                    // Handle null/undefined values
+                    if (value === null || value === undefined) {
+                        return '';
+                    }
+                    // Convert to string and escape quotes
+                    const stringValue = String(value);
+                    return stringValue.includes(',') || stringValue.includes('"')
+                        ? `"${stringValue.replace(/"/g, '""')}"`
+                        : stringValue;
                 });
                 csvRows.push(row.join(','));
             }
@@ -134,5 +150,26 @@ export class FeedbackExportService {
         }
 
         return record;
+    }
+
+    private getQuestionTitles(feedback: Feedback): Record<string, string> {
+        const titles: Record<string, string> = {};
+        if (feedback.responses) {
+            if (feedback.responses instanceof Map) {
+                Array.from(feedback.responses.entries()).forEach(([questionId, response]) => {
+                    if (response && response.title) {
+                        titles[questionId] = response.title;
+                    }
+                });
+            } else {
+                Object.entries(feedback.responses).forEach(([questionId, response]) => {
+                    const typedResponse = response as FeedbackResponse;
+                    if (typedResponse && typedResponse.title) {
+                        titles[questionId] = typedResponse.title;
+                    }
+                });
+            }
+        }
+        return titles;
     }
 } 
