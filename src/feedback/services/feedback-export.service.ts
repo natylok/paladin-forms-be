@@ -98,16 +98,10 @@ export class FeedbackExportService {
             { id: 'isRead', title: 'Is Read' }
         ];
 
-        const questionFields = Array.from(questionIds).flatMap(questionId => [
-            {
-                id: `responses.${questionId}.title`,
-                title: `Question ${questionId} - Title`
-            },
-            {
-                id: `responses.${questionId}.componentType`,
-                title: `Question ${questionId} - Component Type`
-            }
-        ]);
+        const questionFields = Array.from(questionIds).map(questionId => ({
+            id: `responses.${questionId}.value`,
+            title: `responses.${questionId}.title`
+        }));
 
         return [...baseFields, ...questionFields];
     }
@@ -124,16 +118,16 @@ export class FeedbackExportService {
             if (feedback.responses instanceof Map) {
                 Array.from(feedback.responses.entries()).forEach(([questionId, response]) => {
                     if (response && response.componentType && response.value) {
-                        record[`responses.${questionId}.title`] = response.title || '';
-                        record[`responses.${questionId}.componentType`] = response.componentType;
+                        record[`responses.${questionId}.title`] = response.title || `Question ${questionId}`;
+                        record[`responses.${questionId}.value`] = response.value;
                     }
                 });
             } else {
                 Object.entries(feedback.responses).forEach(([questionId, response]) => {
                     const typedResponse = response as FeedbackResponse;
                     if (typedResponse && typedResponse.componentType && typedResponse.value) {
-                        record[`responses.${questionId}.title`] = typedResponse.title || '';
-                        record[`responses.${questionId}.componentType`] = typedResponse.componentType;
+                        record[`responses.${questionId}.title`] = typedResponse.title || `Question ${questionId}`;
+                        record[`responses.${questionId}.value`] = typedResponse.value;
                     }
                 });
             }
