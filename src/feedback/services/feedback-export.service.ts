@@ -15,7 +15,7 @@ export class FeedbackExportService {
         @InjectModel(Feedback.name) private readonly feedbackModel: Model<Feedback>
     ) {}
 
-    async exportToCSV(surveyId: string, user: User): Promise<string> {
+    async exportToCSV(surveyId: string, user: User): Promise<Array<{ id: string; title: string }>> {
         try {
             this.logger.debug('Starting feedback export to CSV', { surveyId });
             const filter = user.customerId ? {customerId: user.customerId} : {creatorEmail: user.email};
@@ -33,12 +33,8 @@ export class FeedbackExportService {
 
             const questionIds = this.collectQuestionIds(feedbacks);
             const fields = this.prepareCSVFields(questionIds);
-            const filename = this.generateFilename(surveyId);
-            
-            await this.writeToCSV(filename, fields, feedbacks);
 
-            this.logger.debug('Feedbacks exported to CSV', { surveyId, filename });
-            return `Feedbacks exported to CSV successfully. File saved as: ${filename}`;
+            return fields
         } catch (error) {
             this.logger.error(
                 'Failed to export feedbacks to CSV',

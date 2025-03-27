@@ -257,7 +257,7 @@ export class FeedbackService implements OnModuleInit {
         }
     }
 
-    async exportFeedbacksToCSV(user: User, surveyId: string): Promise<string> {
+    async exportFeedbacksToCSV(user: User, surveyId: string): Promise<Array<{ id: string; title: string }>> {
         // First verify the survey belongs to the user
         const survey = await this.surveyModel.findOne({
             surveyId,
