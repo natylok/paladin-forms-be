@@ -54,6 +54,16 @@ export class FeedbackService implements OnModuleInit {
             throw error;
         }
     }
+    async getFeedbackById(feedbackId: string, user: User): Promise<Feedback | null> {
+        try {
+            const surveys = await this.surveyModel.find(user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email });
+            const feedback = await this.feedbackModel.findOne({ _id: feedbackId, surveyId: { $in: surveys.map(survey => survey.surveyId) } });
+            return feedback;
+        } catch (error) {
+            this.logger.error('Failed to get feedback by id', error instanceof Error ? error.stack : undefined, { feedbackId, user: user.email });
+            throw error;
+        }
+    }
 
     async saveFeedback(feedback: Feedback): Promise<void> {
         try {
