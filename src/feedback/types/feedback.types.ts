@@ -24,10 +24,10 @@ export interface SurveySummary {
 
 export interface FeedbackSummary {
     textAnalysis: {
-        topStrengths: string[];
-        topConcerns: string[];
-        suggestions: string[];
-        urgentIssues: string[];
+        topStrengths: {text: string, feedbackId: string}[];
+        topConcerns: {text: string, feedbackId: string}[];
+        suggestions: {text: string, feedbackId: string}[];
+        urgentIssues: {text: string, feedbackId: string}[];
     };
     statistics: {
         totalFeedbacks: number;
@@ -70,6 +70,7 @@ export interface TextResponse {
     text: string;
     type: string;
     date: Date;
+    feedbackId: string;
 }
 
 export type Pipeline = (text: string) => Promise<HuggingFaceResponse>;

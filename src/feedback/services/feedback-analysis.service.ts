@@ -108,7 +108,7 @@ export class FeedbackAnalysisService {
                 }
 
                 if (!this.shouldSkipTextAnalysis(value)) {
-                    this.collectTextResponse(response, value, feedbackDate, textResponses);
+                    this.collectTextResponse(feedback, response, value, feedbackDate, textResponses);
                 }
             }
         }
@@ -154,16 +154,18 @@ export class FeedbackAnalysisService {
     }
 
     private collectTextResponse(
+        feedback: Feedback,
         response: { componentType: SurveyComponentType; title?: string },
         value: string,
         date: Date,
         textResponses: TextResponse[]
     ): void {
-        if (response.componentType === 'textbox' || response.componentType === SurveyComponentType.TEXT) {
+        if (response.componentType === SurveyComponentType.TEXTBOX || response.componentType === SurveyComponentType.TEXT) {
             textResponses.push({
                 text: value,
                 type: response.title || 'general',
-                date
+                date,
+                feedbackId: feedback.id
             });
         }
     }
@@ -212,7 +214,8 @@ export class FeedbackAnalysisService {
                     stats,
                     dailyFeedbacks,
                     weeklyFeedbacks,
-                    monthlyFeedbacks
+                    monthlyFeedbacks,
+                    response.feedbackId
                 );
             } catch (error) {
                 this.logger.error('Failed to analyze text response', {
@@ -234,7 +237,8 @@ export class FeedbackAnalysisService {
         },
         dailyFeedbacks: Map<string, { positive: number; negative: number }>,
         weeklyFeedbacks: Map<string, { positive: number; negative: number }>,
-        monthlyFeedbacks: Map<string, { positive: number; negative: number }>
+        monthlyFeedbacks: Map<string, { positive: number; negative: number }>,
+        feedbackId: string
     ): void {
         stats.totalSentimentScore += sentiment.score;
         stats.sentimentCount++;
@@ -265,7 +269,8 @@ export class FeedbackAnalysisService {
             hasConcernWords,
             dailyFeedbacks.get(dayKey)!,
             weeklyFeedbacks.get(weekKey)!,
-            monthlyFeedbacks.get(monthKey)!
+            monthlyFeedbacks.get(monthKey)!,
+            feedbackId
         );
     }
 
@@ -277,25 +282,26 @@ export class FeedbackAnalysisService {
         hasConcernWords: boolean,
         dailyStats: { positive: number; negative: number },
         weeklyStats: { positive: number; negative: number },
-        monthlyStats: { positive: number; negative: number }
+        monthlyStats: { positive: number; negative: number },
+        feedbackId: string
     ): void {
         if (sentiment.label === 'positive' && sentiment.score > 0.7) {
-            summary.textAnalysis.topStrengths.push(text);
+            summary.textAnalysis.topStrengths.push({text, feedbackId});
             dailyStats.positive++;
             weeklyStats.positive++;
             monthlyStats.positive++;
         } else if ((sentiment.label === 'negative' && sentiment.score > 0.7)) {
-            summary.textAnalysis.topConcerns.push(text);
+            summary.textAnalysis.topConcerns.push({text, feedbackId});
             dailyStats.negative++;
             weeklyStats.negative++;
             monthlyStats.negative++;
         }
 
         if (containsPhrases(text, FILTER_PHRASES.suggestions)) {
-            summary.textAnalysis.suggestions.push(text);
+            summary.textAnalysis.suggestions.push({text, feedbackId});
         }
         if (containsPhrases(text, FILTER_PHRASES.urgent)) {
-            summary.textAnalysis.urgentIssues.push(text);
+            summary.textAnalysis.urgentIssues.push({text, feedbackId});
         }
     }
 
