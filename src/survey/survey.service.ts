@@ -46,7 +46,7 @@ export class SurveyService {
                     <script>
                         window.PALADIN_FORM_SURVEY = ${surveyAsString};
                     </script>
-                    <script src="https://storage.cloud.google.com/paladin-surveys/surveys/v1/bundle.js">
+                    <script src="https://storage.cloud.google.com/form.paladin-forms.com/surveys/v1/bundle.js">
                     </script>
                 </head>
                 <body>
@@ -394,9 +394,9 @@ export class SurveyService {
             const javascriptCode = `
                 window.paladinSurveys = ${surveysJson};
                 const element = document.createElement('script');
-                element.src = "https://storage.cloud.google.com/paladin-surveys/engine/latest/embed.js";
+                element.src = "https://storage.cloud.google.com/form.paladin-forms.com/engine/latest/embed.js";
                 setTimeout(() => { document.body.appendChild(element) }, 4000);
-                window.PALADIN_SURVEY_URL = "https://storage.cloud.google.com/paladin-surveys/surveys/v1/index.html";
+                window.PALADIN_SURVEY_URL = "https://storage.cloud.google.com/form.paladin-forms.com/surveys/v1/index.html";
             `;
 
             // Write with explicit UTF-8 encoding
