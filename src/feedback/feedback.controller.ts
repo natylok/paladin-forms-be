@@ -86,7 +86,7 @@ export class FeedbackController {
   }
 
   @UseGuards(JwtGuard)
-  @Get(':feedbackId')
+  @Get('/feedback/:feedbackId')
   async getFeedbackById(@Param('feedbackId') feedbackId: string, @Req() req: Request) {
     return await this.feedbackService.getFeedbackById(feedbackId, req.user as User);
   }
