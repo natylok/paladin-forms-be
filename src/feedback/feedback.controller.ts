@@ -157,7 +157,7 @@ export class FeedbackController {
     }
   }
 
-  @UseGuards(JwtGuard, PremiumGuard)
+  @UseGuards(JwtGuard)
   @Get(':surveyId/export')
   async exportFeedbacks(@Req() req: Request, @Param('surveyId') surveyId: string) {
     try {
