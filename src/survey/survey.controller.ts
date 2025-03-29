@@ -113,31 +113,6 @@ export class SurveyController {
         await channel.ack(originalMsg);
     }
 
-    @EventPattern('survey_changed')
-    async handleSurveyCreated(@Payload() user: User, @Ctx() context: RmqContext) {
-        const channel = context.getChannelRef();
-        const originalMsg = context.getMessage();
-
-        try {
-            this.logger.log(`Processing survey_changed event for user: ${user.email}, customerId: ${user.customerId}`);
-            
-            await this.surveyService.generateJavascriptCode(user);
-            
-            // Acknowledge the message after successful processing
-            await channel.ack(originalMsg);
-            
-            this.logger.log(`Successfully processed survey_changed event for user: ${user.email}`);
-        } catch (error) {
-            this.logger.error(
-                `Failed to process survey_changed event for user: ${user.email}`,
-                error instanceof Error ? error.stack : undefined
-            );
-            
-            // Reject the message and requeue it in case of error
-            await channel.nack(originalMsg, false, true);
-        }
-    }
-
     @EventPattern('survey_created')
     async onSurveyCreated(@Payload() data: { user: User, survey: ISurvey }, @Ctx() context: RmqContext) {
         this.logger.debug('Survey created event received')

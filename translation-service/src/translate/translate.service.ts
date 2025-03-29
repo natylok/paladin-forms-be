@@ -123,7 +123,6 @@ export class TranslateService {
             }
         }
         this.logger.log('All surveys translated');
-        this.client.emit('survey_changed', user).toPromise();
         this.redisService.set(redisQueueName, 'completed');
     }
 }
