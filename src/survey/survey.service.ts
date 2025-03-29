@@ -134,7 +134,7 @@ export class SurveyService {
     async handlePublishSurvey(surveyId: string, user: User) {
         const survey = await this.getSurveyById(surveyId, user);
         this.logger.debug('Handling publish survey', { surveyId, user: user.email });
-        await this.generateJavascriptCode(user);
+        await this.generateJavascriptCode(user, survey);
         await this.createLinkToSurvey(user, survey);
     }
 
@@ -359,11 +359,11 @@ export class SurveyService {
         return await this.surveyModel.find({ ...filter }).lean().exec();
     }
 
-    async generateJavascriptCode(user: User) {
-        this.logger.log(`Generating JavaScript code for user ${user.email}`);
+    async generateJavascriptCode(user: User, survey: ISurvey) {
+        this.logger.log(`Generating JavaScript code for user ${user.email}, survey ${survey.surveyId}`);
         try {
             const filter = user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email };
-            const surveys = await this.surveyModel.find({ ...filter, isActive: true }).exec();
+            const surveys = await this.surveyModel.find({ ...filter, isActive: true, surveyId: survey.surveyId }).exec();
             if (!surveys) {
                 this.logger.error(`No surveys found for user ${user.email} ${user.customerId}`);
                 throw new NotFoundException('Survey not found');
@@ -372,7 +372,7 @@ export class SurveyService {
                 projectId: this.configService.get('GCP_PROJECT_ID'),
             });
             const bucket = storage.bucket(this.configService.get('GCP_BUCKET_NAME'));
-            const filePath = `embedded/${user.email}/latest/embed.js`;
+            const filePath = `embedded/${user.email}/${survey.surveyId}/latest/embed.js`;
             this.logger.debug(`Writing JavaScript code to storage at ${filePath} for user ${user.email}`);
 
             const stream = await bucket.file(filePath).createWriteStream({
