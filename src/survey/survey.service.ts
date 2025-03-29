@@ -348,7 +348,6 @@ export class SurveyService {
             this.logger.error(`Survey not found during deletion with ID ${id} for user ${user.email}`);
             throw new NotFoundException(`Survey with ID ${id} not found`);
         }
-        this.client.emit('survey_changed', user);
         this.logger.log(`Survey ${id} deleted successfully for user ${user.email}`);
         return { message: 'Survey deleted successfully' };
     }
@@ -391,8 +390,7 @@ export class SurveyService {
                 return value;
             }, 2);
 
-            const javascriptCode = `
-                window.paladinSurveys = ${surveysJson};
+            const javascriptCode = `window.paladinSurveys = ${surveysJson};
                 const element = document.createElement('script');
                 element.src = "https://form.paladin-forms.com/engine/latest/embed.js";
                 setTimeout(() => { document.body.appendChild(element) }, 4000);
