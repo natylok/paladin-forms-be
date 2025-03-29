@@ -244,6 +244,7 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   10. Please add to compoonents that require options add  the options array, for example for  yes/no component or multipleChoice
   11. MINIMUM 4 OF COMPONENT TYPES NO LESS
   12. THE LAST COMPONENT SHOULD BE A TEXTBOX WITH OPEN QUESTION
+  13. The first component of the survey should be an email with title "Please enter your email"
 
   Component Type Usage Guidelines:
   - Use  FACE_1_TO_5 for emotional or satisfaction ratings MAXIMUM 2 OF THE SAME TYPE
