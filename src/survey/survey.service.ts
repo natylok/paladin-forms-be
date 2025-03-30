@@ -33,7 +33,7 @@ export class SurveyService {
     }
 
     async createLinkToSurvey(user: User, survey: ISurvey) {
-        this.logger.debug('Creating html survey for customer')
+        this.logger.log('Creating html survey for customer', survey)
         const surveyAsString = JSON.stringify(survey, (key, value) => {
             if (typeof value === 'string') {
                 return value.normalize('NFC');
@@ -140,8 +140,8 @@ export class SurveyService {
     async handlePublishSurvey(surveyId: string, user: User) {
         const survey = await this.getSurveyById(surveyId, user);
         this.logger.debug('Handling publish survey', { surveyId, user: user.email });
-        await this.generateJavascriptCode(user, survey);
         await this.createLinkToSurvey(user, survey);
+        await this.generateJavascriptCode(user, survey);
     }
 
     async getTranslateStatus(id: string) {
