@@ -37,7 +37,6 @@ export class SurveyService {
         // Ensure proper encoding of Hebrew characters in JSON
         const surveyAsString = JSON.stringify(survey, (key, value) => {
             if (typeof value === 'string') {
-                // Normalize the string and ensure it's properly encoded
                 return value.normalize('NFC');
             }
             return value;
@@ -53,8 +52,7 @@ export class SurveyService {
                 <head>
                     <meta charset="UTF-8">
                     <script>
-                        // Ensure the survey data is properly encoded
-                        window.PALADIN_FORM_SURVEY = JSON.parse('${surveyAsString.replace(/'/g, "\\'")}');
+                        window.PALADIN_FORM_SURVEY = ${surveyAsString};
                     </script>
                     <script src="https://form.paladin-forms.com/surveys/v1/bundle.js">
                     </script>
