@@ -11,6 +11,6 @@ export enum TranslationLanguages {
     PT = 'pt',
     RU = 'ru',
     TR = 'tr',
-    ZH = 'zh',
+    ZH = 'zh'
     
 }

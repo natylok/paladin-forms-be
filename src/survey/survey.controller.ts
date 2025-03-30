@@ -60,7 +60,7 @@ export class SurveyController {
         return this.surveyService.updateSurvey(id, updateData, req.user as User);
     }
 
-    @UseGuards(JwtGuard, PremiumGuard)
+    @UseGuards(JwtGuard)
     @Get('translate-status/:id')
     async getTranslateStatus(@Param('id') id: string, @Req() req: Request) {
         const status = await this.surveyService.getTranslateStatus(id);
@@ -69,7 +69,7 @@ export class SurveyController {
         }
     }
 
-    @UseGuards(JwtGuard, PremiumGuard)
+    @UseGuards(JwtGuard)
     @Post('translate-surveys')
     async translateSurveys(@Body() body: { surveyIds: string[], sourceLang: TranslationLanguages, targetLangs: TranslationLanguages[] }, @Req() req: Request) {
         return this.surveyService.translateSurveys(body.surveyIds, req.user as User, body.sourceLang, body.targetLangs);
