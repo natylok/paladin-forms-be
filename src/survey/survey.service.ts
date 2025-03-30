@@ -34,7 +34,12 @@ export class SurveyService {
 
     async createLinkToSurvey(user: User, survey: ISurvey) {
         this.logger.debug('Creating html survey for customer')
-        const surveyAsString = JSON.stringify(survey);
+        const surveyAsString = JSON.stringify(survey, (key, value) => {
+            if (typeof value === 'string') {
+                return value.normalize('NFC');
+            }
+            return value;
+        }, 2);
         const storage = new Storage({
             projectId: this.configService.get('GCP_PROJECT_ID'),
         });
