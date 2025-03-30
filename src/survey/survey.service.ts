@@ -58,7 +58,8 @@ export class SurveyService {
         const filePath = `customer-surveys/${user.customerId ?? user.email}/${survey.surveyId}`;
         const stream = bucket.file(filePath).createWriteStream({
             metadata: {
-                contentType: 'text/html',
+                contentType: 'text/html;  charset=utf-8',
+                contentEncoding: 'utf-8',
             },
             resumable: false
         });

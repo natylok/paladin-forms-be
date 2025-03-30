@@ -252,7 +252,6 @@ const aiSystemPrompt = (surveyType: string, userEmail: string) => `
   - Use TEXTBOX for detailed opinions or explanations
   - Use INPUT for short, specific answers (name, email, etc.)
   - Use TEXT for medium-length responses
-  - Use DROPDOWN for more than 5 options
   - Use CHECKBOX for "select all that apply" questions
   - Use MULTIPLE_CHOICE for structured multiple-choice questions
   - Use SLIDER for continuous ranges (age, budget, etc.)
