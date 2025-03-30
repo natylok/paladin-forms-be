@@ -33,13 +33,16 @@ export class SurveyService {
     }
 
     async createLinkToSurvey(user: User, survey: ISurvey) {
-        this.logger.log('Creating html survey for customer', survey)
+        this.logger.log('Creating html survey for customer')
+        // Ensure proper encoding of Hebrew characters in JSON
         const surveyAsString = JSON.stringify(survey, (key, value) => {
             if (typeof value === 'string') {
+                // Normalize the string and ensure it's properly encoded
                 return value.normalize('NFC');
             }
             return value;
         }, 2);
+
         const storage = new Storage({
             projectId: this.configService.get('GCP_PROJECT_ID'),
         });
@@ -48,8 +51,10 @@ export class SurveyService {
             <!DOCTYPE html>
             <html>
                 <head>
+                    <meta charset="UTF-8">
                     <script>
-                        window.PALADIN_FORM_SURVEY = ${surveyAsString};
+                        // Ensure the survey data is properly encoded
+                        window.PALADIN_FORM_SURVEY = JSON.parse('${surveyAsString.replace(/'/g, "\\'")}');
                     </script>
                     <script src="https://form.paladin-forms.com/surveys/v1/bundle.js">
                     </script>
@@ -63,7 +68,7 @@ export class SurveyService {
         const filePath = `customer-surveys/${user.customerId ?? user.email}/${survey.surveyId}`;
         const stream = bucket.file(filePath).createWriteStream({
             metadata: {
-                contentType: 'text/html;  charset=utf-8',
+                contentType: 'text/html; charset=utf-8',
                 contentEncoding: 'utf-8',
             },
             resumable: false
