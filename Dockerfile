@@ -10,10 +10,12 @@ RUN apt-get update && apt-get install -y \
     g++ \
     python3 \
     python3-pip \
+    python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+
 # Copy Python requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
@@ -70,7 +72,11 @@ RUN apt-get update && apt-get install -y \
     openssl \
     python3 \
     python3-pip \
+    python3-venv \
     && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy Python requirements and install Python dependencies
 COPY requirements.txt .
