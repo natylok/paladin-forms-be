@@ -14,6 +14,7 @@ import { FeedbackAnalysisService } from './services/feedback-analysis.service';
 import { FeedbackExportService } from './services/feedback-export.service';
 import { FeedbackFilterService } from './services/feedback-filter.service';
 import { FeedbackQuestionService } from './services/feedback.question.service';
+import { SurveyComponentType } from '@natylok/paladin-forms-common';
 @Injectable()
 export class FeedbackService implements OnModuleInit {
     private readonly logger = new Logger(FeedbackService.name);
@@ -78,9 +79,26 @@ export class FeedbackService implements OnModuleInit {
             // Limit to most recent 50 feedbacks for performance
             const feedbacks = await this.feedbackModel.find({ surveyId })
                 .sort({ createdAt: -1 })
-                .limit(50)
                 .exec();
+
+            const questionsAndAnswers = feedbacks.reduce((acc, feedback) => {
+                if(feedback.responses){
+                    Object.values(feedback.responses).forEach((response) => {
+                        if(response.componentType === SurveyComponentType.TEXT || response.componentType === SurveyComponentType.TEXTBOX){
+                            acc[response.title] = response.value;
+                        }
+                    })
+                }
+                return acc;
+            },{} as Record<string, string>);
                 
+            const context = `
+            Here are the questions and answers from the feedbacks:
+            ${JSON.stringify(questionsAndAnswers, null, 2)}
+            `;
+
+            const questionResults = await this.questionService.getQuestionFeedbacks(context, prompt);
+
             if (feedbacks.length === 0) {
                 return { questionResults: [] };
             }
