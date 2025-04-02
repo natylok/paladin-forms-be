@@ -57,7 +57,21 @@ export class SurveyController {
     @UseGuards(JwtGuard)
     @Post(':surveyId/upload-image')
     async uploadImage(@Param('surveyId') surveyId: string, @Req() req: Request) {
-        return this.surveyService.uploadImage(surveyId, req.user as User, req.body.image);
+        // Parse the JSON body if it's a string
+        let imageData = req.body.image;
+        
+        // If the body is a string, try to parse it as JSON
+        if (typeof req.body === 'string') {
+            try {
+                const parsedBody = JSON.parse(req.body);
+                imageData = parsedBody.image;
+            } catch (error) {
+                this.logger.error(`Failed to parse request body: ${error.message}`, error.stack);
+                throw new Error('Invalid request body format');
+            }
+        }
+        
+        return this.surveyService.uploadImage(surveyId, req.user as User, imageData);
     }
 
     @UseGuards(JwtGuard)
