@@ -3,12 +3,25 @@ FROM node:20-slim AS builder
 
 WORKDIR /usr/src/app
 
-# Install necessary dependencies for Prisma and build
+# Install necessary dependencies for Prisma, build, and Python
 RUN apt-get update && apt-get install -y \
     openssl \
     make \
     g++ \
+    python3 \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
+
+# Copy Python requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Copy model loader and test files
+COPY model_loader.py .
+COPY test_model.py .
+
+# Create models directory with correct permissions
+RUN mkdir -p models && chmod 777 models
 
 # Copy only package files first to leverage Docker cache
 COPY package*.json ./
@@ -50,10 +63,27 @@ FROM node:20-slim
 
 WORKDIR /usr/src/app
 
-# Install only the necessary runtime dependency
+# Install necessary runtime dependencies including Python
 RUN apt-get update && apt-get install -y \
     openssl \
+    python3 \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
+
+# Copy Python requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Copy model loader and test files
+COPY model_loader.py .
+COPY test_model.py .
+
+# Create models directory with correct permissions
+RUN mkdir -p models && chmod 777 models
+
+# Set environment variables for Python
+ENV TRANSFORMERS_CACHE=/usr/src/app/models
+ENV PYTHONUNBUFFERED=1
 
 # Copy package files
 COPY package*.json ./
@@ -85,5 +115,5 @@ COPY --from=builder /usr/src/app/node_modules/.prisma/client ./node_modules/.pri
 
 EXPOSE 3333
 
-# Start the application with the correct path
-CMD ["node", "dist/main"] 
+# Start both the Node.js application and the Python model loader
+CMD ["sh", "-c", "python3 model_loader.py & node dist/main"] 

@@ -44,8 +44,10 @@ services:
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASS=${SMTP_PASS}
       - SMTP_FROM=${SMTP_FROM}
+      - TRANSFORMERS_CACHE=/usr/src/app/models
     volumes:
       - ./config:/usr/src/app/config:ro  # Mount GCP credentials file as read-only
+      - bart_models:/usr/src/app/models  # Mount BART model cache
     depends_on:
       redis:
         condition: service_healthy
@@ -236,5 +238,6 @@ volumes:
   rabbitmq_data:
   xenova_cache:
   translation_models:
+  bart_models:  # Add volume for BART model cache
 
 # Enviro
