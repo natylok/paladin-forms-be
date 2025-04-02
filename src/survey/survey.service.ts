@@ -140,28 +140,11 @@ export class SurveyService {
             throw new Error('Image data is empty');
         }
         
-        // Log the received image data length and preview
+        // Log the received image data length
         this.logger.log(`Received image data: ${image.length} characters`);
         
-        // Check if the image data has a data URL prefix (e.g., "data:image/png;base64,")
-        let base64Data = image;
-        if (image.startsWith('data:')) {
-            // Extract the base64 part after the comma
-            const parts = image.split(',');
-            if (parts.length > 1) {
-                base64Data = parts[1];
-                this.logger.log(`Removed data URL prefix from image data`);
-            }
-        }
-        
-        // Validate the base64 string
-        if (!this.isValidBase64(base64Data)) {
-            this.logger.error(`Invalid base64 data for survey ${surveyId}`);
-            throw new Error('Invalid base64 image data');
-        }
-        
-        // Create a buffer from the base64 data
-        const imageBuffer = Buffer.from(base64Data, 'base64');
+        // Create a buffer from the image data exactly as received
+        const imageBuffer = Buffer.from(image, 'base64');
         this.logger.log(`Created image buffer: ${imageBuffer.length} bytes`);
         
         // Check if the buffer is empty
