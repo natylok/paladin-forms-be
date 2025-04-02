@@ -12,7 +12,7 @@ import { FeedbackAnalysisService } from './services/feedback-analysis.service';
 import { FeedbackExportService } from './services/feedback-export.service';
 import { FeedbackFilterService } from './services/feedback-filter.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-
+import { FeedbackQuestionService } from './services/feedback.question.service';
 @Module({
   imports: [
     ConfigModule,
@@ -47,6 +47,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     FeedbackAnalysisService,
     FeedbackExportService,
     FeedbackFilterService,
+    FeedbackQuestionService,
     {
       provide: 'REDIS_CLIENT',
       useFactory: async (configService: ConfigService) => {

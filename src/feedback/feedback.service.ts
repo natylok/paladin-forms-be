@@ -13,7 +13,7 @@ import { FeedbackSummary, TextResponse, FilterType, SurveySummary } from './type
 import { FeedbackAnalysisService } from './services/feedback-analysis.service';
 import { FeedbackExportService } from './services/feedback-export.service';
 import { FeedbackFilterService } from './services/feedback-filter.service';
-
+import { FeedbackQuestionService } from './services/feedback.question.service';
 @Injectable()
 export class FeedbackService implements OnModuleInit {
     private readonly logger = new Logger(FeedbackService.name);
@@ -29,7 +29,8 @@ export class FeedbackService implements OnModuleInit {
         private readonly cacheService: FeedbackCacheService,
         private readonly analysisService: FeedbackAnalysisService,
         private readonly exportService: FeedbackExportService,
-        private readonly filterService: FeedbackFilterService
+        private readonly filterService: FeedbackFilterService,
+        private readonly questionService: FeedbackQuestionService
     ) { }
 
     async submitFeedback(surveyId: string, responses: Record<string, FeedbackResponse>, timeToFillSurvey: number): Promise<void> {
@@ -61,6 +62,25 @@ export class FeedbackService implements OnModuleInit {
             return feedback;
         } catch (error) {
             this.logger.error('Failed to get feedback by id', error instanceof Error ? error.stack : undefined, { feedbackId, user: user.email });
+            throw error;
+        }
+    }
+
+    async getQuestionFeedbacks(user: User, surveyId: string, prompt: string): Promise<{ questionResults: any[] }> {
+        try {
+            this.logger.debug('Getting question feedbacks', { user: user.email, surveyId });
+            const survey = await this.surveyModel.findOne({ surveyId, ...(user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email }) }).exec();
+            if(!survey){
+                this.logger.error('Survey not found', { user: user.email, surveyId });
+                throw new Error('Survey not found');
+            }
+            const feedbacks = await this.feedbackModel.find({ surveyId }).exec();
+            const questionResults = await this.questionService.getQuestionFeedbacks(feedbacks, prompt);
+
+            return { questionResults };
+        }
+        catch (error) {
+            this.logger.error('Failed to get question feedbacks', error instanceof Error ? error.stack : undefined, { user: user.email, surveyId });
             throw error;
         }
     }

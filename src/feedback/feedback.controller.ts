@@ -204,6 +204,29 @@ export class FeedbackController {
     }
   }
 
+  @UseGuards(JwtGuard)
+  @Post(':surveyId/question-feedbacks')
+  async getQuestionFeedbacks(@Req() req: Request, @Param('surveyId') surveyId: string, @Body() body: any) {
+    try {
+      const user = req.user as User;
+      const { prompt } = body;
+      this.logger.log('Getting question feedbacks', { user: user.email, surveyId });
+      const { questionResults } = await this.feedbackService.getQuestionFeedbacks(user, surveyId, prompt);
+      return { questionResults };
+    }
+    catch (error) {
+      this.logger.error(
+        'Error getting question feedbacks',
+        error instanceof Error ? error.stack : undefined,
+        { user: (req.user as User)?.email, surveyId }
+      );
+      throw new HttpException(
+        'Failed to get question feedbacks',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   @UseGuards(JwtGuard, PremiumGuard)
   @Get(':surveyId/filter/:filterType')
   async getFilteredFeedbacks(
