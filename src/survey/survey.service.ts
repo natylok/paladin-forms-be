@@ -132,23 +132,74 @@ export class SurveyService {
     }
 
     async uploadImage(surveyId: string, user: User, image: string) {
+        this.logger.log(`Starting image upload for survey ${surveyId}`, { userEmail: user.email });
+        
         const survey = await this.getSurveyById(surveyId, user);
         if (!survey) {
+            this.logger.error(`Survey not found: ${surveyId}`, undefined, { userEmail: user.email });
             throw new NotFoundException(`Survey with ID ${surveyId} not found`);
         }
+
+        // Log image data length and first few characters
+        this.logger.debug('Image data received', { 
+            imageLength: image?.length || 0,
+            imagePreview: image?.substring(0, 50) || 'empty'
+        });
+
+        if (!image || image.length === 0) {
+            this.logger.error(`Empty image data received for survey ${surveyId}`, undefined, { userEmail: user.email });
+            throw new Error('Empty image data received');
+        }
+
         const storage = new Storage({
             projectId: this.configService.get('GCP_PROJECT_ID'),
         });
         const bucket = storage.bucket(this.configService.get('GCP_BUCKET_NAME'));
         const filePath = `customer-surveys/${user.customerId ?? user.email}/${survey.surveyId}/logo.png`;
+        
+        this.logger.debug(`Creating write stream for path: ${filePath}`);
+        
         const stream = bucket.file(filePath).createWriteStream({
             metadata: {
                 contentType: 'image/png',
             },
             resumable: false
         });
-        stream.end(Buffer.from(image, 'base64'));
-        this.surveyModel.findOneAndUpdate({ surveyId: surveyId }, { $set: { style: { logoUrl: `https://form.paladin-forms.com/customer-surveys/${user.customerId ?? user.email}/${survey.surveyId}/logo.png` } } }).exec();
+
+        const imageBuffer = Buffer.from(image, 'base64');
+        this.logger.debug('Image buffer created', { 
+            bufferLength: imageBuffer.length,
+            isBase64Valid: this.isValidBase64(image)
+        });
+
+        stream.end(imageBuffer);
+        
+        await new Promise((resolve, reject) => {
+            stream.on('finish', () => {
+                this.logger.log(`Image upload completed for path: ${filePath}`);
+                resolve(null);
+            });
+            stream.on('error', (error) => {
+                this.logger.error(`Error uploading image: ${error.message}`, error.stack, { filePath });
+                reject(error);
+            });
+        });
+
+        const logoUrl = `https://form.paladin-forms.com/customer-surveys/${user.customerId ?? user.email}/${survey.surveyId}/logo.png`;
+        this.logger.debug(`Updating survey with logo URL: ${logoUrl}`);
+        
+        await this.surveyModel.findOneAndUpdate(
+            { surveyId: surveyId }, 
+            { $set: { style: { logoUrl } } }
+        ).exec();
+    }
+
+    private isValidBase64(str: string): boolean {
+        try {
+            return Buffer.from(str, 'base64').toString('base64') === str;
+        } catch (e) {
+            return false;
+        }
     }
 
     async publishSurvey(id: string, user: User) {
