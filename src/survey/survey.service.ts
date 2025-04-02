@@ -143,15 +143,6 @@ export class SurveyService {
         // Log the received image data length
         this.logger.log(`Received image data: ${image.length} characters`);
         
-        // Create a buffer from the image data exactly as received
-        const imageBuffer = Buffer.from(image, 'base64');
-        this.logger.log(`Created image buffer: ${imageBuffer.length} bytes`);
-        
-        // Check if the buffer is empty
-        if (imageBuffer.length === 0) {
-            this.logger.error(`Empty image buffer created for survey ${surveyId}`);
-            throw new Error('Failed to create image buffer');
-        }
         
         // Get the survey to check if it exists and belongs to the user
         const survey = await this.surveyModel.findOne({ surveyId }).exec();
@@ -198,7 +189,7 @@ export class SurveyService {
             });
             
             // Write the image buffer to the stream
-            writeStream.end(imageBuffer);
+            writeStream.end(image);
         });
     }
 
