@@ -132,66 +132,91 @@ export class SurveyService {
     }
 
     async uploadImage(surveyId: string, user: User, image: string) {
-        this.logger.log(`Starting image upload for survey ${surveyId}`, { userEmail: user.email });
+        this.logger.log(`Starting image upload for survey ${surveyId}`);
         
-        const survey = await this.getSurveyById(surveyId, user);
+        // Check if the image data is empty
+        if (!image) {
+            this.logger.error(`Empty image data received for survey ${surveyId}`);
+            throw new Error('Image data is empty');
+        }
+        
+        // Log the received image data length and preview
+        this.logger.log(`Received image data: ${image.length} characters`);
+        
+        // Check if the image data has a data URL prefix (e.g., "data:image/png;base64,")
+        let base64Data = image;
+        if (image.startsWith('data:')) {
+            // Extract the base64 part after the comma
+            const parts = image.split(',');
+            if (parts.length > 1) {
+                base64Data = parts[1];
+                this.logger.log(`Removed data URL prefix from image data`);
+            }
+        }
+        
+        // Validate the base64 string
+        if (!this.isValidBase64(base64Data)) {
+            this.logger.error(`Invalid base64 data for survey ${surveyId}`);
+            throw new Error('Invalid base64 image data');
+        }
+        
+        // Create a buffer from the base64 data
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+        this.logger.log(`Created image buffer: ${imageBuffer.length} bytes`);
+        
+        // Check if the buffer is empty
+        if (imageBuffer.length === 0) {
+            this.logger.error(`Empty image buffer created for survey ${surveyId}`);
+            throw new Error('Failed to create image buffer');
+        }
+        
+        // Get the survey to check if it exists and belongs to the user
+        const survey = await this.surveyModel.findOne({ surveyId }).exec();
+        
         if (!survey) {
-            this.logger.error(`Survey not found: ${surveyId}`, undefined, { userEmail: user.email });
-            throw new NotFoundException(`Survey with ID ${surveyId} not found`);
+            this.logger.error(`Survey not found: ${surveyId}`);
+            throw new Error('Survey not found');
         }
-
-        // Log image data length and first few characters
-        this.logger.debug('Image data received', { 
-            imageLength: image?.length || 0,
-            imagePreview: image?.substring(0, 50) || 'empty'
-        });
-
-        if (!image || image.length === 0) {
-            this.logger.error(`Empty image data received for survey ${surveyId}`, undefined, { userEmail: user.email });
-            throw new Error('Empty image data received');
-        }
-
+        
+        // Create a file path for the image
+        const filePath = `customer-surveys/${user.customerId ?? user.email}/${surveyId}/logo.png`;
+        this.logger.log(`Uploading image to path: ${filePath}`);
+        
+        // Create a write stream to upload the image
         const storage = new Storage({
             projectId: this.configService.get('GCP_PROJECT_ID'),
         });
         const bucket = storage.bucket(this.configService.get('GCP_BUCKET_NAME'));
-        const filePath = `customer-surveys/${user.customerId ?? user.email}/${survey.surveyId}/logo.png`;
-        
-        this.logger.debug(`Creating write stream for path: ${filePath}`);
-        
-        const stream = bucket.file(filePath).createWriteStream({
+        const writeStream = bucket.file(filePath).createWriteStream({
             metadata: {
                 contentType: 'image/png',
             },
-            resumable: false
         });
-
-        const imageBuffer = Buffer.from(image, 'base64');
-        this.logger.debug('Image buffer created', { 
-            bufferLength: imageBuffer.length,
-            isBase64Valid: this.isValidBase64(image)
-        });
-
-        stream.end(imageBuffer);
         
-        await new Promise((resolve, reject) => {
-            stream.on('finish', () => {
-                this.logger.log(`Image upload completed for path: ${filePath}`);
-                resolve(null);
-            });
-            stream.on('error', (error) => {
-                this.logger.error(`Error uploading image: ${error.message}`, error.stack, { filePath });
+        // Return a promise that resolves when the upload is complete
+        return new Promise((resolve, reject) => {
+            writeStream.on('error', (error) => {
+                this.logger.error(`Error uploading image for survey ${surveyId}`);
                 reject(error);
             });
+            
+            writeStream.on('finish', async () => {
+                this.logger.log(`Image upload completed for survey ${surveyId}`);
+                
+                // Update the survey with the logo URL
+                const logoUrl = `https://form.paladin-forms.com/${filePath}`;
+                await this.surveyModel.findOneAndUpdate(
+                    { surveyId }, 
+                    { $set: { style: { logoUrl } } }
+                ).exec();
+                
+                this.logger.log(`Survey ${surveyId} updated with logo URL: ${logoUrl}`);
+                resolve({ success: true, logoUrl });
+            });
+            
+            // Write the image buffer to the stream
+            writeStream.end(imageBuffer);
         });
-
-        const logoUrl = `https://form.paladin-forms.com/customer-surveys/${user.customerId ?? user.email}/${survey.surveyId}/logo.png`;
-        this.logger.debug(`Updating survey with logo URL: ${logoUrl}`);
-        
-        await this.surveyModel.findOneAndUpdate(
-            { surveyId: surveyId }, 
-            { $set: { style: { logoUrl } } }
-        ).exec();
     }
 
     private isValidBase64(str: string): boolean {
