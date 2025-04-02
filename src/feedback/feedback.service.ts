@@ -74,7 +74,17 @@ export class FeedbackService implements OnModuleInit {
                 this.logger.error('Survey not found', { user: user.email, surveyId });
                 throw new Error('Survey not found');
             }
-            const feedbacks = await this.feedbackModel.find({ surveyId }).exec();
+            
+            // Limit to most recent 50 feedbacks for performance
+            const feedbacks = await this.feedbackModel.find({ surveyId })
+                .sort({ createdAt: -1 })
+                .limit(50)
+                .exec();
+                
+            if (feedbacks.length === 0) {
+                return { questionResults: [] };
+            }
+
             const questionResults = await this.questionService.getQuestionFeedbacks(feedbacks, prompt);
 
             return { questionResults };

@@ -210,9 +210,27 @@ export class FeedbackController {
     try {
       const user = req.user as User;
       const { prompt } = body;
+      
+      if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+        throw new HttpException('Valid prompt is required', HttpStatus.BAD_REQUEST);
+      }
+      
       this.logger.log('Getting question feedbacks', { user: user.email, surveyId });
-      const { questionResults } = await this.feedbackService.getQuestionFeedbacks(user, surveyId, prompt);
-      return { questionResults };
+      
+      // Set a timeout for the entire operation
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new HttpException('Request timed out', HttpStatus.REQUEST_TIMEOUT));
+        }, 15000); // 15 seconds total timeout
+      });
+      
+      // Race between the actual operation and the timeout
+      const result = await Promise.race([
+        this.feedbackService.getQuestionFeedbacks(user, surveyId, prompt),
+        timeoutPromise
+      ]);
+      
+      return result;
     }
     catch (error) {
       this.logger.error(
@@ -220,6 +238,11 @@ export class FeedbackController {
         error instanceof Error ? error.stack : undefined,
         { user: (req.user as User)?.email, surveyId }
       );
+      
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
       throw new HttpException(
         'Failed to get question feedbacks',
         HttpStatus.INTERNAL_SERVER_ERROR
