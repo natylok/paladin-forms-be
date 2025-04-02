@@ -143,6 +143,26 @@ export class SurveyService {
         // Log the received image data length
         this.logger.log(`Received image data: ${image.length} characters`);
         
+        // Check if the image data has a data URL prefix (e.g., "data:image/png;base64,")
+        let base64Data = image;
+        if (image.startsWith('data:')) {
+            // Extract the base64 part after the comma
+            const parts = image.split(',');
+            if (parts.length > 1) {
+                base64Data = parts[1];
+                this.logger.log(`Removed data URL prefix from image data`);
+            }
+        }
+        
+        // Create a buffer from the base64 data
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+        this.logger.log(`Created image buffer: ${imageBuffer.length} bytes`);
+        
+        // Check if the buffer is empty
+        if (imageBuffer.length === 0) {
+            this.logger.error(`Empty image buffer created for survey ${surveyId}`);
+            throw new Error('Failed to create image buffer');
+        }
         
         // Get the survey to check if it exists and belongs to the user
         const survey = await this.surveyModel.findOne({ surveyId }).exec();
@@ -170,7 +190,7 @@ export class SurveyService {
         // Return a promise that resolves when the upload is complete
         return new Promise((resolve, reject) => {
             writeStream.on('error', (error) => {
-                this.logger.error(`Error uploading image for survey ${surveyId}`);
+                this.logger.error(`Error uploading image for survey ${surveyId}: ${error.message}`);
                 reject(error);
             });
             
@@ -189,7 +209,7 @@ export class SurveyService {
             });
             
             // Write the image buffer to the stream
-            writeStream.end(image);
+            writeStream.end(imageBuffer);
         });
     }
 
