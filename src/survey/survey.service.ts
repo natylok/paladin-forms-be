@@ -148,7 +148,7 @@ export class SurveyService {
             resumable: false
         });
         stream.end(Buffer.from(image, 'base64'));
-        this.surveyModel.findOneAndUpdate({ surveyId: surveyId }, { $set: { settings: { logoUrl: filePath } } }).exec();
+        this.surveyModel.findOneAndUpdate({ surveyId: surveyId }, { $set: { style: { logoUrl: `https://form.paladin-forms.com/customer-surveys/${user.customerId ?? user.email}/${survey.surveyId}/logo.png` } } }).exec();
     }
 
     async publishSurvey(id: string, user: User) {
