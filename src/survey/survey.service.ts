@@ -148,7 +148,7 @@ export class SurveyService {
             resumable: false
         });
         stream.end(Buffer.from(image, 'base64'));
-        return survey;
+        this.surveyModel.findOneAndUpdate({ surveyId: surveyId }, { $set: { settings: { logoUrl: filePath } } }).exec();
     }
 
     async publishSurvey(id: string, user: User) {
