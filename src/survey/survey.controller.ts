@@ -55,6 +55,12 @@ export class SurveyController {
     }
 
     @UseGuards(JwtGuard)
+    @Post(':surveyId/upload-image')
+    async uploadImage(@Param('surveyId') surveyId: string, @Req() req: Request) {
+        return this.surveyService.uploadImage(surveyId, req.user as User, req.body.image);
+    }
+
+    @UseGuards(JwtGuard)
     @Put(':id')
     async updateSurvey(@Param('id') id: string, @Body() updateData: Partial<CreateSurveyDto>, @Req() req: Request) {
         return this.surveyService.updateSurvey(id, updateData, req.user as User);

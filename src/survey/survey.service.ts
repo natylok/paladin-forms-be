@@ -131,6 +131,26 @@ export class SurveyService {
         }
     }
 
+    async uploadImage(surveyId: string, user: User, image: string) {
+        const survey = await this.getSurveyById(surveyId, user);
+        if (!survey) {
+            throw new NotFoundException(`Survey with ID ${surveyId} not found`);
+        }
+        const storage = new Storage({
+            projectId: this.configService.get('GCP_PROJECT_ID'),
+        });
+        const bucket = storage.bucket(this.configService.get('GCP_BUCKET_NAME'));
+        const filePath = `customer-surveys/${user.customerId ?? user.email}/${survey.surveyId}/logo.png`;
+        const stream = bucket.file(filePath).createWriteStream({
+            metadata: {
+                contentType: 'image/png',
+            },
+            resumable: false
+        });
+        stream.end(Buffer.from(image, 'base64'));
+        return survey;
+    }
+
     async publishSurvey(id: string, user: User) {
         const survey = await this.getSurveyById(id, user);
         if (!survey) {
