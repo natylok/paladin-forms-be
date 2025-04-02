@@ -16,12 +16,9 @@ RUN apt-get update && apt-get install -y \
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy Python requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Copy Python requirements and install Python dependencie
 
 # Copy model loader and test files
-COPY model_loader.py .
 
 # Create models directory with correct permissions
 RUN mkdir -p models && chmod 777 models
