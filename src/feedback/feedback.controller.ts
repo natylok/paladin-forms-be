@@ -221,7 +221,7 @@ export class FeedbackController {
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
           reject(new HttpException('Request timed out', HttpStatus.REQUEST_TIMEOUT));
-        }, 15000); // 15 seconds total timeout
+        }, 20000); // 20 seconds total timeout
       });
       
       // Race between the actual operation and the timeout
@@ -243,10 +243,13 @@ export class FeedbackController {
         throw error;
       }
       
-      throw new HttpException(
-        'Failed to get question feedbacks',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      // Return a fallback response instead of throwing an error
+      return { 
+        questionResults: [{
+          question: body.prompt || 'Unknown question',
+          answer: "I'm sorry, but the request timed out. Please try again with a simpler question."
+        }]
+      };
     }
   }
 

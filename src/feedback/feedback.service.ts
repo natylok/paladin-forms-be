@@ -79,31 +79,26 @@ export class FeedbackService implements OnModuleInit {
             // Limit to most recent 50 feedbacks for performance
             const feedbacks = await this.feedbackModel.find({ surveyId })
                 .sort({ createdAt: -1 })
+                .limit(50)
                 .exec();
-
-            const questionsAndAnswers = feedbacks.reduce((acc, feedback) => {
-                if(feedback.responses){
-                    Object.values(feedback.responses).forEach((response) => {
-                        if(response.componentType === SurveyComponentType.TEXT || response.componentType === SurveyComponentType.TEXTBOX){
-                            acc[response.title] = response.value;
-                        }
-                    })
-                }
-                return acc;
-            },{} as Record<string, string>);
                 
-            const context = `
-            Here are the questions and answers from the feedbacks:
-            ${JSON.stringify(questionsAndAnswers, null, 2)}
-            `;
-
-            const questionResults = await this.questionService.getQuestionFeedbacks(context, prompt);
-
             if (feedbacks.length === 0) {
                 return { questionResults: [] };
             }
 
-            return { questionResults };
+            try {
+                const questionResults = await this.questionService.getQuestionFeedbacks(feedbacks, prompt);
+                return { questionResults };
+            } catch (error) {
+                this.logger.error('Error getting question results', error instanceof Error ? error.stack : undefined, { user: user.email, surveyId });
+                // Return a fallback response instead of failing the entire request
+                return { 
+                    questionResults: [{
+                        question: prompt,
+                        answer: "I'm sorry, but I couldn't process your question at this time. Please try again later."
+                    }]
+                };
+            }
         }
         catch (error) {
             this.logger.error('Failed to get question feedbacks', error instanceof Error ? error.stack : undefined, { user: user.email, surveyId });
