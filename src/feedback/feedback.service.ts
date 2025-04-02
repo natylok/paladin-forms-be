@@ -103,8 +103,6 @@ export class FeedbackService implements OnModuleInit {
                 return { questionResults: [] };
             }
 
-            const questionResults = await this.questionService.getQuestionFeedbacks(feedbacks, prompt);
-
             return { questionResults };
         }
         catch (error) {
