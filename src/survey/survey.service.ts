@@ -145,6 +145,14 @@ export class SurveyService {
         
         // Check if the image data has a data URL prefix (e.g., "data:image/png;base64,")
         let base64Data = image;
+        if (image.startsWith('data:')) {
+            // Extract the base64 part after the comma
+            const parts = image.split(',');
+            if (parts.length > 1) {
+                base64Data = parts[1];
+                this.logger.log(`Removed data URL prefix from image data`);
+            }
+        }
         
         // Create a buffer from the base64 data
         const imageBuffer = Buffer.from(base64Data, 'base64');
@@ -168,41 +176,37 @@ export class SurveyService {
         const filePath = `customer-surveys/${user.customerId ?? user.email}/${surveyId}/logo.png`;
         this.logger.log(`Uploading image to path: ${filePath}`);
         
-        // Create a write stream to upload the image
-        const storage = new Storage({
-            projectId: this.configService.get('GCP_PROJECT_ID'),
-        });
-        const bucket = storage.bucket(this.configService.get('GCP_BUCKET_NAME'));
-        const writeStream = bucket.file(filePath).createWriteStream({
-            metadata: {
-                contentType: 'utf-8',
-            },
-        });
-        
-        // Return a promise that resolves when the upload is complete
-        return new Promise((resolve, reject) => {
-            writeStream.on('error', (error) => {
-                this.logger.error(`Error uploading image for survey ${surveyId}: ${error.message}`);
-                reject(error);
+        try {
+            // Create a write stream to upload the image
+            const storage = new Storage({
+                projectId: this.configService.get('GCP_PROJECT_ID'),
+            });
+            const bucket = storage.bucket(this.configService.get('GCP_BUCKET_NAME'));
+            
+            // Upload the file directly using the bucket.upload method
+            await bucket.file(filePath).save(imageBuffer, {
+                metadata: {
+                    contentType: 'image/png',
+                    contentEncoding: 'base64',
+                },
+                resumable: false
             });
             
-            writeStream.on('finish', async () => {
-                this.logger.log(`Image upload completed for survey ${surveyId}`);
-                
-                // Update the survey with the logo URL
-                const logoUrl = `https://form.paladin-forms.com/${filePath}`;
-                await this.surveyModel.findOneAndUpdate(
-                    { surveyId }, 
-                    { $set: { style: { logoUrl } } }
-                ).exec();
-                
-                this.logger.log(`Survey ${surveyId} updated with logo URL: ${logoUrl}`);
-                resolve({ success: true, logoUrl });
-            });
+            this.logger.log(`Image upload completed for survey ${surveyId}`);
             
-            // Write the image buffer to the stream
-            writeStream.end(imageBuffer);
-        });
+            // Update the survey with the logo URL
+            const logoUrl = `https://form.paladin-forms.com/${filePath}`;
+            await this.surveyModel.findOneAndUpdate(
+                { surveyId }, 
+                { $set: { style: { logoUrl } } }
+            ).exec();
+            
+            this.logger.log(`Survey ${surveyId} updated with logo URL: ${logoUrl}`);
+            return { success: true, logoUrl };
+        } catch (error) {
+            this.logger.error(`Error uploading image for survey ${surveyId}: ${error.message}`);
+            throw error;
+        }
     }
 
     private isValidBase64(str: string): boolean {
