@@ -108,7 +108,6 @@ def main():
                 input_data = json.loads(line.strip())
                 feedbacks = input_data.get('feedbacks', [])
                 question = input_data.get('question', '')
-                print(f"Received feedbacks: {len(feedbacks)}", file=sys.stderr)
                 
                 # Format all feedbacks into a single context
                 context = format_context(feedbacks)
@@ -131,6 +130,10 @@ def main():
             except Exception as e:
                 print(json.dumps({"error": f"Error processing request: {str(e)}"}))
                 sys.stdout.flush()
+    except Exception as e:
+        print(json.dumps({"error": f"Fatal error: {str(e)}"}))
+        sys.stdout.flush()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main() 
