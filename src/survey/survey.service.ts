@@ -145,14 +145,6 @@ export class SurveyService {
         
         // Check if the image data has a data URL prefix (e.g., "data:image/png;base64,")
         let base64Data = image;
-        if (image.startsWith('data:')) {
-            // Extract the base64 part after the comma
-            const parts = image.split(',');
-            if (parts.length > 1) {
-                base64Data = parts[1];
-                this.logger.log(`Removed data URL prefix from image data`);
-            }
-        }
         
         // Create a buffer from the base64 data
         const imageBuffer = Buffer.from(base64Data, 'base64');
@@ -183,7 +175,7 @@ export class SurveyService {
         const bucket = storage.bucket(this.configService.get('GCP_BUCKET_NAME'));
         const writeStream = bucket.file(filePath).createWriteStream({
             metadata: {
-                contentType: 'image/png',
+                contentType: 'utf-8',
             },
         });
         
