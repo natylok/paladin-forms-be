@@ -32,7 +32,10 @@ export class FeedbackService implements OnModuleInit {
         private readonly exportService: FeedbackExportService,
         private readonly filterService: FeedbackFilterService,
         private readonly questionService: FeedbackQuestionService
-    ) { }
+    ) {
+        this.questionService = new FeedbackQuestionService(this.redis);
+        this.questionService.initializeModelIfNeeded();
+     }
 
     async submitFeedback(surveyId: string, responses: Record<string, FeedbackResponse>, timeToFillSurvey: number): Promise<void> {
         try {
@@ -79,15 +82,17 @@ export class FeedbackService implements OnModuleInit {
             // Limit to most recent 50 feedbacks for performance
             const feedbacks = await this.feedbackModel.find({ surveyId })
                 .sort({ createdAt: -1 })
-                .limit(50)
+                .limit(100)
                 .exec();
                 
             if (feedbacks.length === 0) {
                 return { questionResults: [] };
             }
-
+            const textResponses = feedbacks.flatMap(feedback => {
+                return Object.values(feedback.responses).filter(response => response.componentType === SurveyComponentType.TEXT || response.componentType === SurveyComponentType.TEXTBOX);
+            })
             try {
-                const questionResults = await this.questionService.getQuestionFeedbacks(feedbacks, prompt);
+                const questionResults = await this.questionService.getQuestionFeedbacks(textResponses, prompt);
                 return { questionResults };
             } catch (error) {
                 this.logger.error('Error getting question results', error instanceof Error ? error.stack : undefined, { user: user.email, surveyId });

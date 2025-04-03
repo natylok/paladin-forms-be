@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Feedback } from '../feedback.schema';
+import { Feedback, FeedbackResponse } from '../feedback.schema';
 import { spawn } from 'child_process';
 import { SurveyComponentType } from '@natylok/paladin-forms-common';
 import { RedisClientType } from 'redis';
@@ -111,13 +111,15 @@ export class FeedbackQuestionService {
         }
     }
 
-    async getQuestionFeedbacks(feedbacks: Feedback[], prompt: string): Promise<any[]> {
-        try {
-            // Try to initialize the model if not already initialized
-            if (!this.isInitialized || !this.pythonProcess) {
-                await this.initializeModel();
-            }
+    async initializeModelIfNeeded() {
+        if (!this.isInitialized || !this.pythonProcess) {
+            await this.initializeModel();
+        }
+    }
 
+    async getQuestionFeedbacks(feedbacks: FeedbackResponse[], prompt: string): Promise<any[]> {
+        try {
+            await this.initializeModelIfNeeded();
             // If still not initialized after attempts, return a fallback response
             if (!this.isInitialized || !this.pythonProcess) {
                 this.logger.warn('Model not initialized, returning fallback response');
@@ -127,18 +129,8 @@ export class FeedbackQuestionService {
                 }];
             }
 
-            // Check cache first
-            const cacheKey = `question:${this.generateCacheKey(feedbacks, prompt)}`;
-            const cachedResult = await this.redis.get(cacheKey);
-            
-            if (cachedResult) {
-                this.logger.debug('Using cached question result');
-                return JSON.parse(cachedResult);
-            }
 
-            // Prepare the context from feedbacks - limit to most recent 20 feedbacks for performance
-            const recentFeedbacks = feedbacks.slice(-20);
-            const context = this.prepareContext(recentFeedbacks);
+            const context = this.prepareContext(feedbacks);
             
             return new Promise((resolve, reject) => {
                 let responseData = '';
@@ -154,11 +146,6 @@ export class FeedbackQuestionService {
                     try {
                         const result = JSON.parse(responseData);
                         cleanup();
-                        
-                        // Cache the result
-                        this.redis.setEx(cacheKey, this.CACHE_TTL, JSON.stringify(result))
-                            .catch(err => this.logger.error('Failed to cache question result', err));
-                        
                         resolve(result);
                     } catch (e) {
                         // Incomplete JSON, continue collecting data
@@ -170,7 +157,7 @@ export class FeedbackQuestionService {
                 timeoutId = setTimeout(() => {
                     cleanup();
                     reject(new Error('Question answering timeout'));
-                }, 10000); // 10 seconds timeout
+                }, 25000); // 10 seconds timeout
 
                 // Send the request to the Python process
                 const request = {
@@ -194,41 +181,13 @@ export class FeedbackQuestionService {
         }
     }
 
-    private generateCacheKey(feedbacks: Feedback[], prompt: string): string {
-        // Create a hash of the feedback IDs and prompt for caching
-        const feedbackIds = feedbacks.map(f => f._id.toString()).join(',');
-        return `${feedbackIds}:${prompt}`;
-    }
-
-    private prepareContext(feedbacks: Feedback[]): string {
+    private prepareContext(feedbacks: FeedbackResponse[]): string {
         const contextParts: string[] = [];
 
-        feedbacks.forEach((feedback, index) => {
-            const feedbackResponses: string[] = [];
-
-            if (feedback.responses) {
-                if (feedback.responses instanceof Map) {
-                    Array.from(feedback.responses.entries()).forEach(([_, response]) => {
-                        if (response && response.value) {
-                            const questionText = response.title || 'Question';
-                            const answerText = response.value.toString();
-                            feedbackResponses.push(`${questionText}: ${answerText}`);
-                        }
-                    });
-                } else {
-                    Object.entries(feedback.responses).forEach(([_, response]) => {
-                        if (response && response.value) {
-                            const questionText = response.title || 'Question';
-                            const answerText = response.value.toString();
-                            feedbackResponses.push(`${questionText}: ${answerText}`);
-                        }
-                    });
-                }
-            }
-
-            if (feedbackResponses.length > 0) {
-                contextParts.push(`Feedback ${index + 1}:\n${feedbackResponses.join('\n')}`);
-            }
+        feedbacks.forEach(response => {
+            const questionText = response.title || 'Question';
+            const answerText = response.value.toString();
+            contextParts.push(`${questionText}: ${answerText}`);
         });
 
         return contextParts.join('\n\n');

@@ -39,6 +39,31 @@ def load_model(cache_dir=None):
         print(f"Error loading model: {str(e)}", file=sys.stderr)
         sys.exit(1)
 
+def format_context(feedbacks):
+    """Format all feedback questions and answers into a single context string"""
+    try:
+        if not feedbacks:
+            return ""
+            
+        context_parts = []
+        for feedback in feedbacks:
+            if isinstance(feedback, dict):
+                # Handle feedback object with questions and answers
+                questions = feedback.get('questions', [])
+                for q in questions:
+                    question_text = q.get('question', '')
+                    answer_text = q.get('answer', '')
+                    if question_text and answer_text:
+                        context_parts.append(f"Q: {question_text}\nA: {answer_text}")
+            elif isinstance(feedback, str):
+                # Handle direct text feedback
+                context_parts.append(feedback)
+                
+        return "\n\n".join(context_parts)
+    except Exception as e:
+        print(f"Error formatting context: {str(e)}", file=sys.stderr)
+        return ""
+
 def answer_question(model, tokenizer, context, question):
     """Generate an answer for a question based on the given context"""
     try:
@@ -81,8 +106,12 @@ def main():
             try:
                 # Parse input JSON
                 input_data = json.loads(line.strip())
-                context = input_data.get('context', '')
+                feedbacks = input_data.get('feedbacks', [])
                 question = input_data.get('question', '')
+                print(f"Received feedbacks: {len(feedbacks)}", file=sys.stderr)
+                
+                # Format all feedbacks into a single context
+                context = format_context(feedbacks)
                 
                 # Generate answer
                 answer = answer_question(model, tokenizer, context, question)
@@ -100,15 +129,8 @@ def main():
                 print(json.dumps({"error": f"Invalid JSON input: {str(e)}"}))
                 sys.stdout.flush()
             except Exception as e:
-                print(json.dumps({"error": str(e)}))
+                print(json.dumps({"error": f"Error processing request: {str(e)}"}))
                 sys.stdout.flush()
-            
-            sys.stdout.flush()
-            
-    except Exception as e:
-        print(json.dumps({"error": f"Fatal error: {str(e)}"}))
-        sys.stdout.flush()
-        sys.exit(1)
 
 if __name__ == "__main__":
     main() 
