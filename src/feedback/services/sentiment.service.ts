@@ -44,7 +44,7 @@ export class SentimentService {
             await new Promise<void>((resolve, reject) => {
                 const timeout = setTimeout(() => {
                     reject(new Error('Model initialization timeout'));
-                }, 30000); // 30 seconds timeout
+                }, 70000); // 30 seconds timeout
 
                 const handleStderr = (data) => {
                     const message = data.toString();
