@@ -117,8 +117,9 @@ export class FeedbackAnalysisService {
             const embedding1 = output1.data;
             const embedding2 = output2.data;
             // Calculate cosine similarity
+            this.logger.log('--------------------------------');
+            this.logger.log('clean1', clean1, 'clean2', clean2);
             const similarity = this.cosineSimilarity(embedding1, embedding2);
-            this.logger.log('clean1', clean1, 'clean2', clean2, 'similarity', similarity);
             return similarity > this.SIMILARITY_THRESHOLD;
         } catch (error) {
             this.logger.error('Error calculating sentence similarity', error);
@@ -163,6 +164,7 @@ export class FeedbackAnalysisService {
         norm2 = Math.sqrt(norm2);
 
         if (norm1 === 0 || norm2 === 0) {
+            this.logger.warn('Zero norm in cosine similarity calculation');
             return 0;
         }
 
