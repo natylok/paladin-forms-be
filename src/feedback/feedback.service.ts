@@ -62,7 +62,14 @@ export class FeedbackService implements OnModuleInit {
 
     async getTrendingTopics(user: User, surveyId: string): Promise<string[]> {
         try {
-            const feedbacks = await this.feedbackModel.find({ surveyId }).exec();
+            const survey = await this.surveyModel.findOne({ surveyId, ...(user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email }) }).exec();
+            if(!survey){
+                this.logger.error('Survey not found', { user: user.email, surveyId });
+                throw new Error('Survey not found');
+            }
+            
+            this.logger.log('Getting trending topics', { user: user.email, surveyId });
+            const feedbacks = await this.feedbackModel.find({ surveyId: survey.surveyId }).exec();
             return this.analysisService.getTrendingTopics(feedbacks);
         } catch (error) {
             this.logger.error('Failed to get trending topics', error instanceof Error ? error.stack : undefined, { user: user.email, surveyId });
