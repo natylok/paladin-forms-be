@@ -17,7 +17,7 @@ import {
 export class FeedbackAnalysisService {
     private readonly logger = new Logger(FeedbackAnalysisService.name);
     private similarityModel: any;
-    private readonly SIMILARITY_THRESHOLD = 0.75;
+    private readonly SIMILARITY_THRESHOLD = 0.8;
 
     constructor(private readonly sentimentService: SentimentService) {
         this.initializeSimilarityModel();
@@ -207,7 +207,7 @@ export class FeedbackAnalysisService {
         // Sort by frequency and return top sentences
         return sentences
             .sort((a, b) => b.count - a.count)
-            .slice(0, 10) // Return top 10 trending sentences
+            .slice(0, 20) // Return top 10 trending sentences
             .map(({question, answer, sentiment, count}) => ({question, answer, sentiment, count}));
     }
 
