@@ -59,6 +59,17 @@ export class FeedbackService implements OnModuleInit {
             throw error;
         }
     }
+
+    async getTrendingTopics(user: User, surveyId: string): Promise<string[]> {
+        try {
+            const feedbacks = await this.feedbackModel.find({ surveyId }).exec();
+            return this.analysisService.getTrendingTopics(feedbacks);
+        } catch (error) {
+            this.logger.error('Failed to get trending topics', error instanceof Error ? error.stack : undefined, { user: user.email, surveyId });
+            throw error;
+        }
+    }
+
     async getFeedbackById(feedbackId: string, user: User): Promise<Feedback | null> {
         try {
             const surveys = await this.surveyModel.find(user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email });
