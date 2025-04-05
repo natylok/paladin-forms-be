@@ -176,13 +176,17 @@ export class FeedbackAnalysisService {
             const answer = feedback.answer;
             const question = feedback.question;
             
+            // Skip empty or very short answers
+            if (!answer || answer.length < 3) continue;
+            
             // Analyze sentiment
             const sentiment = await this.sentimentService.analyzeSentiment(answer);
             
             // Check if this sentence is similar to any existing one with the same sentiment
             let foundSimilar = false;
             for (const existing of sentences) {
-                if (existing.sentiment === sentiment.label && await this.areSentencesSimilar(existing.answer, answer)) {
+                if (existing.sentiment === sentiment.label && 
+                    await this.areSentencesSimilar(existing.answer, answer)) {
                     existing.count++;
                     foundSimilar = true;
                     break;
