@@ -101,5 +101,5 @@ RUN npx prisma generate
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/node_modules/.prisma/client ./node_modules/.prisma/client
 
-EXPOSE 3"npm run start:prod"e Node.js application and the Python model loader
-CMD ["node", "run", "start:prod"] 
+EXPOSE 3333
+CMD ["node", "dist/main"] 
