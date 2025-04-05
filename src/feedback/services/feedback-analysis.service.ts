@@ -93,6 +93,13 @@ export class FeedbackAnalysisService {
             .trim();
     }
 
+    private cosineSimilarityRun(vec1: Float32Array, vec2: Float32Array) {
+        const dot = vec1.reduce((acc, val, i) => acc + val * vec2[i], 0);
+        const norm1 = Math.sqrt(vec1.reduce((acc, val) => acc + val * val, 0));
+        const norm2 = Math.sqrt(vec2.reduce((acc, val) => acc + val * val, 0));
+        return dot / (norm1 * norm2);
+      }
+
     private async areSentencesSimilar(sentence1: string, sentence2: string): Promise<boolean> {
         if (!this.similarityModel) {
             this.logger.warn('Similarity model not initialized, using fallback method');
@@ -115,7 +122,8 @@ export class FeedbackAnalysisService {
             const embedding1 = output1.data;
             const embedding2 = output2.data;
             // Calculate cosine similarity
-            const similarity = this.cosineSimilarity(embedding1, embedding2);
+            const similarity = this.cosineSimilarityRun(embedding1, embedding2);
+            this.logger.log('similarity', similarity);
             return similarity > this.SIMILARITY_THRESHOLD;
         } catch (error) {
             this.logger.error('Error calculating sentence similarity', error);
