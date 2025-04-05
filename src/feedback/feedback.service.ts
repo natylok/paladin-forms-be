@@ -34,7 +34,6 @@ export class FeedbackService implements OnModuleInit {
         private readonly questionService: FeedbackQuestionService
     ) {
         this.questionService = new FeedbackQuestionService(this.redis);
-        this.questionService.initializeModelIfNeeded();
      }
 
     async submitFeedback(surveyId: string, responses: Record<string, FeedbackResponse>, timeToFillSurvey: number): Promise<void> {
