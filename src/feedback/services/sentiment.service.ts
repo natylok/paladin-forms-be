@@ -1,12 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { spawn } from 'child_process';
 import { SentimentResult } from '../types/feedback.types';
+import { pipeline } from '@xenova/transformers';
 
 @Injectable()
 export class SentimentService {
     private readonly logger = new Logger(SentimentService.name);
     private pythonProcess: any;
     private isInitialized: boolean = false;
+    private classifier: any;
     private readonly MODEL_NAME = 'Xenova/distilbert-base-uncased-finetuned-sst-2-english';
 
     constructor() {
@@ -15,6 +17,10 @@ export class SentimentService {
 
     private async initializeModel() {
         try {
+
+            this.classifier = await pipeline('sentiment-analysis', this.MODEL_NAME);
+            
+            this.isInitialized = true;
             // Start the Python process
             this.pythonProcess = spawn('python3', ['model_loader.py'], {
                 stdio: ['pipe', 'pipe', 'pipe']
@@ -95,15 +101,26 @@ export class SentimentService {
 
     async analyzeSentiment(text: string): Promise<SentimentResult> {
         try {
-            const result = await this.sendRequest({
-                text,
-                action: 'analyze'
-            });
+             // Wait for model to be initialized
+             if (!this.isInitialized) {
+                await this.initializeModel();
+            }
 
-            return {
-                label: result.label,
-                score: result.score
-            };
+            const result = await this.classifier(text);
+            
+            // Convert label to our format (positive, negative, neutral)
+            let normalizedLabel: string;
+            // This model uses POSITIVE/NEGATIVE labels
+            if (result[0].label === 'POSITIVE') {
+                normalizedLabel = 'positive';
+            } else {
+                normalizedLabel = 'negative';
+            }
+
+            return { 
+                label: normalizedLabel, 
+                score: result[0].score
+            }
         } catch (error) {
             this.logger.error('Error in sentiment analysis', {
                 error: error instanceof Error ? error.message : 'Unknown error',
