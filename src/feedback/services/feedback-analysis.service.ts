@@ -102,6 +102,8 @@ export class FeedbackAnalysisService {
         try {
             const clean1 = this.cleanSentence(sentence1);
             const clean2 = this.cleanSentence(sentence2);
+            this.logger.log('clean1', clean1);
+            this.logger.log('clean2', clean2);
 
             // If one sentence is contained within the other, they are similar
             if (clean1.includes(clean2) || clean2.includes(clean1)) {
@@ -111,11 +113,13 @@ export class FeedbackAnalysisService {
             // Get embeddings for both sentences
             const output1 = await this.similarityModel(clean1);
             const output2 = await this.similarityModel(clean2);
-
+            this.logger.log('output1', output1);
+            this.logger.log('output2', output2);
             // Extract the embeddings from the output
             const embedding1 = output1.data;
             const embedding2 = output2.data;
-
+            this.logger.log('embedding1', embedding1);
+            this.logger.log('embedding2', embedding2);
             // Calculate cosine similarity
             const similarity = this.cosineSimilarity(embedding1, embedding2);
             return similarity > this.SIMILARITY_THRESHOLD;
