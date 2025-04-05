@@ -279,8 +279,6 @@ export class FeedbackAnalysisService {
             monthlyFeedbacks
         );
 
-        this.logger.log('1to10', stats["1to10"].distribution);
-
         this.finalizeSummary(
             summary,
             stats,
@@ -288,6 +286,7 @@ export class FeedbackAnalysisService {
             weeklyFeedbacks,
             monthlyFeedbacks
         );
+        this.logger.log('1to10', stats["1to10"].distribution);
     }
 
     private isRatingResponse(response: { componentType: string }): boolean {
@@ -472,6 +471,11 @@ export class FeedbackAnalysisService {
             sentimentCounts: { positive: number; negative: number; neutral: number };
             totalRatingScore: number;
             ratingCount: number;
+            "1to10": {
+                total: number;
+                average: number;
+                distribution: { [key: string]: number };
+            };
         },
         dailyFeedbacks: Map<string, { positive: number; negative: number }>,
         weeklyFeedbacks: Map<string, { positive: number; negative: number }>,
