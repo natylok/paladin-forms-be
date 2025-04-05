@@ -118,6 +118,7 @@ export class FeedbackAnalysisService {
             const embedding2 = output2.data;
             // Calculate cosine similarity
             const similarity = this.cosineSimilarity(embedding1, embedding2);
+            this.logger.log('clean1', clean1, 'clean2', clean2, 'similarity', similarity);
             return similarity > this.SIMILARITY_THRESHOLD;
         } catch (error) {
             this.logger.error('Error calculating sentence similarity', error);
