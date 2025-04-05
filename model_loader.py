@@ -219,21 +219,21 @@ def extract_trending_sentences(feedbacks, time_window_days=30):
             
         # Extract all sentences from feedback with their sentiment
         all_sentences = []
-        for feedback in feedbacks:
+        for question_id, feedback in feedbacks.items():
             if isinstance(feedback, dict):
-                # Handle feedback as Record<string,string>
-                for question, answer in feedback.items():
-                    if answer:
-                        # Split answer into sentences
-                        sentences = [s.strip() for s in re.split(r'[.!?]+', answer) if s.strip()]
-                        for sentence in sentences:
-                            if len(sentence.split()) >= 2:  # Reduced minimum length to catch short meaningful sentences
-                                sentiment = get_sentiment_category(sentence)
-                                all_sentences.append({
-                                    'text': sentence,
-                                    'sentiment': sentiment,
-                                    'question': question  # Store the question for context
-                                })
+                question = feedback.get('question', '')
+                answer = feedback.get('answer', '')
+                if answer:
+                    # Split answer into sentences
+                    sentences = [s.strip() for s in re.split(r'[.!?]+', answer) if s.strip()]
+                    for sentence in sentences:
+                        if len(sentence.split()) >= 2:  # Reduced minimum length to catch short meaningful sentences
+                            sentiment = get_sentiment_category(sentence)
+                            all_sentences.append({
+                                'text': sentence,
+                                'sentiment': sentiment,
+                                'question': question  # Store the question for context
+                            })
             elif isinstance(feedback, str):
                 # Handle direct text feedback
                 sentences = [s.strip() for s in re.split(r'[.!?]+', feedback) if s.strip()]
@@ -309,7 +309,7 @@ def main():
             try:
                 # Parse input JSON
                 input_data = json.loads(line.strip())
-                feedbacks = input_data.get('feedbacks', [])
+                feedbacks = input_data.get('feedbacks', {})
                 question = input_data.get('question', '')
                 action = input_data.get('action', 'answer')  # Default to answer if not specified
                 
