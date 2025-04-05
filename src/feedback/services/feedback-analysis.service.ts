@@ -382,9 +382,9 @@ export class FeedbackAnalysisService {
         // The sentiment model returns scores between 0 and 1
         // For positive sentiments: score is confidence of being positive
         // For negative sentiments: score is confidence of being negative
-        if (sentiment.label === 'positive' && sentiment.score > 0.7) {
+        if (sentiment.label === 'POSITIVE' && sentiment.score > 0.7) {
             stats.sentimentCounts.positive++;
-        } else if (sentiment.label === 'negative' && sentiment.score > 0.7) {
+        } else if (sentiment.label === 'NEGATIVE' && sentiment.score > 0.7) {
             stats.sentimentCounts.negative++;
         } else {
             stats.sentimentCounts.neutral++;
