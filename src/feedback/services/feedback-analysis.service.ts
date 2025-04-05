@@ -106,8 +106,22 @@ export class FeedbackAnalysisService {
             }
 
             // Get embeddings for both sentences
-            const output1 = await this.similarityModel(clean1, { pooling: 'mean', normalize: true });
-            const output2 = await this.similarityModel(clean2, { pooling: 'mean', normalize: true });
+            const output1 = await this.similarityModel(clean1, { 
+                pooling: 'mean', 
+                normalize: true,
+                return_tensor: true 
+            });
+            const output2 = await this.similarityModel(clean2, { 
+                pooling: 'mean', 
+                normalize: true,
+                return_tensor: true 
+            });
+
+            // Ensure we have valid tensors
+            if (!output1 || !output2 || !output1.data || !output2.data) {
+                this.logger.warn('Invalid model output, using fallback method');
+                return this.fallbackSimilarityCheck(sentence1, sentence2);
+            }
 
             // Calculate cosine similarity
             const similarity = this.cosineSimilarity(output1.data, output2.data);
@@ -137,6 +151,10 @@ export class FeedbackAnalysisService {
     }
 
     private cosineSimilarity(vec1: Float32Array, vec2: Float32Array): number {
+        if (!vec1 || !vec2 || vec1.length !== vec2.length) {
+            return 0;
+        }
+
         let dotProduct = 0;
         let norm1 = 0;
         let norm2 = 0;
@@ -149,6 +167,10 @@ export class FeedbackAnalysisService {
 
         norm1 = Math.sqrt(norm1);
         norm2 = Math.sqrt(norm2);
+
+        if (norm1 === 0 || norm2 === 0) {
+            return 0;
+        }
 
         return dotProduct / (norm1 * norm2);
     }
