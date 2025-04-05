@@ -11,6 +11,11 @@ export class SentimentService {
     private classifier: any;
     private readonly MODEL_NAME = 'Xenova/distilbert-base-uncased-finetuned-sst-2-english';
 
+
+    constructor() {
+        this.classifier = pipeline('sentiment-analysis', this.MODEL_NAME);
+    }
+
     private async sendRequest(request: any): Promise<any> {
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
