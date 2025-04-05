@@ -130,7 +130,7 @@ export class SentimentService {
         }
     }
 
-    async extractTrendingSentences(feedbacks: any[]): Promise<string[]> {
+    async extractTrendingSentences(feedbacks: Record<string, string>): Promise<string[]> {
         try {
             this.logger.log('Extracting trending sentences', { feedbacks });
             const result = await this.sendRequest({

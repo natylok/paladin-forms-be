@@ -67,10 +67,18 @@ export class FeedbackService implements OnModuleInit {
                 this.logger.error('Survey not found', { user: user.email, surveyId });
                 throw new Error('Survey not found');
             }
-            
+
             this.logger.log('Getting trending topics', { user: user.email, surveyId });
             const feedbacks = await this.feedbackModel.find({ surveyId: survey.surveyId }).exec();
-            return this.analysisService.getTrendingTopics(feedbacks);
+            const responses: Record<string, string> = {};
+            feedbacks.forEach(feedback => {
+                Object.entries(feedback.responses).forEach(([key, response]) => {
+                    if(response.componentType === SurveyComponentType.TEXT || response.componentType === SurveyComponentType.TEXTBOX){
+                        responses[key] = response.value;
+                    }
+                })
+            })
+            return this.analysisService.getTrendingTopics(responses);
         } catch (error) {
             this.logger.error('Failed to get trending topics', error instanceof Error ? error.stack : undefined, { user: user.email, surveyId });
             throw error;

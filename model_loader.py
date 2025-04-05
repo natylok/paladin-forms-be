@@ -162,27 +162,29 @@ def extract_trending_sentences(feedbacks, time_window_days=30):
         all_sentences = []
         for feedback in feedbacks:
             if isinstance(feedback, dict):
-                questions = feedback.get('questions', [])
-                for q in questions:
-                    answer_text = q.get('answer', '')
-                    if answer_text:
+                # Handle feedback as Record<string,string>
+                for question, answer in feedback.items():
+                    if answer:
                         # Split answer into sentences
-                        sentences = [s.strip() for s in re.split(r'[.!?]+', answer_text) if s.strip()]
+                        sentences = [s.strip() for s in re.split(r'[.!?]+', answer) if s.strip()]
                         for sentence in sentences:
                             if len(sentence.split()) >= 3:  # Skip very short sentences
                                 sentiment = get_sentiment_category(sentence)
                                 all_sentences.append({
                                     'text': sentence,
-                                    'sentiment': sentiment
+                                    'sentiment': sentiment,
+                                    'question': question  # Store the question for context
                                 })
             elif isinstance(feedback, str):
+                # Handle direct text feedback
                 sentences = [s.strip() for s in re.split(r'[.!?]+', feedback) if s.strip()]
                 for sentence in sentences:
                     if len(sentence.split()) >= 3:
                         sentiment = get_sentiment_category(sentence)
                         all_sentences.append({
                             'text': sentence,
-                            'sentiment': sentiment
+                            'sentiment': sentiment,
+                            'question': None  # No question context for direct feedback
                         })
         
         # Group similar sentences with same sentiment
@@ -190,6 +192,7 @@ def extract_trending_sentences(feedbacks, time_window_days=30):
         for sentence_data in all_sentences:
             sentence = sentence_data['text']
             sentiment = sentence_data['sentiment']
+            question = sentence_data['question']
             
             # Check if sentence is similar to any existing group with same sentiment
             found_group = False
@@ -197,6 +200,7 @@ def extract_trending_sentences(feedbacks, time_window_days=30):
                 if (group['sentiment'] == sentiment and 
                     are_sentences_similar(sentence, group['representative'])):
                     group['sentences'].append(sentence)
+                    group['questions'].add(question)  # Add question to the set
                     found_group = True
                     break
             
@@ -205,7 +209,8 @@ def extract_trending_sentences(feedbacks, time_window_days=30):
                 sentence_groups.append({
                     'representative': sentence,
                     'sentences': [sentence],
-                    'sentiment': sentiment
+                    'sentiment': sentiment,
+                    'questions': {question}  # Initialize with a set containing the question
                 })
         
         # Score groups by size and return top sentences
@@ -216,6 +221,7 @@ def extract_trending_sentences(feedbacks, time_window_days=30):
                     'sentence': group['representative'],
                     'count': len(group['sentences']),
                     'sentiment': group['sentiment'],
+                    'questions': list(group['questions']),  # Convert set to list
                     'examples': group['sentences'][:3]  # Include up to 3 examples
                 })
         
@@ -224,7 +230,8 @@ def extract_trending_sentences(feedbacks, time_window_days=30):
         return [{
             'text': group['sentence'],
             'sentiment': group['sentiment'],
-            'count': group['count']
+            'count': group['count'],
+            'questions': group['questions']  # Include the questions this sentence appeared in
         } for group in scored_groups[:10]]
         
     except Exception as e:
