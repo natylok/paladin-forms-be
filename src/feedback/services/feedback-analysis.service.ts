@@ -27,7 +27,10 @@ export class FeedbackAnalysisService {
         try {
             this.similarityModel = await pipeline(
                 'feature-extraction',
-                'Xenova/distilbert-base-uncased-finetuned-sst-2-english'
+                'Xenova/sentence-transformers/all-MiniLM-L6-v2',
+                {
+                    quantized: true
+                }
             );
             this.logger.log('Similarity model initialized successfully');
         } catch (error) {
@@ -106,25 +109,15 @@ export class FeedbackAnalysisService {
             }
 
             // Get embeddings for both sentences
-            const output1 = await this.similarityModel(clean1, { 
-                pooling: 'mean', 
-                normalize: true,
-                return_tensor: true 
-            });
-            const output2 = await this.similarityModel(clean2, { 
-                pooling: 'mean', 
-                normalize: true,
-                return_tensor: true 
-            });
+            const output1 = await this.similarityModel(clean1);
+            const output2 = await this.similarityModel(clean2);
 
-            // Ensure we have valid tensors
-            if (!output1 || !output2 || !output1.data || !output2.data) {
-                this.logger.warn('Invalid model output, using fallback method');
-                return this.fallbackSimilarityCheck(sentence1, sentence2);
-            }
+            // Extract the embeddings from the output
+            const embedding1 = output1.data;
+            const embedding2 = output2.data;
 
             // Calculate cosine similarity
-            const similarity = this.cosineSimilarity(output1.data, output2.data);
+            const similarity = this.cosineSimilarity(embedding1, embedding2);
             return similarity > this.SIMILARITY_THRESHOLD;
         } catch (error) {
             this.logger.error('Error calculating sentence similarity', error);
@@ -183,17 +176,13 @@ export class FeedbackAnalysisService {
             const answer = feedback.answer;
             const question = feedback.question;
             
-            // Skip empty or very short answers
-            if (!answer || answer.length < 3) continue;
-            
             // Analyze sentiment
             const sentiment = await this.sentimentService.analyzeSentiment(answer);
             
             // Check if this sentence is similar to any existing one with the same sentiment
             let foundSimilar = false;
             for (const existing of sentences) {
-                if (existing.sentiment === sentiment.label && 
-                    await this.areSentencesSimilar(existing.answer, answer)) {
+                if (existing.sentiment === sentiment.label && await this.areSentencesSimilar(existing.answer, answer)) {
                     existing.count++;
                     foundSimilar = true;
                     break;
