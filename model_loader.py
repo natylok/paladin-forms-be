@@ -2,21 +2,24 @@ import os
 import sys
 import json
 import torch
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 from collections import defaultdict
 from datetime import datetime, timedelta
+from difflib import SequenceMatcher
+import re
 
-# Global variables to store the loaded model and tokenizer
+# Global variables to store the loaded models and tokenizers
 model = None
 tokenizer = None
+sentiment_classifier = None
 
 def load_model(cache_dir=None):
-    """Load the BART model for question answering"""
-    global model, tokenizer
+    """Load the BART model for question answering and sentiment analysis"""
+    global model, tokenizer, sentiment_classifier
     try:
-        if model is not None and tokenizer is not None:
-            print("Model already loaded", file=sys.stderr)
-            return model, tokenizer
+        if model is not None and tokenizer is not None and sentiment_classifier is not None:
+            print("Models already loaded", file=sys.stderr)
+            return model, tokenizer, sentiment_classifier
 
         # Use environment variable for cache directory or default to ./models
         cache_dir = cache_dir or os.getenv('TRANSFORMERS_CACHE', './models')
@@ -24,30 +27,33 @@ def load_model(cache_dir=None):
         
         print(f"Using cache directory: {cache_dir}", file=sys.stderr)
         
-        # Load tokenizer and model
+        # Load BART model and tokenizer
         model_name = "facebook/bart-large-cnn"
-        
         tokenizer = AutoTokenizer.from_pretrained(
             model_name,
             cache_dir=cache_dir,
             local_files_only=False
         )
         
-        # Load model with basic optimizations
         model = AutoModelForSeq2SeqLM.from_pretrained(
             model_name,
             cache_dir=cache_dir,
             local_files_only=False
         )
-        
-        # Basic optimization for inference
         model.eval()
         
-        print(f"Model loaded successfully from {model_name}", file=sys.stderr)
-        return model, tokenizer
+        # Load sentiment analysis model
+        sentiment_classifier = pipeline(
+            "sentiment-analysis",
+            model="distilbert-base-uncased-finetuned-sst-2-english",
+            cache_dir=cache_dir
+        )
+        
+        print(f"Models loaded successfully", file=sys.stderr)
+        return model, tokenizer, sentiment_classifier
         
     except Exception as e:
-        print(f"Error loading model: {str(e)}", file=sys.stderr)
+        print(f"Error loading models: {str(e)}", file=sys.stderr)
         sys.exit(1)
 
 def format_context(feedbacks):
@@ -106,65 +112,120 @@ def answer_question(context, question):
         print(f"Question answering error: {str(e)}", file=sys.stderr)
         return "Error generating answer"
 
+def get_sentiment_category(text):
+    """Get the sentiment category of a text"""
+    global sentiment_classifier
+    try:
+        result = sentiment_classifier(text)[0]
+        label = result['label'].lower()
+        score = result['score']
+        
+        # Map sentiment labels to categories
+        if label == 'positive':
+            if score > 0.9:
+                return 'very_positive'
+            return 'positive'
+        elif label == 'negative':
+            if score > 0.9:
+                return 'very_negative'
+            return 'negative'
+        return 'neutral'
+    except Exception as e:
+        print(f"Error in sentiment analysis: {str(e)}", file=sys.stderr)
+        return 'neutral'
+
+def clean_sentence(sentence):
+    """Clean and normalize a sentence for comparison"""
+    # Remove extra whitespace
+    sentence = re.sub(r'\s+', ' ', sentence).strip()
+    # Convert to lowercase
+    sentence = sentence.lower()
+    # Remove punctuation
+    sentence = re.sub(r'[^\w\s]', '', sentence)
+    return sentence
+
+def are_sentences_similar(s1, s2, threshold=0.8):
+    """Check if two sentences are similar using sequence matching"""
+    s1_clean = clean_sentence(s1)
+    s2_clean = clean_sentence(s2)
+    ratio = SequenceMatcher(None, s1_clean, s2_clean).ratio()
+    return ratio >= threshold
+
 def extract_trending_sentences(feedbacks, time_window_days=30):
-    """Extract trending sentences from feedback using BART model"""
-    global model, tokenizer
+    """Extract trending sentences from feedback by finding similar/repeated sentences with same sentiment"""
+    global model, tokenizer, sentiment_classifier
     try:
         if not feedbacks:
             return []
             
-        # Group feedbacks by date
-        feedback_by_date = defaultdict(list)
-        current_date = datetime.now()
-        cutoff_date = current_date - timedelta(days=time_window_days)
-        
+        # Extract all sentences from feedback with their sentiment
+        all_sentences = []
         for feedback in feedbacks:
             if isinstance(feedback, dict):
-                date_str = feedback.get('date', '')
-                try:
-                    feedback_date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-                    if feedback_date >= cutoff_date:
-                        feedback_by_date[feedback_date.date()].append(feedback)
-                except ValueError:
-                    continue
+                questions = feedback.get('questions', [])
+                for q in questions:
+                    answer_text = q.get('answer', '')
+                    if answer_text:
+                        # Split answer into sentences
+                        sentences = [s.strip() for s in re.split(r'[.!?]+', answer_text) if s.strip()]
+                        for sentence in sentences:
+                            if len(sentence.split()) >= 3:  # Skip very short sentences
+                                sentiment = get_sentiment_category(sentence)
+                                all_sentences.append({
+                                    'text': sentence,
+                                    'sentiment': sentiment
+                                })
+            elif isinstance(feedback, str):
+                sentences = [s.strip() for s in re.split(r'[.!?]+', feedback) if s.strip()]
+                for sentence in sentences:
+                    if len(sentence.split()) >= 3:
+                        sentiment = get_sentiment_category(sentence)
+                        all_sentences.append({
+                            'text': sentence,
+                            'sentiment': sentiment
+                        })
         
-        # Process feedbacks in chronological order
-        trending_sentences = []
-        for date in sorted(feedback_by_date.keys()):
-            daily_feedbacks = feedback_by_date[date]
-            context = format_context(daily_feedbacks)
+        # Group similar sentences with same sentiment
+        sentence_groups = []
+        for sentence_data in all_sentences:
+            sentence = sentence_data['text']
+            sentiment = sentence_data['sentiment']
             
-            if not context:
-                continue
-                
-            # Use BART to summarize the daily feedback
-            inputs = tokenizer(context, return_tensors="pt", max_length=1024, truncation=True)
+            # Check if sentence is similar to any existing group with same sentiment
+            found_group = False
+            for group in sentence_groups:
+                if (group['sentiment'] == sentiment and 
+                    are_sentences_similar(sentence, group['representative'])):
+                    group['sentences'].append(sentence)
+                    found_group = True
+                    break
             
-            with torch.no_grad():
-                outputs = model.generate(
-                    **inputs,
-                    max_length=150,
-                    num_beams=4,
-                    length_penalty=2.0,
-                    early_stopping=True,
-                    no_repeat_ngram_size=3  # Prevent repetition
-                )
-            
-            summary = tokenizer.decode(outputs[0], skip_special_tokens=True)
-            
-            # Extract key sentences from the summary
-            sentences = [s.strip() for s in summary.split('.') if s.strip()]
-            trending_sentences.extend(sentences)
+            # If no similar group found with same sentiment, create new group
+            if not found_group:
+                sentence_groups.append({
+                    'representative': sentence,
+                    'sentences': [sentence],
+                    'sentiment': sentiment
+                })
         
-        # Score sentences based on frequency and recency
-        sentence_scores = defaultdict(float)
-        for sentence in trending_sentences:
-            # Basic scoring: more recent sentences get higher scores
-            sentence_scores[sentence] += 1.0
+        # Score groups by size and return top sentences
+        scored_groups = []
+        for group in sentence_groups:
+            if len(group['sentences']) > 1:  # Only include groups with multiple similar sentences
+                scored_groups.append({
+                    'sentence': group['representative'],
+                    'count': len(group['sentences']),
+                    'sentiment': group['sentiment'],
+                    'examples': group['sentences'][:3]  # Include up to 3 examples
+                })
         
-        # Sort by score and return top sentences
-        sorted_sentences = sorted(sentence_scores.items(), key=lambda x: x[1], reverse=True)
-        return [sentence for sentence, _ in sorted_sentences[:10]]
+        # Sort by count and return top sentences
+        scored_groups.sort(key=lambda x: x['count'], reverse=True)
+        return [{
+            'text': group['sentence'],
+            'sentiment': group['sentiment'],
+            'count': group['count']
+        } for group in scored_groups[:10]]
         
     except Exception as e:
         print(f"Error extracting trending sentences: {str(e)}", file=sys.stderr)
@@ -172,9 +233,9 @@ def extract_trending_sentences(feedbacks, time_window_days=30):
 
 def main():
     try:
-        # Load the model once at startup
+        # Load the models once at startup
         load_model()
-        print("Model loaded and ready for processing", file=sys.stderr)
+        print("Models loaded and ready for processing", file=sys.stderr)
         sys.stderr.flush()
         
         # Process requests
