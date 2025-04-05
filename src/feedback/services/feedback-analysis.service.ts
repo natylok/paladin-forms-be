@@ -168,11 +168,11 @@ export class FeedbackAnalysisService {
         return dotProduct / (norm1 * norm2);
     }
 
-    async extractTrendingSentences(feedbacks: Record<string, {question: string, answer: string}>): Promise<{question: string, answer: string, sentiment: string}[]> {
+    async extractTrendingSentences(feedbacks: {question: string, answer: string}[]): Promise<{question: string, answer: string, sentiment: string, count: number}[]> {
         const sentences: {question: string, answer: string, sentiment: string, count: number}[] = [];
         
         // Process each feedback
-        for (const [questionId, feedback] of Object.entries(feedbacks)) {
+        for (const feedback of feedbacks) {
             const answer = feedback.answer;
             const question = feedback.question;
             
@@ -211,8 +211,8 @@ export class FeedbackAnalysisService {
             .map(({question, answer, sentiment, count}) => ({question, answer, sentiment, count}));
     }
 
-    async getTrendingTopics(feedbacks: Record<string, {question: string, answer: string}>): Promise<{question: string, answer: string, sentiment: string}[]> {
-        return this.extractTrendingSentences(feedbacks);
+    async getTrendingTopics(feedbacks: {question: string, answer: string}[]): Promise<{question: string, answer: string, sentiment: string}[]> {
+        return await this.extractTrendingSentences(feedbacks);
     }
 
     private async processFeedbacks(feedbacks: Feedback[], summary: FeedbackSummary): Promise<void> {

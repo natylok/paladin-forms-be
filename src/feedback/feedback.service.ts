@@ -69,14 +69,14 @@ export class FeedbackService implements OnModuleInit {
 
             this.logger.log('Getting trending topics', { user: user.email, surveyId });
             const feedbacks = await this.feedbackModel.find({ surveyId: survey.surveyId }).exec();
-            const responses: Record<string, {question: string, answer: string}> = {};
+            const responses: {question: string, answer: string}[] = [];
             feedbacks.forEach(feedback => {
                 Object.entries(feedback.responses).forEach(([key, response]) => {
                     if(response.componentType === SurveyComponentType.TEXT || response.componentType === SurveyComponentType.TEXTBOX){
-                        responses[key] = {
+                        responses.push({
                             question: response.title,
                             answer: response.value
-                        };
+                        });
                     }
                 })
             })
