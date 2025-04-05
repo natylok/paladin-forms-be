@@ -64,6 +64,11 @@ export class FeedbackAnalysisService {
         };
     }
 
+    async getTrendingTopics(feedbacks: Feedback[]): Promise<string[]> {
+        const trendingTopics = await this.sentimentService.extractTrendingSentences(feedbacks);
+        return trendingTopics;
+    }
+
     private async processFeedbacks(feedbacks: Feedback[], summary: FeedbackSummary): Promise<void> {
         const textResponses: TextResponse[] = [];
         const stats = {
