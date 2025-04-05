@@ -421,12 +421,12 @@ export class FeedbackAnalysisService {
         monthlyStats: { positive: number; negative: number },
         feedbackId: string
     ): void {
-        if (sentiment.label === 'positive' && sentiment.score > 0.7) {
+        if (sentiment.label === 'POSITIVE' && sentiment.score > 0.7) {
             summary.textAnalysis.topStrengths.push({text, feedbackId});
             dailyStats.positive++;
             weeklyStats.positive++;
             monthlyStats.positive++;
-        } else if ((sentiment.label === 'negative' && sentiment.score > 0.7)) {
+        } else if ((sentiment.label === 'NEGATIVE' && sentiment.score > 0.7)) {
             summary.textAnalysis.topConcerns.push({text, feedbackId});
             dailyStats.negative++;
             weeklyStats.negative++;
