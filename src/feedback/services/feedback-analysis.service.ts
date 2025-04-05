@@ -123,7 +123,6 @@ export class FeedbackAnalysisService {
             const embedding2 = output2.data;
             // Calculate cosine similarity
             const similarity = this.cosineSimilarityRun(embedding1, embedding2);
-            this.logger.log('similarity', similarity);
             return similarity > this.SIMILARITY_THRESHOLD;
         } catch (error) {
             this.logger.error('Error calculating sentence similarity', error);
@@ -257,6 +256,7 @@ export class FeedbackAnalysisService {
                 const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
             
                 if(response.componentType === SurveyComponentType.SCALE_1_TO_10) {
+                    this.logger.log('got into 1 to 10', value);
                     stats["1to10"].total++;
                     stats["1to10"].distribution[value]++;
                 }
