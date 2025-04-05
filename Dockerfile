@@ -104,4 +104,4 @@ COPY --from=builder /usr/src/app/node_modules/.prisma/client ./node_modules/.pri
 EXPOSE 3333
 
 # Start both the Node.js application and the Python model loader
-CMD ["npm run start:prod"] 
+CMD ["node dist/main"] 
