@@ -74,7 +74,7 @@ export class FeedbackService implements OnModuleInit {
             feedbacks.forEach(feedback => {
                 Object.entries(feedback.responses).forEach(([key, response]) => {
                     if(response.componentType === SurveyComponentType.TEXT || response.componentType === SurveyComponentType.TEXTBOX){
-                        responses[key] = response.value;
+                        responses[response.title] = response.value;
                     }
                 })
             })

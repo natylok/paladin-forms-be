@@ -136,19 +136,78 @@ def get_sentiment_category(text):
 
 def clean_sentence(sentence):
     """Clean and normalize a sentence for comparison"""
-    # Remove extra whitespace
-    sentence = re.sub(r'\s+', ' ', sentence).strip()
     # Convert to lowercase
     sentence = sentence.lower()
-    # Remove punctuation
-    sentence = re.sub(r'[^\w\s]', '', sentence)
+    
+    # Handle common contractions and variations
+    replacements = {
+        "wasn't": "was not",
+        "isn't": "is not",
+        "aren't": "are not",
+        "don't": "do not",
+        "doesn't": "does not",
+        "didn't": "did not",
+        "won't": "will not",
+        "can't": "cannot",
+        "couldn't": "could not",
+        "shouldn't": "should not",
+        "wouldn't": "would not",
+        "haven't": "have not",
+        "hasn't": "has not",
+        "hadn't": "had not",
+        "i'm": "i am",
+        "you're": "you are",
+        "he's": "he is",
+        "she's": "she is",
+        "it's": "it is",
+        "we're": "we are",
+        "they're": "they are",
+        "i've": "i have",
+        "you've": "you have",
+        "we've": "we have",
+        "they've": "they have",
+        "i'd": "i would",
+        "you'd": "you would",
+        "he'd": "he would",
+        "she'd": "she would",
+        "we'd": "we would",
+        "they'd": "they would",
+        "i'll": "i will",
+        "you'll": "you will",
+        "he'll": "he will",
+        "she'll": "she will",
+        "we'll": "we will",
+        "they'll": "they will"
+    }
+    
+    for contraction, expanded in replacements.items():
+        sentence = sentence.replace(contraction, expanded)
+    
+    # Remove extra whitespace but keep single spaces
+    sentence = re.sub(r'\s+', ' ', sentence).strip()
+    
+    # Remove only specific punctuation that doesn't affect meaning
+    sentence = re.sub(r'[.,!?;:]', '', sentence)
+    
     return sentence
 
-def are_sentences_similar(s1, s2, threshold=0.8):
+def are_sentences_similar(s1, s2, threshold=0.7):
     """Check if two sentences are similar using sequence matching"""
     s1_clean = clean_sentence(s1)
     s2_clean = clean_sentence(s2)
+    
+    # Calculate similarity ratio
     ratio = SequenceMatcher(None, s1_clean, s2_clean).ratio()
+    
+    # If ratio is close but not quite there, try word-based comparison
+    if 0.6 <= ratio < threshold:
+        words1 = set(s1_clean.split())
+        words2 = set(s2_clean.split())
+        common_words = words1.intersection(words2)
+        total_words = words1.union(words2)
+        word_ratio = len(common_words) / len(total_words) if total_words else 0
+        return word_ratio >= 0.7
+    
     return ratio >= threshold
 
 def extract_trending_sentences(feedbacks, time_window_days=30):
@@ -168,7 +227,7 @@ def extract_trending_sentences(feedbacks, time_window_days=30):
                         # Split answer into sentences
                         sentences = [s.strip() for s in re.split(r'[.!?]+', answer) if s.strip()]
                         for sentence in sentences:
-                            if len(sentence.split()) >= 3:  # Skip very short sentences
+                            if len(sentence.split()) >= 2:  # Reduced minimum length to catch short meaningful sentences
                                 sentiment = get_sentiment_category(sentence)
                                 all_sentences.append({
                                     'text': sentence,
@@ -179,7 +238,7 @@ def extract_trending_sentences(feedbacks, time_window_days=30):
                 # Handle direct text feedback
                 sentences = [s.strip() for s in re.split(r'[.!?]+', feedback) if s.strip()]
                 for sentence in sentences:
-                    if len(sentence.split()) >= 3:
+                    if len(sentence.split()) >= 2:
                         sentiment = get_sentiment_category(sentence)
                         all_sentences.append({
                             'text': sentence,
