@@ -205,6 +205,22 @@ export class FeedbackController {
   }
 
   @UseGuards(JwtGuard)
+  @Get(':surveyId/trending-topics')
+  async getTrendingTopics(@Req() req: Request, @Param('surveyId') surveyId: string) {
+    try {
+      const user = req.user as User;
+      this.logger.log('Getting trending topics', { user: user.email, surveyId });
+      const trendingTopics = await this.feedbackService.getTrendingTopics(user, surveyId);
+      return trendingTopics;
+    } catch (error) {
+      this.logger.error('Error getting trending topics', error instanceof Error ? error.stack : undefined, { user: (req.user as User)?.email, surveyId });
+      throw new HttpException('Failed to get trending topics', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+  
+
+  @Post(':surveyId/question-feedbacks')
+  @UseGuards(JwtGuard)
   @Post(':surveyId/question-feedbacks')
   async getQuestionFeedbacks(@Req() req: Request, @Param('surveyId') surveyId: string, @Body() body: any) {
     try {
