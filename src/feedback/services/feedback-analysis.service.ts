@@ -256,10 +256,11 @@ export class FeedbackAnalysisService {
                 const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
             
                 if(response.componentType === SurveyComponentType.SCALE_1_TO_10) {
-                    this.logger.log('got into 1 to 10', value);
                     stats["1to10"].total++;
                     stats["1to10"].distribution[value]++;
                 }
+
+                this.logger.log('stats', stats["1to10"].distribution);
 
                 if (this.isRatingResponse(response)) {
                     this.processRatingResponse(value, summary, stats);
