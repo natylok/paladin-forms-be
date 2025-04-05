@@ -15,60 +15,65 @@ export class SentimentService {
         this.initializeModel();
     }
 
-    private async initializeModel() {
-        try {
-
-            this.classifier = await pipeline('sentiment-analysis', this.MODEL_NAME);
-            
-            this.isInitialized = true;
-            // Start the Python process
-            this.pythonProcess = spawn('python3', ['model_loader.py'], {
-                stdio: ['pipe', 'pipe', 'pipe']
-            });
-
-            // Handle process errors
-            this.pythonProcess.on('error', (error) => {
-                this.logger.error('Python process error', {
-                    error: error instanceof Error ? error.message : 'Unknown error'
-                });
-                this.isInitialized = false;
-            });
-
-            // Handle process exit
-            this.pythonProcess.on('exit', (code) => {
-                this.logger.error('Python process exited', { code });
-                this.isInitialized = false;
-            });
-
-            // Wait for the model to be ready
-            await new Promise<void>((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                    reject(new Error('Model initialization timeout'));
-                }, 70000); // 30 seconds timeout
-
-                const handleStderr = (data) => {
-                    const message = data.toString();
-                    if (message.includes('Model loaded and ready for processing')) {
-                        clearTimeout(timeout);
-                        this.pythonProcess.stderr.removeListener('data', handleStderr);
-                        this.isInitialized = true;
-                        resolve();
-                    }
-                };
-
-                this.pythonProcess.stderr.on('data', handleStderr);
-            });
-
-            this.logger.log('Sentiment analysis model loaded successfully', {
-                modelName: this.MODEL_NAME
-            });
-        } catch (error) {
-            this.logger.error('Failed to load sentiment analysis model', {
-                error: error instanceof Error ? error.message : 'Unknown error',
-                modelName: this.MODEL_NAME
-            });
-            throw error;
+    private async initializeModel(): Promise<void> {
+        if (this.pythonProcess) {
+            return;
         }
+
+        this.pythonProcess = spawn('python3', ['model_loader.py'], {
+            stdio: ['pipe', 'pipe', 'pipe']
+        });
+
+        // Handle stderr output
+        this.pythonProcess.stderr.on('data', (data) => {
+            console.log(`Python Model Output: ${data}`);
+        });
+
+        // Handle stdout output
+        this.pythonProcess.stdout.on('data', (data) => {
+            const output = data.toString();
+            try {
+                const result = JSON.parse(output);
+                if (result.status === 'ready') {
+                    this.isInitialized = true;
+                    console.log('BART model initialized successfully');
+                }
+            } catch (e) {
+                // Not JSON output, ignore
+            }
+        });
+
+        // Handle process errors
+        this.pythonProcess.on('error', (err) => {
+            console.error('Failed to start Python process:', err);
+            this.cleanup();
+        });
+
+        this.pythonProcess.on('exit', (code) => {
+            console.error(`Python process exited with code ${code}`);
+            this.cleanup();
+        });
+
+        // Wait for initialization with increased timeout
+        await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                if (!this.isInitialized) {
+                    this.cleanup();
+                    reject(new Error('Model initialization timeout'));
+                }
+            }, 30000); // Increased timeout to 30 seconds
+
+            const checkInitialization = () => {
+                if (this.isInitialized) {
+                    clearTimeout(timeout);
+                    resolve();
+                } else {
+                    setTimeout(checkInitialization, 100);
+                }
+            };
+
+            checkInitialization();
+        });
     }
 
     private async sendRequest(request: any): Promise<any> {
@@ -150,6 +155,14 @@ export class SentimentService {
     onModuleDestroy() {
         if (this.pythonProcess) {
             this.pythonProcess.kill();
+        }
+    }
+
+    private cleanup() {
+        if (this.pythonProcess) {
+            this.pythonProcess.kill();
+            this.pythonProcess = null;
+            this.isInitialized = false;
         }
     }
 } 

@@ -16,12 +16,6 @@ RUN apt-get update && apt-get install -y \
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy Python requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-# Copy model loader and test files
-COPY model_loader.py .
 
 # Create models directory with correct permissions
 RUN mkdir -p models && chmod 777 models
@@ -74,21 +68,7 @@ RUN apt-get update && apt-get install -y \
     python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-
-
-# Copy model loader and test files
-COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-# Copy model loader and test files
-COPY model_loader.py .
-
-# Create models directory with correct permissions
-RUN mkdir -p models && chmod 777 models
-
-
 # Set environment variables for Python
 ENV TRANSFORMERS_CACHE=/usr/src/app/models
 ENV PYTHONUNBUFFERED=1
@@ -124,4 +104,4 @@ COPY --from=builder /usr/src/app/node_modules/.prisma/client ./node_modules/.pri
 EXPOSE 3333
 
 # Start both the Node.js application and the Python model loader
-CMD ["sh", "-c", "python3 model_loader.py & node dist/main"] 
+CMD ["npm run start:prod"] 

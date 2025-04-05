@@ -304,6 +304,10 @@ def main():
         print("Models loaded and ready for processing", file=sys.stderr)
         sys.stderr.flush()
         
+        # Signal initialization complete
+        print(json.dumps({"status": "ready"}))
+        sys.stdout.flush()
+        
         # Process requests
         for line in sys.stdin:
             try:
