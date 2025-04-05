@@ -17,7 +17,7 @@ import {
 export class FeedbackAnalysisService {
     private readonly logger = new Logger(FeedbackAnalysisService.name);
     private similarityModel: any;
-    private readonly SIMILARITY_THRESHOLD = 0.8;
+    private readonly SIMILARITY_THRESHOLD = 0.5;
 
     constructor(private readonly sentimentService: SentimentService) {
         this.initializeSimilarityModel();
