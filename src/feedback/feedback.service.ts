@@ -60,7 +60,7 @@ export class FeedbackService implements OnModuleInit {
         }
     }
 
-    async getTrendingTopics(user: User, surveyId: string): Promise<string[]> {
+    async getTrendingTopics(user: User, surveyId: string) {
         try {
             const survey = await this.surveyModel.findOne({ surveyId, ...(user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email }) }).exec();
             if(!survey){
@@ -81,7 +81,7 @@ export class FeedbackService implements OnModuleInit {
                     }
                 })
             })
-            return this.analysisService.getTrendingTopics(responses);
+            return await this.analysisService.getTrendingTopics(responses);
         } catch (error) {
             this.logger.error('Failed to get trending topics', error instanceof Error ? error.stack : undefined, { user: user.email, surveyId });
             throw error;

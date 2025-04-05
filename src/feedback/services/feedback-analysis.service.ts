@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { pipeline } from '@xenova/transformers';
 import { FeedbackSummary, TextResponse } from '../types/feedback.types';
 import { Feedback } from '../feedback.schema';
 import { SentimentService } from './sentiment.service';
@@ -15,8 +16,24 @@ import {
 @Injectable()
 export class FeedbackAnalysisService {
     private readonly logger = new Logger(FeedbackAnalysisService.name);
+    private similarityModel: any;
+    private readonly SIMILARITY_THRESHOLD = 0.85;
 
-    constructor(private readonly sentimentService: SentimentService) {}
+    constructor(private readonly sentimentService: SentimentService) {
+        this.initializeSimilarityModel();
+    }
+
+    private async initializeSimilarityModel() {
+        try {
+            this.similarityModel = await pipeline(
+                'feature-extraction',
+                'Xenova/distilbert-base-uncased-finetuned-sst-2-english'
+            );
+            this.logger.log('Similarity model initialized successfully');
+        } catch (error) {
+            this.logger.error('Failed to initialize similarity model', error);
+        }
+    }
 
     async analyzeFeedbacks(feedbacks: Feedback[]): Promise<FeedbackSummary> {
         const summary: FeedbackSummary = this.initializeSummary(feedbacks.length);
@@ -64,9 +81,123 @@ export class FeedbackAnalysisService {
         };
     }
 
-    async getTrendingTopics(feedbacks: Record<string, {question: string, answer: string}>): Promise<string[]> {
-        const trendingTopics = await this.sentimentService.extractTrendingSentences(feedbacks);
-        return trendingTopics;
+    private cleanSentence(sentence: string): string {
+        // Remove punctuation and convert to lowercase
+        return sentence
+            .toLowerCase()
+            .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+    }
+
+    private async areSentencesSimilar(sentence1: string, sentence2: string): Promise<boolean> {
+        if (!this.similarityModel) {
+            this.logger.warn('Similarity model not initialized, using fallback method');
+            return this.fallbackSimilarityCheck(sentence1, sentence2);
+        }
+
+        try {
+            const clean1 = this.cleanSentence(sentence1);
+            const clean2 = this.cleanSentence(sentence2);
+
+            // If one sentence is contained within the other, they are similar
+            if (clean1.includes(clean2) || clean2.includes(clean1)) {
+                return true;
+            }
+
+            // Get embeddings for both sentences
+            const output1 = await this.similarityModel(clean1, { pooling: 'mean', normalize: true });
+            const output2 = await this.similarityModel(clean2, { pooling: 'mean', normalize: true });
+
+            // Calculate cosine similarity
+            const similarity = this.cosineSimilarity(output1.data, output2.data);
+            return similarity > this.SIMILARITY_THRESHOLD;
+        } catch (error) {
+            this.logger.error('Error calculating sentence similarity', error);
+            return this.fallbackSimilarityCheck(sentence1, sentence2);
+        }
+    }
+
+    private fallbackSimilarityCheck(sentence1: string, sentence2: string): boolean {
+        const clean1 = this.cleanSentence(sentence1);
+        const clean2 = this.cleanSentence(sentence2);
+        
+        if (clean1.includes(clean2) || clean2.includes(clean1)) {
+            return true;
+        }
+
+        const words1 = new Set(clean1.split(' '));
+        const words2 = new Set(clean2.split(' '));
+        
+        const intersection = new Set([...words1].filter(x => words2.has(x)));
+        const union = new Set([...words1, ...words2]);
+        
+        const similarity = intersection.size / union.size;
+        return similarity > 0.6;
+    }
+
+    private cosineSimilarity(vec1: Float32Array, vec2: Float32Array): number {
+        let dotProduct = 0;
+        let norm1 = 0;
+        let norm2 = 0;
+
+        for (let i = 0; i < vec1.length; i++) {
+            dotProduct += vec1[i] * vec2[i];
+            norm1 += vec1[i] * vec1[i];
+            norm2 += vec2[i] * vec2[i];
+        }
+
+        norm1 = Math.sqrt(norm1);
+        norm2 = Math.sqrt(norm2);
+
+        return dotProduct / (norm1 * norm2);
+    }
+
+    async extractTrendingSentences(feedbacks: Record<string, {question: string, answer: string}>): Promise<{question: string, answer: string, sentiment: string}[]> {
+        const sentences: {question: string, answer: string, sentiment: string, count: number}[] = [];
+        
+        // Process each feedback
+        for (const [questionId, feedback] of Object.entries(feedbacks)) {
+            const answer = feedback.answer;
+            const question = feedback.question;
+            
+            // Skip empty or very short answers
+            if (!answer || answer.length < 3) continue;
+            
+            // Analyze sentiment
+            const sentiment = await this.sentimentService.analyzeSentiment(answer);
+            
+            // Check if this sentence is similar to any existing one with the same sentiment
+            let foundSimilar = false;
+            for (const existing of sentences) {
+                if (existing.sentiment === sentiment.label && 
+                    await this.areSentencesSimilar(existing.answer, answer)) {
+                    existing.count++;
+                    foundSimilar = true;
+                    break;
+                }
+            }
+            
+            // If no similar sentence found, add as new
+            if (!foundSimilar) {
+                sentences.push({
+                    question,
+                    answer,
+                    sentiment: sentiment.label,
+                    count: 1
+                });
+            }
+        }
+        
+        // Sort by frequency and return top sentences
+        return sentences
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10) // Return top 10 trending sentences
+            .map(({question, answer, sentiment}) => ({question, answer, sentiment}));
+    }
+
+    async getTrendingTopics(feedbacks: Record<string, {question: string, answer: string}>): Promise<{question: string, answer: string, sentiment: string}[]> {
+        return this.extractTrendingSentences(feedbacks);
     }
 
     private async processFeedbacks(feedbacks: Feedback[], summary: FeedbackSummary): Promise<void> {

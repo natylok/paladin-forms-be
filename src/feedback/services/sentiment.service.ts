@@ -11,76 +11,7 @@ export class SentimentService {
     private classifier: any;
     private readonly MODEL_NAME = 'Xenova/distilbert-base-uncased-finetuned-sst-2-english';
 
-    constructor() {
-        this.initializeModel();
-    }
-
-    private async initializeModel(): Promise<void> {
-        if (this.pythonProcess) {
-            return;
-        }
-
-        this.pythonProcess = spawn('python3', ['model_loader.py'], {
-            stdio: ['pipe', 'pipe', 'pipe']
-        });
-
-        // Handle stderr output
-        this.pythonProcess.stderr.on('data', (data) => {
-            console.log(`Python Model Output: ${data}`);
-        });
-
-        // Handle stdout output
-        this.pythonProcess.stdout.on('data', (data) => {
-            const output = data.toString();
-            try {
-                const result = JSON.parse(output);
-                if (result.status === 'ready') {
-                    this.isInitialized = true;
-                    console.log('BART model initialized successfully');
-                }
-            } catch (e) {
-                // Not JSON output, ignore
-            }
-        });
-
-        // Handle process errors
-        this.pythonProcess.on('error', (err) => {
-            console.error('Failed to start Python process:', err);
-            this.cleanup();
-        });
-
-        this.pythonProcess.on('exit', (code) => {
-            console.error(`Python process exited with code ${code}`);
-            this.cleanup();
-        });
-
-        // Wait for initialization with increased timeout
-        await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                if (!this.isInitialized) {
-                    this.cleanup();
-                    reject(new Error('Model initialization timeout'));
-                }
-            }, 30000); // Increased timeout to 30 seconds
-
-            const checkInitialization = () => {
-                if (this.isInitialized) {
-                    clearTimeout(timeout);
-                    resolve();
-                } else {
-                    setTimeout(checkInitialization, 100);
-                }
-            };
-
-            checkInitialization();
-        });
-    }
-
     private async sendRequest(request: any): Promise<any> {
-        if (!this.isInitialized) {
-            await this.initializeModel();
-        }
-
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
                 reject(new Error('Request timeout'));
@@ -106,10 +37,6 @@ export class SentimentService {
 
     async analyzeSentiment(text: string): Promise<SentimentResult> {
         try {
-             // Wait for model to be initialized
-             if (!this.isInitialized) {
-                await this.initializeModel();
-            }
 
             const result = await this.classifier(text);
             
@@ -130,23 +57,6 @@ export class SentimentService {
             this.logger.error('Error in sentiment analysis', {
                 error: error instanceof Error ? error.message : 'Unknown error',
                 text
-            });
-            throw error;
-        }
-    }
-
-    async extractTrendingSentences(feedbacks: Record<string, {question: string, answer: string}>): Promise<string[]> {
-        try {
-            this.logger.log('Extracting trending sentences', { feedbacks });
-            const result = await this.sendRequest({
-                feedbacks,
-                action: 'extract_trending_sentences'
-            });
-
-            return result.sentences || [];
-        } catch (error) {
-            this.logger.error('Error extracting trending sentences', {
-                error: error instanceof Error ? error.message : 'Unknown error'
             });
             throw error;
         }
