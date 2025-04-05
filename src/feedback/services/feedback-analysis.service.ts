@@ -27,7 +27,7 @@ export class FeedbackAnalysisService {
         try {
             this.similarityModel = await pipeline(
                 'feature-extraction',
-                'Xenova/sentence-transformers/all-MiniLM-L6-v2',
+                'Xenova/all-MiniLM-L6-v2',
                 {
                     quantized: true
                 }
