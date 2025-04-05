@@ -260,8 +260,6 @@ export class FeedbackAnalysisService {
                     stats["1to10"].distribution[value]++;
                 }
 
-                this.logger.log('stats', stats["1to10"].distribution);
-
                 if (this.isRatingResponse(response)) {
                     this.processRatingResponse(value, summary, stats);
                 }
@@ -269,6 +267,7 @@ export class FeedbackAnalysisService {
                 if (!this.shouldSkipTextAnalysis(value)) {
                     this.collectTextResponse(feedback, response, value, feedbackDate, textResponses);
                 }
+                this.logger.log('1to10', stats["1to10"].distribution);
             }
         }
         this.logger.debug('Processing text responses', { textResponses });
