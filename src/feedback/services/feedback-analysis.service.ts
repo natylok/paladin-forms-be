@@ -267,7 +267,6 @@ export class FeedbackAnalysisService {
                 if (!this.shouldSkipTextAnalysis(value)) {
                     this.collectTextResponse(feedback, response, value, feedbackDate, textResponses);
                 }
-                this.logger.log('1to10', stats["1to10"].distribution);
             }
         }
         this.logger.debug('Processing text responses', { textResponses });
@@ -279,6 +278,8 @@ export class FeedbackAnalysisService {
             weeklyFeedbacks,
             monthlyFeedbacks
         );
+
+        this.logger.log('1to10', stats["1to10"].distribution);
 
         this.finalizeSummary(
             summary,
