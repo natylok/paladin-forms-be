@@ -256,8 +256,8 @@ export class FeedbackAnalysisService {
                 const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
             
                 if(response.componentType === SurveyComponentType.SCALE_1_TO_10) {
-                    stats["1to10"].total++;
-                    stats["1to10"].distribution[value]++;
+                    summary.statistics["1to10"].total++;
+                    summary.statistics["1to10"].distribution[value]++;
                 }
 
                 if (this.isRatingResponse(response)) {
@@ -269,7 +269,6 @@ export class FeedbackAnalysisService {
                 }
             }
         }
-        this.logger.debug('Processing text responses', { textResponses });
         await this.processTextResponses(
             textResponses,
             summary,
@@ -286,7 +285,6 @@ export class FeedbackAnalysisService {
             weeklyFeedbacks,
             monthlyFeedbacks
         );
-        this.logger.log('1to10', stats["1to10"].distribution);
     }
 
     private isRatingResponse(response: { componentType: string }): boolean {
