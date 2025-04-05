@@ -193,7 +193,7 @@ export class FeedbackAnalysisService {
         return sentences
             .sort((a, b) => b.count - a.count)
             .slice(0, 10) // Return top 10 trending sentences
-            .map(({question, answer, sentiment}) => ({question, answer, sentiment}));
+            .map(({question, answer, sentiment, count}) => ({question, answer, sentiment, count}));
     }
 
     async getTrendingTopics(feedbacks: Record<string, {question: string, answer: string}>): Promise<{question: string, answer: string, sentiment: string}[]> {
