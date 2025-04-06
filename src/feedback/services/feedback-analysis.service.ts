@@ -44,13 +44,13 @@ export class FeedbackAnalysisService {
         return summary;
     }
 
-    async summerizeFeedbacks(feedbacks: Feedback[]) {
+    async summerizeFeedbacks(feedbacks: any[]) {
         const feedbacksSummary = feedbacks.reduce((acc, feedback) => {
-            Object.entries(feedback.responses).forEach(([key, response]) => {
+            feedback.responses.forEach((response) => {
                 if (response.componentType === SurveyComponentType.SCALE_1_TO_10 || response.componentType === SurveyComponentType.STAR_1_TO_5 || response.componentType === SurveyComponentType.FACE_1_TO_5) {
-                    if (!acc[key]) {
+                    if (!acc[response.componentId]) {
                         if(response.componentType === SurveyComponentType.SCALE_1_TO_10) {
-                            acc[key] = {
+                            acc[response.componentId] = {
                                 type: response.componentType,
                                 distribution: {
                                     '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '9': 0, '10': 0
@@ -58,7 +58,7 @@ export class FeedbackAnalysisService {
                             }
                         }
                         if(response.componentType === SurveyComponentType.STAR_1_TO_5 || response.componentType === SurveyComponentType.FACE_1_TO_5) {
-                            acc[key] = {
+                            acc[response.componentId] = {
                                 type: response.componentType,
                                 distribution: {
                                     '1': 0, '2': 0, '3': 0, '4': 0, '5': 0
@@ -66,7 +66,7 @@ export class FeedbackAnalysisService {
                             }   
                         }
                     }
-                    acc[key].distribution[response.value]++;
+                    acc[response.componentId].distribution[response.value]++;
                 }
             });
             return acc;
