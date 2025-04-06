@@ -3,6 +3,7 @@ import { Document } from 'mongoose';
 import { SurveyComponentType } from '@natylok/paladin-forms-common';
 
 export interface FeedbackResponse {
+  componentId: string
   componentType: SurveyComponentType;
   value: string;
   title: string;
@@ -18,7 +19,7 @@ export class Feedback extends Document {
     required: true,
     default: {}
   })
-  responses: Record<string, FeedbackResponse>;
+  responses: FeedbackResponse[];
 
   @Prop({ type: Boolean, default: false })
   isRead: boolean;

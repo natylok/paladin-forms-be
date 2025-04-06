@@ -88,7 +88,7 @@ export class FeedbackExportService {
         feedbacks.forEach(feedback => {
             if (feedback.responses) {
                 if (feedback.responses instanceof Map) {
-                    Array.from(feedback.responses.entries()).forEach(([questionId, response]) => {
+                    Array.from(feedback.responses).forEach(([questionId, response]) => {
                         if (response && response.componentType && response.value) {
                             questionIds.add(questionId);
                         }

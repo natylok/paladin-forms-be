@@ -44,7 +44,7 @@ export class FeedbackAnalysisService {
         return summary;
     }
 
-    async summerizeFeedbacks(feedbacks: any[]) {
+    async summerizeFeedbacks(feedbacks: Feedback[]) {
         const feedbacksSummary = feedbacks.reduce((acc, feedback) => {
             feedback.responses.forEach((response) => {
                 if (response.componentType === SurveyComponentType.SCALE_1_TO_10 || response.componentType === SurveyComponentType.STAR_1_TO_5 || response.componentType === SurveyComponentType.FACE_1_TO_5) {
