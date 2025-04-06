@@ -217,6 +217,20 @@ export class FeedbackController {
       throw new HttpException('Failed to get trending topics', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  @UseGuards(JwtGuard)
+  @Get(':surveyId/feedback-summary')
+  async getFeedbacksSummary(@Req() req: Request, @Param('surveyId') surveyId: string) {
+    try {
+      const user = req.user as User;
+      this.logger.log('Getting feedbacks summary', { user: user.email, surveyId });
+      const feedbackSummary = await this.feedbackService.getFeedbacksSummary(user, surveyId);
+      return feedbackSummary;
+    } catch (error) {
+      this.logger.error('Error getting feedbacks summary', error instanceof Error ? error.stack : undefined, { user: (req.user as User)?.email, surveyId });
+      throw new HttpException('Failed to get feedbacks summary', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
   
 
   @Post(':surveyId/question-feedbacks')

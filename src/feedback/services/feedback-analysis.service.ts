@@ -44,6 +44,36 @@ export class FeedbackAnalysisService {
         return summary;
     }
 
+    async summerizeFeedbacks(feedbacks: Feedback[]) {
+        const feedbacksSummary = feedbacks.reduce((acc, feedback) => {
+            Object.entries(feedback.responses).forEach(([key, response]) => {
+                if (response.componentType === SurveyComponentType.SCALE_1_TO_10 || response.componentType === SurveyComponentType.STAR_1_TO_5 || response.componentType === SurveyComponentType.FACE_1_TO_5) {
+                    if (!acc[key]) {
+                        if(response.componentType === SurveyComponentType.SCALE_1_TO_10) {
+                            acc[key] = {
+                                type: response.componentType,
+                                distribution: {
+                                    '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '9': 0, '10': 0
+                                }
+                            }
+                        }
+                        if(response.componentType === SurveyComponentType.STAR_1_TO_5 || response.componentType === SurveyComponentType.FACE_1_TO_5) {
+                            acc[key] = {
+                                type: response.componentType,
+                                distribution: {
+                                    '1': 0, '2': 0, '3': 0, '4': 0, '5': 0
+                                }
+                            }   
+                        }
+                    }
+                    acc[key].distribution[response.value]++;
+                }
+            });
+            return acc;
+        }, {})
+        return feedbacksSummary;
+    }
+
     private initializeSummary(totalFeedbacks: number): FeedbackSummary {
         return {
             textAnalysis: {
@@ -98,7 +128,7 @@ export class FeedbackAnalysisService {
         const norm1 = Math.sqrt(vec1.reduce((acc, val) => acc + val * val, 0));
         const norm2 = Math.sqrt(vec2.reduce((acc, val) => acc + val * val, 0));
         return dot / (norm1 * norm2);
-      }
+    }
 
     private async areSentencesSimilar(sentence1: string, sentence2: string): Promise<boolean> {
         if (!this.similarityModel) {
@@ -116,8 +146,8 @@ export class FeedbackAnalysisService {
             }
 
             // Get embeddings for both sentences
-            const output1 = await this.similarityModel(clean1, {pooling: 'mean', normalize: true});
-            const output2 = await this.similarityModel(clean2, {pooling: 'mean', normalize: true});
+            const output1 = await this.similarityModel(clean1, { pooling: 'mean', normalize: true });
+            const output2 = await this.similarityModel(clean2, { pooling: 'mean', normalize: true });
             // Extract the embeddings from the output
             const embedding1 = output1.data;
             const embedding2 = output2.data;
@@ -133,17 +163,17 @@ export class FeedbackAnalysisService {
     private fallbackSimilarityCheck(sentence1: string, sentence2: string): boolean {
         const clean1 = this.cleanSentence(sentence1);
         const clean2 = this.cleanSentence(sentence2);
-        
+
         if (clean1.includes(clean2) || clean2.includes(clean1)) {
             return true;
         }
 
         const words1 = new Set(clean1.split(' '));
         const words2 = new Set(clean2.split(' '));
-        
+
         const intersection = new Set([...words1].filter(x => words2.has(x)));
         const union = new Set([...words1, ...words2]);
-        
+
         const similarity = intersection.size / union.size;
         return similarity > 0.6;
     }
@@ -174,31 +204,31 @@ export class FeedbackAnalysisService {
         return dotProduct / (norm1 * norm2);
     }
 
-    async extractTrendingSentences(feedbacks: {question: string, answer: string}[]): Promise<{question: string, answer: string, sentiment: string, count: number}[]> {
-        const sentences: {question: string, answer: string, sentiment: string, count: number}[] = [];
-        
+    async extractTrendingSentences(feedbacks: { question: string, answer: string }[]): Promise<{ question: string, answer: string, sentiment: string, count: number }[]> {
+        const sentences: { question: string, answer: string, sentiment: string, count: number }[] = [];
+
         // Process each feedback
         for (const feedback of feedbacks) {
             const answer = feedback.answer;
             const question = feedback.question;
-            
+
             // Skip empty or very short answers
             if (!answer || answer.length < 3) continue;
-            
+
             // Analyze sentiment
             const sentiment = await this.sentimentService.analyzeSentiment(answer);
-            
+
             // Check if this sentence is similar to any existing one with the same sentiment
             let foundSimilar = false;
             for (const existing of sentences) {
-                if (existing.sentiment === sentiment.label && 
+                if (existing.sentiment === sentiment.label &&
                     await this.areSentencesSimilar(existing.answer, answer)) {
                     existing.count++;
                     foundSimilar = true;
                     break;
                 }
             }
-            
+
             // If no similar sentence found, add as new
             if (!foundSimilar) {
                 sentences.push({
@@ -209,15 +239,15 @@ export class FeedbackAnalysisService {
                 });
             }
         }
-        
+
         // Sort by frequency and return top sentences
         return sentences
             .sort((a, b) => b.count - a.count)
             .slice(0, 20) // Return top 10 trending sentences
-            .map(({question, answer, sentiment, count}) => ({question, answer, sentiment, count}));
+            .map(({ question, answer, sentiment, count }) => ({ question, answer, sentiment, count }));
     }
 
-    async getTrendingTopics(feedbacks: {question: string, answer: string}[]): Promise<{question: string, answer: string, sentiment: string}[]> {
+    async getTrendingTopics(feedbacks: { question: string, answer: string }[]): Promise<{ question: string, answer: string, sentiment: string }[]> {
         return await this.extractTrendingSentences(feedbacks);
     }
 
@@ -254,8 +284,8 @@ export class FeedbackAnalysisService {
                 if (!response.value) continue;
 
                 const value = Array.isArray(response.value) ? response.value.join(' ') : response.value;
-            
-                if(response.componentType === SurveyComponentType.SCALE_1_TO_10) {
+
+                if (response.componentType === SurveyComponentType.SCALE_1_TO_10) {
                     summary.statistics["1to10"].total++;
                     summary.statistics["1to10"].distribution[value]++;
                 }
@@ -442,22 +472,22 @@ export class FeedbackAnalysisService {
         feedbackId: string
     ): void {
         if (sentiment.label === 'POSITIVE' && sentiment.score > 0.7) {
-            summary.textAnalysis.topStrengths.push({text, feedbackId});
+            summary.textAnalysis.topStrengths.push({ text, feedbackId });
             dailyStats.positive++;
             weeklyStats.positive++;
             monthlyStats.positive++;
         } else if ((sentiment.label === 'NEGATIVE' && sentiment.score > 0.7)) {
-            summary.textAnalysis.topConcerns.push({text, feedbackId});
+            summary.textAnalysis.topConcerns.push({ text, feedbackId });
             dailyStats.negative++;
             weeklyStats.negative++;
             monthlyStats.negative++;
         }
 
         if (containsPhrases(text, FILTER_PHRASES.suggestions)) {
-            summary.textAnalysis.suggestions.push({text, feedbackId});
+            summary.textAnalysis.suggestions.push({ text, feedbackId });
         }
         if (containsPhrases(text, FILTER_PHRASES.urgent)) {
-            summary.textAnalysis.urgentIssues.push({text, feedbackId});
+            summary.textAnalysis.urgentIssues.push({ text, feedbackId });
         }
     }
 

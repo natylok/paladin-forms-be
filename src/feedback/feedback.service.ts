@@ -87,6 +87,22 @@ export class FeedbackService implements OnModuleInit {
         }
     }
 
+    async getFeedbacksSummary(user: User, surveyId: string) {
+        try {
+            const survey = await this.surveyModel.findOne({ surveyId, ...(user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email }) }).exec();
+            if(!survey){
+                this.logger.error('Survey not found', { user: user.email, surveyId });
+                throw new Error('Survey not found');
+            }
+
+            const feedbacks = await this.feedbackModel.find({ surveyId: survey.surveyId }).exec();
+            return await this.analysisService.summerizeFeedbacks(feedbacks);
+        } catch (error) {
+            this.logger.error('Failed to get feedbacks summary', error instanceof Error ? error.stack : undefined, { user: user.email, surveyId });
+            throw error;
+        }
+    }
+
     async getFeedbackById(feedbackId: string, user: User): Promise<Feedback | null> {
         try {
             const surveys = await this.surveyModel.find(user.customerId ? { customerId: user.customerId } : { creatorEmail: user.email });
