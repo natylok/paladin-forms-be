@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { Types } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
-import { TriggerVariableType, TriggerVariable, TriggerByAction, SurveyComponentType, DependsOn, SurveyType } from '@natylok/paladin-forms-common';
+import { TriggerVariableType, TriggerVariable, TriggerByAction, SurveyComponentType, DependsOn, SurveyType, SkipLogic, CompareType } from '@natylok/paladin-forms-common';
 import { TranslationLanguages } from 'src/consts/translations';
 
 @Schema()
@@ -49,21 +49,18 @@ export class SurveySettings {
   triggerByAction?: TriggerByAction;
 }
 
-export const SurveySettingsSchema = SchemaFactory.createForClass(SurveySettings);
-
-@Schema()
-export class SkipLogic {
-  @Prop({ type: String })
-  componentId: string;
-
-  @Prop({ type: String })
-  value: string;
-
-  @Prop({ type: String })
-  toComponentId: string;
+export const validateSkipLogic = (value: Record<string, SkipLogic[]>) => {
+  return (
+    Object.values(value).every((skipLogic) => {
+      return skipLogic.every((skip) => {
+        return skip.toComponentId && skip.condition && Object.values(CompareType).includes(skip.condition.compareType) && skip.condition.value;
+      })
+    })
+  )
 }
 
-export const SkipLogicSchema = SchemaFactory.createForClass(SkipLogic);
+export const SurveySettingsSchema = SchemaFactory.createForClass(SurveySettings);
+
 
 @Schema()
 export class Component {
@@ -148,8 +145,8 @@ export class Survey extends Document {
   @Prop({ type: String, enum: Object.values(SurveyType), default: SurveyType.Modal })
   surveyType: SurveyType;
 
-  @Prop({type: [SkipLogicSchema], default: []})
-  skipLogic?: SkipLogic[];
+  @Prop({type: Object, default: {}, validate: { validator: validateSkipLogic }})
+  skipLogic?: Record<string, SkipLogic[]>;
 
   @Prop({type: String, default: new Date().toISOString()})
   createdAt: string;
