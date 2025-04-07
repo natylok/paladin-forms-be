@@ -156,6 +156,9 @@ export class Survey extends Document {
 
   @Prop({type: Number, default: 0})
   numOfViews?: number;
+
+  @Prop({type: String, default: new Date().toISOString()})
+  updatedAt: string;
 }
 
 export const SurveySchema = SchemaFactory.createForClass(Survey);
