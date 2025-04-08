@@ -4,7 +4,7 @@ import { pipeline } from '@xenova/transformers';
 @Injectable()
 export class SentimentService {
     private readonly logger = new Logger(SentimentService.name);
-    private readonly MODEL_NAME = 'Xenova/distilbert-base-uncased-finetuned-sst-2-english';
+    private readonly MODEL_NAME = 'Xenova/distilbert-base-multilingual-cased-sentiment';
     private classifier: any;
     private isInitialized = false;
 
