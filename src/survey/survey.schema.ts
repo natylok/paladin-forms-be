@@ -157,6 +157,8 @@ export class Survey extends Document {
   @Prop({type: Number, default: 0})
   numOfViews?: number;
 
+  @Prop({type: Boolean, default: false})
+  isRtl?: boolean;
   @Prop({type: String, default: new Date().toISOString()})
   updatedAt: string;
 }
