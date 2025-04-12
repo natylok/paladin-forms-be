@@ -36,7 +36,7 @@ export class FeedbackService implements OnModuleInit {
         this.questionService = new FeedbackQuestionService(this.redis);
      }
 
-    async submitFeedback(surveyId: string, responses: Record<string, FeedbackResponse>, timeToFillSurvey: number): Promise<void> {
+    async submitFeedback(surveyId: string, responses: Record<string, FeedbackResponse>, timeToFillSurvey: number, email: string): Promise<void> {
         try {
             this.logger.debug('Processing feedback submission', { surveyId, responses });
 
@@ -45,7 +45,8 @@ export class FeedbackService implements OnModuleInit {
                 surveyId,
                 responses,
                 submittedAt: new Date(),
-                timeToFillSurvey
+                timeToFillSurvey,
+                email
             }).toPromise();
 
             this.logger.debug('Feedback event emitted successfully', { surveyId });

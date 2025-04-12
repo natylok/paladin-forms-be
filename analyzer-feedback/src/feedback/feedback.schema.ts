@@ -34,6 +34,9 @@ export class Feedback {
 
   @Prop({ type: Object })
   analysisMetadata?: Record<string, any>;
+
+  @Prop()
+  email?: string;
 }
 
 export interface FeedbackResponse {

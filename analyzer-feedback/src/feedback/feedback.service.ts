@@ -43,6 +43,7 @@ export class FeedbackService {
         surveyId: data.surveyId,
         responses: cleanResponses,
         timeToFillSurvey: data.timeToFillSurvey,
+        email: data.email,
         metadata: {
           originalTimestamp: data.submittedAt || new Date(),
           source: 'paladin-forms-be'

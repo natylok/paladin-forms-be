@@ -27,6 +27,9 @@ export class Feedback extends Document {
   @Prop({ type: Number, default: 0 })
   timeToFillSurvey: number;
 
+  @Prop({ type: String, default: '' })
+  email?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
