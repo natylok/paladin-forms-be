@@ -49,7 +49,7 @@ export class SurveyService {
         const html = `
             <!DOCTYPE html>
             <html>
-                <head>
+                <head style="direction: ${survey.isRtl ? 'rtl' : 'ltr'}; margin: 0; padding: 0; width: 100%; height: 100vh;">
                     <meta charset="UTF-8">
                     <script>
                         window.PALADIN_FORM_SURVEY = ${surveyAsString};
